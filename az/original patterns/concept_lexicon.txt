@@ -1,0 +1,46 @@
+NEGATION: no, not, nor, non, neither, none, never, aren't, can't, cannot, hadn't, hasn't, haven't, isn't, didn't, don't, doesn't, n't, wasn't, weren't, noth-ing, nobody , less, least, little, scant, scarcely , rarely , hardly , few, rare, unlikely
+3RD_PERSON_PRONOUN(NOM): they , he, she, theirs, hers, his
+3RD_PERSON_PRONOUN(ACC): her, him, them
+3RD_POSS_PRONOUN: their, his, her
+3RD_PERSON_REFLEXIVE: themselves, himself, herself
+1ST_PERSON_PRONOUN(NOM): we, i, ours, mine
+1ST_PERSON_PRONOUN(ACC): us, me
+1ST_POSS_PRONOUN: my, our
+1ST_PERSON_REFLEXIVE: ourselves, myself
+REFERENTIAL: this, that, those, these
+REFLEXIVE: itself ourselves, myself, themselves, himself, herself
+QUESTION: ?, how, why, whether, wonder
+GIVEN: noted, mentioned, addressed, illustrated, described, discussed, given, outlined, presented, proposed, reported, shown, taken
+PROFESSIONALS: colleagues, community , computer scientists, computational linguists, discourse analysts, expert, investigators, linguists, logicians, philosophers, psycholinguists, psychologists, researchers, scholars, semanticists, scientists
+DISCIPLINE: computer science, computer linguistics, computational linguistics, dis-course analysis, logics, linguistics, psychology , psycholinguistics, philosophy , semantics, several disciplines, various disciplines
+TEXT_NOUN: paragraph, section, subsection, chapter
+SIMILAR_NOUN: analogy , similarity
+COMPARISON_NOUN: accuracy , baseline, comparison, competition, evaluation, inferiority, measure, measurement, performance, precision, optimum, recall, superiority
+CONTRAST_NOUN: contrast, conflict, clash, clashes, difference, point of departure
+AIM_NOUN: aim, goal, intention, objective, purpose, task, theme, topic
+ARGUMENTATION_NOUN: assumption, belief, hypothesis, hypotheses, claim, conclusion, confirmation, opinion, recommendation, stipulation, view
+PROBLEM_NOUN: Achilles heel, caveat, challenge, complication, contradiction, damage, danger, deadlock, defect, detriment, difficulty, dilemma, disadvantage, disregard, doubt, downside, drawback, error, failure, fault, foil, flaw, handicap, hindrance, hurdle, ill, inflexibility , impediment, imperfection, intractability , inefficiency , inadequacy , inability , lapse, limitation, malheur, mishap, mischance, mistake, obstacle, oversight, pitfall, problem, shortcoming, threat, trouble, vulnerability , absence, dearth, deprivation, lack, loss, fraught, proliferation, spate
+QUESTION_NOUN: question, conundrum, enigma, paradox, phenomena, phenomenon, puzzle, riddle
+SOLUTION_NOUN: answer, accomplishment, achievement, advantage, benefit, break-through, contribution, explanation, idea, improvement, innovation, in-sight, justification, proposal, proof, remedy , solution, success, triumph, verification, victory
+INTEREST_NOUN: attention, quest
+RESEARCH_NOUN: evidence, experiment, finding, progress, observation, outcome, result
+CHANGE_NOUN: alternative, adaptation, extension, development, modification, refinement, version, variant, variation
+PRESENTATION_NOUN: article, draft, paper, project, report, study
+NEED_NOUN: necessity , motivation
+WORK_NOUN: account, algorithm, analysis, analyses, approach, approaches, application, architecture, characterization, characterisation, component, design, extension, formalism, formalization, formalisation, framework, implementation, investigation, machinery, method, methodology, model, module, moduls, process, procedure, program, prototype, research, researches, strategy , system, technique, theory , tool, treatment, work
+TRADITION_NOUN: acceptance, community , convention, disciples, disciplines, folklore, literature, mainstream, school, tradition, textbook
+CHANGE_ADJ: alternate, alternative
+GOOD_ADJ: adequate, advantageous, appealing, appropriate, attractive, automatic, beneficial, capable, cheerful, clean, clear, compact, compelling, competitive, comprehensive, consistent, convenient, convincing, constructive, correct, desirable, distinctive, efficient, elegant, encouraging, exact, faultless, favourable, feasible, flawless, good, helpful, impeccable, innovative, insightful, intensive, meaningful, neat, perfect, plausible, positive, polynomial, powerful, practical, preferable, precise, principled, promising, pure, realistic, reasonable, reliable, right, robust, satisfactory , simple, sound, successful, sufficient, systematic, tractable, usable, useful, valid, unlimited, well worked out, well, enough
+BAD_ADJ: absent, ad-hoc, adhoc, ad hoc, annoying, ambiguous, arbitrary , awkward, bad, brittle, brute-force, brute force, careless, confounding, contradictory , defect, defunct, disturbing, elusive, erraneous, expensive, exponential, false, fallacious, frustrating, haphazard, ill-defined, imperfect, impossible, impractical, imprecise, inaccurate, inadequate, inappropriate, incom-plete, incomprehensible, inconclusive, incorrect, inelegant, inefficient, inexact, infeasible, infelicitous, inflexible, implausible, inpracticable, impracticable, improper, insufficient, intractable, in valid, irrelevant, labour-intensive, labor-intensive, labour intensive, labor intensive, limited-coverage, limited coverage, limited, limiting, meaningless, modest, misguided, misleading, non-existent, nonexistent, NP-hard, NP-complete, NP hard, NP complete, questionable, pathological, poor, prone, protracted, restricted, scarce, simplistic, suspect, time-consuming, time consuming, toy , unacceptable, unaccounted for, unaccounted-for, unaccounted, unattractive, unavailable, unavoidable, unclear, uncomfortable, unexplained, undecidable, undesirable, unfortunate, uninnovative, uninterpretable, unjustified, unmotivated, unnatural, unnecessary , unorthodox, unpleasant, unpractical, unprincipled, unreliable, unsatisfactory , unsound, unsuccessful, unsuited, unsystematic, untractable, unwanted, unwelcome, useless, vulnerable, weak, wrong, too, overly , only
+BEFORE_ADJ: earlier, past, previous, prior
+CONTRAST_ADJ: different, distinguishing, contrary , competing, rival
+TRADITION_ADJ: better known, better-known, cited, classic, common, conventional, cur-rent, customary , established, existing, extant, available, favourite, fashion-able, general, obvious, long-standing, mainstream, modern, naive, ortho-dox, popular, prevailing, prevalent, published, quoted, seminal, standard, textbook, traditional, trivial, typical, well-established, well-known, widely-assumed, unanimous, usual
+MANY: a number of, a body of, a substantial number of, a substantial body of, most, many , several, various
+COMPARISON_ADJ: evaluative, superior, inferior , optimal, better, best, worse, worst, greater, larger, faster, weaker, stronger
+PROBLEM_ADJ: demanding, difficult, hard, non-trivial, nontrivial
+RESEARCH_ADJ: empirical, experimental, exploratory , ongoing, quantitative, qualitative, prelimi-nary , statistical, underway
+AWARE_ADJ: unnoticed, understood, unexplored
+NEED_ADJ: necessary
+NEW_ADJ: new, novel,state-of-the-art, state of the art, leading-edge, leading edge, enhanced
+FUTURE_ADJ: further, future
+MAIN_ADJ: main, key , basic, central, crucial, essential, eventual, fundamental, great, impor-tant, key , largest, main, major, overall, primary , principle, serious, substantial, ultimate
