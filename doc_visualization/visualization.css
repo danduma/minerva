@@ -1,0 +1,230 @@
+/* Default Print Stylesheet Template
+   by Rob Glazebrook of CSSnewbie.com
+   Last Updated: June 4, 2008
+   
+   Feel free (nay, compelled) to edit, append, and 
+   manipulate this file as you see fit. */
+
+@import url(http://fonts.googleapis.com/css?family=Open+Sans);
+@import url(http://fonts.googleapis.com/css?family=Source+Sans+Pro);
+   
+
+/* SECTION 1: Set default width, margin, float, and
+   background. This prevents elements from extending 
+   beyond the edge of the printed page, and prevents
+   unnecessary background images from printing */
+body, #content, #container {
+	margin: 0;
+	padding-left: 15px;
+	float: none;
+	background: #fff url(none);
+}
+
+/* SECTION 2: Remove any elements not needed in print. 
+   This would include navigation, ads, sidebars, etc. */
+#topnav, #navbar, #nav, #sidebar, .ad, .noprint {
+	display: none; 
+}
+
+/* SECTION 3: Set body font face, size, and color.
+   Consider using a serif font for readability. */
+body {
+/*	font-family: "Open Sans", sans-serif;*/
+	font: 1em Georgia, "Times New Roman", Times, serif;
+	font-size: 15pt;
+	color: #000; 
+	padding: 0px;
+}
+
+/* SECTION 4: Set heading font face, sizes, and color.
+   Diffrentiate your headings from your body text.
+   Perhaps use a large sans-serif for distinction. */
+h1,h2,h3,h4,h5,h6 {
+	font-family: "Open Sans",Helvetica, Arial, sans-serif;
+	color: #000;
+}
+h1 { font-size: 130%; }
+h2 { font-size: 120%; }
+h3 { font-size: 110%; }
+h4 { font-size: 100%; font-variant: small-caps; }
+h5 { font-size: 100%; }
+h6 { font-size: 90%; font-style: italic; }
+
+/* SECTION 5: Make hyperlinks more usable.
+   Ensure links are underlined, and consider appending
+   the URL to the end of the link for usability. */
+a:link, a:visited {
+	color: #00c;
+	font-weight: bold;
+	text-decoration: underline; }
+#content a:link:after, #content a:visited:after {
+	content: " (" attr(href) ") ";
+}
+
+
+div{
+	/*border: 1px solid red;*/
+}
+
+.bigButton{
+	vertical-align: top;
+	height: 70px;
+}
+
+#tdheader{
+	height: 80px;
+}
+
+#topPanel {
+	height: 80px;
+	width: 100%;
+	border: 1px dotted grey;
+}
+
+.column {
+	width: 50%;
+	/*border: 2px solid red;*/
+}
+
+#page{
+	width: 100%;
+}
+
+#tdcontent{
+	height: 100%;
+	vertical-align: top;
+}
+
+#leftPanel, #rightPanel  {
+	position: top;
+	width: 95%;
+	height: 800px;
+	border: 2px solid #8C7E7E;
+	-webkit-box-shadow: 6px 6px 13px 0px rgba(0,0,0,0.62);
+	-moz-box-shadow: 6px 6px 13px 0px rgba(0,0,0,0.62);
+	box-shadow: 6px 6px 13px 0px rgba(0,0,0,0.62);
+	padding: 5px 2px 10px 15px;
+	overflow: auto;
+}
+
+#leftContent, #rightContent {
+	overflow: auto;
+}
+
+
+p{
+	text-align: justify;
+	padding-right: 10pt;
+} 
+
+.reference{
+	display: block;
+	padding-bottom: 10pt;
+	text-indent: 15pt;
+}
+
+.in-collection_ref{
+	color: #00AA00;
+}
+
+.citation{
+	color: blue;
+	background-color: white;
+}
+
+.in-collection_cit{
+	color: #0000CC;
+	background-color: rgba(55, 221, 75, 0.53);
+}
+
+.in-collection_cit:hover{
+	background-color: green;
+}
+
+.selected_citation{
+	background-color: white;
+	border: 3px solid red;
+	color: red;
+}
+
+.selected_term{
+	background-color: purple;
+	border: 3px solid purple;
+	color: yellow;
+}
+
+.AZ_BKG{
+	background-color: yellow;
+}
+
+.AZ_OTH{
+	background-color: orange;
+}
+
+.AZ_OWN{
+	background-color: blue;
+	color: white;
+}
+
+.AZ_AIM{
+	background-color: pink;
+}
+
+.AZ_TXT{
+	background-color: red;
+}
+
+.AZ_CTR{
+	background-color: green;
+}
+
+
+.AZ_BAS{
+	background-color: purple;
+}
+
+.highlight{
+	background-color: yellow;
+	color: black;
+}
+
+/*.CSC_Hyp{
+	background-color: yellow;
+}
+.CSC_Mot{
+	background-color: red;
+}
+.CSC_Bac{
+	background-color: blue;	
+	color: white;
+}
+.CSC_Goa{
+	background-color: pink;
+}
+.CSC_Obj{
+	background-color: black;
+	color: white;
+}
+.CSC_Met{
+	background-color: brown;
+	color: white;
+}
+.CSC_Exp{
+	background-color: teal;
+}
+.CSC_Mod{
+	background-color: magenta;
+}
+.CSC_Obs{
+	background-color: turquoise;
+}
+.CSC_Res{
+	background-color: lightgreen;
+}
+.CSC_Con{
+	background-color: green;
+}
+*/
+
+
+

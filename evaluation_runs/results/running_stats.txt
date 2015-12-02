@@ -1,0 +1,99 @@
+=========================================================================
+Docs processed: 386
+Total citations: 5279
+
+Retrieval model: Lucene
+
+Query method: window5_5
+Precision for ilc_passage_350_10 0.713013828377
+Precision for passage_400 0.336048494033
+Precision for passage_250 0.336048494033
+Precision for inlink_context_10 0.704489486645
+Precision for ilc_passage_250_10 0.713013828377
+Precision for full_text_1 0.017238113279
+Precision for ilc_passage_250_20 0.713013828377
+Precision for passage_350 0.336048494033
+Precision for inlink_context_20 0.704489486645
+Precision for inlink_context_30 0.704489486645
+Precision for ilc_title_abstract_1_10 0.760939571889
+Precision for ilc_full_text_1_10 0.679674180716
+Precision for ilc_title_abstract_1_20 0.760939571889
+Precision for ilc_full_text_1_20 0.679674180716
+Precision for ilc_passage_350_20 0.713013828377
+Precision for title_abstract_1 0.0178064027278
+Precision for RANDOM 0.124433495956
+Query method: window10_5
+Precision for ilc_passage_350_10 0.756772115931
+Precision for passage_400 0.352907747679
+Precision for passage_250 0.352907747679
+Precision for inlink_context_10 0.735366546694
+Precision for ilc_passage_250_10 0.756772115931
+Precision for full_text_1 0.0227315779504
+Precision for ilc_passage_250_20 0.756772115931
+Precision for passage_350 0.352907747679
+Precision for inlink_context_20 0.735366546694
+Precision for inlink_context_30 0.735366546694
+Precision for ilc_title_abstract_1_10 0.791058912673
+Precision for ilc_full_text_1_10 0.724758476984
+Precision for ilc_title_abstract_1_20 0.791058912673
+Precision for ilc_full_text_1_20 0.724758476984
+Precision for ilc_passage_350_20 0.756772115931
+Precision for title_abstract_1 0.0250047357454
+Precision for RANDOM 0.124433495956
+Query method: window20_20
+Precision for ilc_passage_350_10 0.806213297973
+Precision for passage_400 0.376397044895
+Precision for passage_250 0.376397044895
+Precision for inlink_context_10 0.762455010419
+Precision for ilc_passage_250_10 0.806213297973
+Precision for full_text_1 0.0477363136958
+Precision for ilc_passage_250_20 0.806213297973
+Precision for passage_350 0.376397044895
+Precision for inlink_context_20 0.762455010419
+Precision for inlink_context_30 0.762455010419
+Precision for ilc_title_abstract_1_10 0.819094525478
+Precision for ilc_full_text_1_10 0.776093957189
+Precision for ilc_title_abstract_1_20 0.819094525478
+Precision for ilc_full_text_1_20 0.776093957189
+Precision for ilc_passage_350_20 0.806213297973
+Precision for title_abstract_1 0.0532297783671
+Precision for RANDOM 0.124433495956
+Query method: window30_30
+Precision for ilc_passage_350_10 0.828187156658
+Precision for passage_400 0.364652396287
+Precision for passage_250 0.364652396287
+Precision for inlink_context_10 0.771737071415
+Precision for ilc_passage_250_10 0.828187156658
+Precision for full_text_1 0.0689524531161
+Precision for ilc_passage_250_20 0.828187156658
+Precision for passage_350 0.364652396287
+Precision for inlink_context_20 0.771737071415
+Precision for inlink_context_30 0.771737071415
+Precision for ilc_title_abstract_1_10 0.844478120856
+Precision for ilc_full_text_1_10 0.796173517712
+Precision for ilc_title_abstract_1_20 0.844478120856
+Precision for ilc_full_text_1_20 0.796173517712
+Precision for ilc_passage_350_20 0.828187156658
+Precision for title_abstract_1 0.07634021595
+Precision for RANDOM 0.124433495956
+Query method: window10_10
+Precision for ilc_passage_350_10 0.771737071415
+Precision for passage_400 0.367493843531
+Precision for passage_250 0.367493843531
+Precision for inlink_context_10 0.747111195302
+Precision for ilc_passage_250_10 0.771737071415
+Precision for full_text_1 0.0289827618867
+Precision for ilc_passage_250_20 0.771737071415
+Precision for passage_350 0.367493843531
+Precision for inlink_context_20 0.747111195302
+Precision for inlink_context_30 0.747111195302
+Precision for ilc_title_abstract_1_10 0.797310096609
+Precision for ilc_full_text_1_10 0.749952642546
+Precision for ilc_title_abstract_1_20 0.797310096609
+Precision for ilc_full_text_1_20 0.749952642546
+Precision for ilc_passage_350_20 0.771737071415
+Precision for title_abstract_1 0.0303087706005
+Precision for RANDOM 0.124433495956
+Chunks: 20
+Saved to filename: results_lucene_compareACL14.csv
+Total execution time 0:39:04.626000
