@@ -1,0 +1,66 @@
+/* Default Print Stylesheet Template
+   by Rob Glazebrook of CSSnewbie.com
+   Last Updated: June 4, 2008
+   
+   Feel free (nay, compelled) to edit, append, and 
+   manipulate this file as you see fit. */
+
+@import url(http://fonts.googleapis.com/css?family=Open+Sans);
+@import url(http://fonts.googleapis.com/css?family=Source+Sans+Pro);
+   
+
+/* SECTION 1: Set default width, margin, float, and
+   background. This prevents elements from extending 
+   beyond the edge of the printed page, and prevents
+   unnecessary background images from printing */
+body, #content, #container {
+	margin: 0;
+	padding-left: 15px;
+	float: none;
+	background: #fff url(none);
+}
+
+/* SECTION 2: Remove any elements not needed in print. 
+   This would include navigation, ads, sidebars, etc. */
+#topnav, #navbar, #nav, #sidebar, .ad, .noprint {
+	display: none; 
+}
+
+/* SECTION 3: Set body font face, size, and color.
+   Consider using a serif font for readability. */
+body {
+/*	font-family: "Open Sans", sans-serif;*/
+	font: 1em Georgia, "Times New Roman", Times, serif;
+	font-size: 15pt;
+	color: #000; 
+}
+
+/* SECTION 4: Set heading font face, sizes, and color.
+   Diffrentiate your headings from your body text.
+   Perhaps use a large sans-serif for distinction. */
+h1,h2,h3,h4,h5,h6 {
+	font-family: "Open Sans",Helvetica, Arial, sans-serif;
+	color: #000;
+}
+h1 { font-size: 190%; }
+h2 { font-size: 145%; }
+h3 { font-size: 115%; }
+h4 { font-size: 100%; font-variant: small-caps; }
+h5 { font-size: 100%; }
+h6 { font-size: 90%; font-style: italic; }
+
+/* SECTION 5: Make hyperlinks more usable.
+   Ensure links are underlined, and consider appending
+   the URL to the end of the link for usability. */
+a:link, a:visited {
+	color: #00c;
+	font-weight: bold;
+	text-decoration: underline; }
+#content a:link:after, #content a:visited:after {
+	content: " (" attr(href) ") ";
+}
+
+.matchedkw{
+	color: #DF0000;
+	font-weight: bold;
+}

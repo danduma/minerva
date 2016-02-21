@@ -134,6 +134,8 @@ def formatReference(ref, style="APA"):
              ref.get("title",""))
         if ref.get("publication","") != "":
             apa_line+=" %s." % ref["publication"]
+        if ref.get("publication-name","") != "":
+            apa_line+=" %s." % ref["publication-name"]
         if ref.get("volume","") != "":
             apa_line+=" %s." % ref["volume"]
         if ref.get("pages","") != "":
@@ -226,12 +228,13 @@ def formatAPACitation(refValues):
 
 def basicTest():
     print (__file__)
-    import minerva.db.corpora as corpora
+    import minerva.db.corpora as cp
     drive="g"
-    corpora.Corpus.connectCorpus(drive+":\\nlp\\phd\\pmc")
+    cp.useLocalCorpus()
+    cp.Corpus.connectCorpus(drive+":\\nlp\\phd\\pmc")
 
-    from minerva.util.general_utils import loadFileText
-    from minerva.xmlformats.read_jatsxml import JATSXMLReader
+    from minerva.proc.general_utils import loadFileText
+    from minerva.scidoc.xmlformats.read_jatsxml import JATSXMLReader
     reader = JATSXMLReader()
     doc=reader.read(loadFileText(r"G:\NLP\PhD\pmc\inputXML\articles.O-Z\PLoS_ONE\\PLoS_One_2013_Dec_20_8(12)_e85076.nxml"),"one")
 

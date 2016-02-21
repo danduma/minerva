@@ -9,24 +9,24 @@
 from general_utils import *
 from scidoc import SciDoc
 
-from corpora import Corpus
+import corpora as cp
 
 
 def augmentSciDocWithAZ(guid):
     """
         Annotates a single file in the corpus with AZ and CFC
     """
-    if len(Corpus.annotators)==0:
-        Corpus.loadAnnotators()
-    doc=Corpus.loadSciDoc(guid)
-    Corpus.annotateDoc(doc)
-    Corpus.saveSciDoc(doc)
+    if len(cp.Corpus.annotators)==0:
+        cp.Corpus.loadAnnotators()
+    doc=cp.Corpus.loadSciDoc(guid)
+    cp.Corpus.annotateDoc(doc)
+    cp.Corpus.saveSciDoc(doc)
 
 def augmentAllSciDocsWithAZ():
     """
-        Goes through the files in the Corpus, annotating all of them with AZ and CFC
+        Goes through the files in the cp.Corpus, annotating all of them with AZ and CFC
     """
-    guids=Corpus.listAllPapers()
+    guids=cp.Corpus.listAllPapers()
     for guid in guids:
         print guid
         augmentSciDocWithAZ(guid)
@@ -49,22 +49,22 @@ def augmentSciDocWithSapienta(doc,sapienta_filename):
 
 def augmentAllSciDocsWithSapienta(sapienta_output_dir):
     """
-        Goes through all the SciDocs in a the Corpus. If there is a matching file
+        Goes through all the SciDocs in a the cp.Corpus. If there is a matching file
         with GUID+"_annotated.xml" in the sapienta_output_dir then it calls
         augmentSciDocWithSapienta()
     """
     sapienta_output_dir=ensureTrailingBackslash(sapienta_output_dir)
-    guids=Corpus.listAllPapers()
+    guids=cp.Corpus.listAllPapers()
     for guid in guids:
         print guid
-        doc=Corpus.loadSciDoc(guid)
+        doc=cp.Corpus.loadSciDoc(guid)
         filename=doc.metadata["filename"]
         sapienta_output_dir=ensureTrailingBackslash(sapienta_output_dir)
         sapienta_filename=sapienta_output_dir+getFileName(filename)+"_annotated.xml"
 
         if exists(sapienta_filename):
             augmentSciDocWithSapienta(doc,sapienta_filename)
-            Corpus.saveSciDoc(doc)
+            cp.Corpus.saveSciDoc(doc)
     pass
 
 def main():

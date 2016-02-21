@@ -44,14 +44,6 @@ def writeFileText(text,filename):
 	f2.write(text)
 	f2.close()
 
-def getListAnyway(item):
-	""" If the item is not a list, it returns a list with the item as only element
-	"""
-	if isinstance(item,list):
-		res=item
-	else:
-		res=[item]
-	return res
 
 def most_common(L):
 	"""

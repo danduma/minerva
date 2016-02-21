@@ -11,7 +11,7 @@
 
 
 from pandas import *
-from corpora import Corpus
+import minerva.db.corpora as cp
 from general_utils import writeFileText
 from context_extract import tokenizeText
 
@@ -35,7 +35,7 @@ def tokenizeAndTag(text,glob):
 def referenceFormatting(text,glob,ref):
     """
     """
-    match=Corpus.matchReferenceInIndex(ref)
+    match=cp.Corpus.matchReferenceInIndex(ref)
     reftype="reference"
     if match:
         reftype+=" in-collection"
@@ -74,9 +74,9 @@ def computeOverlapForAllReferences(doc, inverted_index):
     tokens1=tokenizeText(text1)
     per_reference_tokens={}
     for ref in doc["references"]:
-        match=Corpus.matchReferenceInIndex(ref)
+        match=cp.Corpus.matchReferenceInIndex(ref)
         if match:
-            doc2=Corpus.loadSciDoc(match["guid"])
+            doc2=cp.Corpus.loadSciDoc(match["guid"])
             text2=doc2.getFullDocumentText(True,False)
             tokens2=tokenizeText(text2)
             per_reference_tokens[ref["id"]]=computeWordOverlap(text1,text2,inverted_index)
@@ -87,13 +87,13 @@ def explainRelevance(guid):
     """
         Given a guid, it prepares its explainer document
     """
-    doc=Corpus.loadSciDoc(guid)
+    doc=cp.Corpus.loadSciDoc(guid)
     html=doc.prettyPrintDocumentHTML(True,True,False,tokenizeAndTag, referenceFormatting)
     computeOverlapForAllReferences(doc,doc.glob["_inverted_index"])
-    writeFileText(html,Corpus.dir_output+guid+"_explain.html")
+    writeFileText(html,cp.Corpus.dir_output+guid+"_explain.html")
 
 def main():
-    docs=Corpus.listPapers("num_in_collection_references > 10 order by num_in_collection_references desc")
+    docs=cp.Corpus.listPapers("num_in_collection_references > 10 order by num_in_collection_references desc")
     explainRelevance(docs[0])
     pass
 

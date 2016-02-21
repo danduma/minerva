@@ -52,7 +52,8 @@ __pycache__
 
 
 # Minerva extra
-/graphs/
-/doc_visualization/
-/scraping
-/libs
+graphs
+doc_visualization/*.json
+scraping
+libs
+update_git.bat

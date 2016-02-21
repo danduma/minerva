@@ -12,9 +12,9 @@
 ##from __future__ import print_function
 
 #from pandas import *
-from corpora import Corpus
-from minerva.util.general_utils import writeFileText
-from minerva.util.context_extract import tokenizeText, tokenCounts
+import minerva.db.corpora as cp
+from minerva.proc.general_utils import writeFileText
+from minerva.proc.context_extract import tokenizeText, getDictOfTokenCounts
 from reference_formatting import formatCitation
 import nlp_functions
 
@@ -35,7 +35,7 @@ class VisGenerator:
     """
     def __init__(self):
         self.term_info={}
-##          self.output_dir=Corpus.dir_output
+##          self.output_dir=cp.Corpus.dir_output
         self.output_dir=r"C:\Users\dd\Documents\Dropbox\PhD\code\doc_visualization\\"
 
     def getDocumentTokens(self, doc):
@@ -48,7 +48,7 @@ class VisGenerator:
         # remove many stopwords. hack!
         tokens=[token for token in tokens
             if token not in local_stopwords_list]
-        counts=tokenCounts(tokens)
+        counts=getDictOfTokenCounts(tokens)
         return counts
 
     def getOverlappingTokens(self, counts1, counts2):
@@ -179,8 +179,8 @@ class VisGenerator:
         """
             Given a guid, it prepares its explainer document
         """
-        doc=Corpus.loadSciDoc(guid)
-        Corpus.tagAllReferencesAsInCollectionOrNot(doc)
+        doc=cp.Corpus.loadSciDoc(guid)
+        cp.Corpus.tagAllReferencesAsInCollectionOrNot(doc)
         counts1=self.getDocumentTokens(doc)
 
         # generate a unique id for each unique term, make a dictionary
@@ -191,11 +191,11 @@ class VisGenerator:
 
         ref_data={}
 
-        in_collection_references=Corpus.getMetadataByGUID(guid)["outlinks"]
+        in_collection_references=cp.Corpus.getMetadataByGUID(guid)["outlinks"]
         for ref in doc["references"]:
-            match=Corpus.matchReferenceInIndex(ref)
+            match=cp.Corpus.matchReferenceInIndex(ref)
             if match:
-                doc2=Corpus.loadSciDoc(match["guid"])
+                doc2=cp.Corpus.loadSciDoc(match["guid"])
                 counts2=self.getDocumentTokens(doc2)
                 # for each in_collection_reference number (0 onwards) we store the list
                 # of its overlapping tokens with the current document
@@ -269,7 +269,7 @@ class VisGenerator:
 from augment_scidocs import augmentSciDocWithAZ
 
 def main():
-    docs=Corpus.listPapers("num_in_collection_references > 10 order by num_in_collection_references desc")
+    docs=cp.Corpus.listPapers("num_in_collection_references > 10 order by num_in_collection_references desc")
     generator=VisGenerator()
     generator.generateVisualizationFileList(docs[:20])
 

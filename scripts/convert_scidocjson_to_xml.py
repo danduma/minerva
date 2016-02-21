@@ -9,13 +9,13 @@
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from xmlformats.export_scixml import saveSciXML
-from xmlformats.export_sapientaxml import saveSapientaXML
-from xmlformats.export_jats import saveJATS_XML
+from minerva.scidoc.xmlformats.export_scixml import saveSciXML
+from minerva.scidoc.xmlformats.export_sapientaxml import saveSapientaXML
+from minerva.scidoc.xmlformats.export_jats import saveJATS_XML
 
-from scidoc import SciDoc
+from minerva.scidoc import SciDoc
 
-from general_utils import *
+from minerva.proc.general_utils import *
 import glob, os
 
 def batchConvertSciDocsDirToXML(path,output_dir,output_format="SciXML"):

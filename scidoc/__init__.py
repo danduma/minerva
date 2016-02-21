@@ -5,5 +5,5 @@
 
 # For license information, see LICENSE.TXT
 
-from scidoc import SciDoc
-from render_content import SciDocRenderer
+##from scidoc import SciDoc
+##from render_content import SciDocRenderer

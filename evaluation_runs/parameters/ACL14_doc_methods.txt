@@ -1,0 +1,10 @@
+# ACL2014 paper methods
+{
+"full_text":{"type":"standard_multi", "parameters":[1]},
+"passage":{"type":"standard_multi", "parameters":[250,350,400]},
+"title_abstract":{"type":"standard_multi", "parameters":[1]},
+"inlink_context":{"type":"standard_multi", "parameters": [10, 20, 30]},
+"ilc_title_abstract":{"type":"ilc_mashup", "mashup_method":"title_abstract", "ilc_parameters":[10,20], "parameters":[1]},
+"ilc_full_text":{"type":"ilc_mashup", "mashup_method":"full_text", "ilc_parameters":[10,20], "parameters":[1]},
+"ilc_passage":{"type":"ilc_mashup", "mashup_method":"passage","ilc_parameters":[10, 20], "parameters":[250,350]}
+}

@@ -1,16 +1,11 @@
-#-------------------------------------------------------------------------------
-# Name:        formulaic_patterns
-# Purpose:      implements Teufel's formulaic patterns with RegEx
+# implements Teufel's formulaic patterns with RegEx
 #
-# Author:      dd
-#
-# Created:     08/11/2014
-# Copyright:   (c) dd 2014
-# Licence:     <your licence>
-#-------------------------------------------------------------------------------
+# Copyright:   (c) Daniel Duma 2014
+# Author: Daniel Duma <danielduma@gmail.com>
 
-import json
-import re
+# For license information, see LICENSE.TXT
+
+import json, re, os, inspect
 
 class formulaicPattern:
     def __init__(self):
@@ -19,6 +14,8 @@ class formulaicPattern:
         self.concepts={}
         self.compiled_patterns={}
         self.compiled_agents={}
+
+        self.filepath=os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
         self.loadData()
         self.makeAllRegExes()
 
@@ -26,15 +23,15 @@ class formulaicPattern:
         """
             Loads formulaic patterns and concept lexicon
         """
-        f=open("formulaic_patterns.json","r")
+        f=open(os.path.join(self.filepath,"formulaic_patterns.json"),"r")
         self.patterns=json.load(f)
         f.close()
 
-        f=open("concept_lexicon.json","r")
+        f=open(os.path.join(self.filepath,"concept_lexicon.json"),"r")
         self.concepts=json.load(f)
         f.close()
 
-        f=open("agent_patterns.json","r")
+        f=open(os.path.join(self.filepath,"agent_patterns.json"),"r")
         self.agents=json.load(f)
         f.close()
 

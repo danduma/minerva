@@ -1,13 +1,9 @@
-#-------------------------------------------------------------------------------
-# Name:        module1
-# Purpose:
+# AZ features
 #
-# Author:      dd
-#
-# Created:     22/10/2014
-# Copyright:   (c) dd 2014
-# Licence:     <your licence>
-#-------------------------------------------------------------------------------
+# Copyright:   (c) Daniel Duma 2014
+# Author: Daniel Duma <danielduma@gmail.com>
+
+# For license information, see LICENSE.TXT
 
 import re, itertools, json
 
@@ -18,7 +14,7 @@ from nltk.metrics import BigramAssocMeasures
 from BeautifulSoup import BeautifulStoneSoup
 
 from formulaic_patterns import formulaicPattern
-from context_extract import formatSentenceForIndexing
+from minerva.proc.nlp_functions import formatSentenceForIndexing
 
 formPat=formulaicPattern()
 
@@ -226,7 +222,7 @@ def buildCFCFeaturesetForDoc(doc):
     prebuildAZFeaturesForDoc(doc)
 
     for sentence in doc.allsentences:
-        cfc_citations=[doc.citation_by_id[citation] for citation in sentence["citations"]]
+        cfc_citations=[doc.citation_by_id[citation] for citation in sentence.get("citations",[])]
         cfc_citations.extend(loadRefAuthorsFromSentence(sentence))
 
         for citation in cfc_citations:

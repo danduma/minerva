@@ -1,0 +1,42 @@
+{
+##    "full_text":{"type":"standard_multi", "index":"full_text", "parameters":[1], "runtime_parameters":["text"]},
+##    "title_abstract":{"type":"standard_multi", "index":"title_abstract", "parameters":[1], "runtime_parameter":{"text":"1"}},
+##    "passage":{"type":"standard_multi", "index":"passage", "parameters":[250,350,400], "runtime_parameter":{"text":"1"}},
+##
+##    "inlink_context":{"type":"standard_multi", "index":"inlink_context",
+##        "parameters": [10, 20, 30], "runtime_parameter":{"inlink_context":"1"}},
+##
+##    "ilc_passage":{"type":"ilc_mashup",  "index":"ilc_passage", "mashup_method":"passage","ilc_parameters":[10, 20, 30, 40, 50],
+##        "parameters":[250,350], "runtime_parameter":{"text":"1","inlink_context":"1"}},
+
+    "az_annotated":{"type":"annotated_boost", "index":"az_annotated_1", "parameters":[1], "runtime_parameters":
+        {"ALL":["AIM","BAS","BKG","CTR","OTH","OWN","TXT"]
+##         "OTH_only":["OTH"],
+##         "OWN_only":["OWN"],
+        }},
+
+##    "section":{"type":"annotated_boost", "index":"section_annotated_1", "parameters":[1], "runtime_parameters":
+##        {
+####        "title_abstract":{"title":"1","abstract":"1"},
+##         "full_text":["title","abstract","text"],
+##        }},
+
+##    "ilc":{"type":"ilc_annotated_boost", "index":"ilc_section_annotated", "ilc_parameters":[10, 20, 30, 40, 50], "parameters":[1], "runtime_parameters":
+##        {"title_abstract":["title","abstract","inlink_context"],
+##         "full_text":["title", "abstract","text","inlink_context"],
+##        }},
+
+##    "ilc_az_annotated":{"type":"ilc_annotated_boost", "index":"ilc_az_annotated", "parameters":[1], "ilc_parameters":[10, 20, 30, 40, 50], "runtime_parameters":
+##        {"ALL":{"AIM":"1","BAS":"1","BKG":"1","CTR":"1","OTH":"1","OWN":"1","TXT":"1","inlink_context":1},
+##         "OTH":{"AIM":"0","BAS":"0","BKG":"0","CTR":"0","OTH":"1","OWN":"0","TXT":"0","inlink_context":1},
+##         "OWN":{"AIM":"0","BAS":"0","BKG":"0","CTR":"0","OTH":"0","OWN":"1","TXT":"0","inlink_context":1},
+##        }},
+
+##    "ilc_az_ilc_az":{"type":"ilc_annotated_boost", "index":"ilc_AZ", "parameters":[1],
+##        "ilc_parameters":["AIM","BAS","BKG","CTR","OTH","OWN","TXT"],
+##        "runtime_parameters":
+##        {"ALL":{"AIM":"1","BAS":"1","BKG":"1","CTR":"1","OTH":"1","OWN":"1","TXT":"1","inlink_context":1},
+##         "OTH":{"AIM":"0","BAS":"0","BKG":"0","CTR":"0","OTH":"1","OWN":"0","TXT":"0","inlink_context":1},
+##         "OWN":{"AIM":"0","BAS":"0","BKG":"0","CTR":"0","OTH":"0","OWN":"1","TXT":"0","inlink_context":1},
+##        }},
+}

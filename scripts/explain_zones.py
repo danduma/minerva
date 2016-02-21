@@ -11,7 +11,7 @@
 
 
 from pandas import *
-from corpora import Corpus
+import minerva.db.corpora as cp
 from general_utils import writeFileText
 from context_extract import tokenizeText
 
@@ -35,7 +35,7 @@ def referenceFormatting(text,glob,ref):
         Just adds a span around each reference, distinguishing between in-collection
         references and not. Behaviour depends on CSS/JS
     """
-    match=Corpus.matchReferenceInIndex(ref)
+    match=cp.Corpus.matchReferenceInIndex(ref)
     reftype="reference"
     if match:
         reftype+=" in-collection"
@@ -56,17 +56,17 @@ def explainZoning(guid):
     """
         Given a guid, it prepares its explainer document
     """
-    doc=Corpus.loadSciDoc(guid)
+    doc=cp.Corpus.loadSciDoc(guid)
     html=doc.prettyPrintDocumentHTML(True,True,False, extra_attribute_function=extraAttributes, reference_formatting_function=referenceFormatting)
     html=padWithHTML(html)
-    writeFileText(html,Corpus.dir_output+guid+"_zoning.html")
+    writeFileText(html,cp.Corpus.dir_output+guid+"_zoning.html")
 
 from augment_scidocs import augmentSciDocWithAZ
 
 def main():
-##    docs=Corpus.listPapers("num_in_collection_references > 10 order by num_in_collection_references desc")
+##    docs=cp.Corpus.listPapers("num_in_collection_references > 10 order by num_in_collection_references desc")
 ##    explainZoning("P95-1026")
-    meta=Corpus.getMetadataByGUID("P95-1026")
+    meta=cp.Corpus.getMetadataByGUID("P95-1026")
     explainZoning("P95-1026")
     for link in meta["inlinks"]:
         print link

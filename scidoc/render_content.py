@@ -64,7 +64,7 @@ class SciDocRenderer(object):
         text=re.sub(r"<cit\sid=\"?(.+?)\"?\s*?/>",r"__cit__\1",text, flags=re.DOTALL|re.IGNORECASE)
         text=text_formatting_function(text, glob)
 
-        for cit_id in s["citations"]:
+        for cit_id in s.get("citations",[]):
             match=self.doc.matchReferenceByCitationId(cit_id)
             if match:
                 sub=formatCitation(match)

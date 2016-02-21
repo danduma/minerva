@@ -2,9 +2,8 @@
 import lucene
 import json
 
-from lucene import \
-    SimpleFSDirectory, System, File, \
-    Document, Field, StandardAnalyzer, IndexWriter, IndexSearcher, QueryParser
+from lucene import (SimpleFSDirectory, System, File,
+    Document, Field, StandardAnalyzer, IndexWriter, IndexSearcher, QueryParser)
 
 if __name__ == "__main__":
     lucene.initVM()

@@ -6,7 +6,8 @@
 # For license information, see LICENSE.TXT
 
 from BeautifulSoup import BeautifulStoneSoup
-from minerva.xmlformats.citation_utils import guessNamesOfPlainTextAuthor
+from minerva.scidoc.citation_utils import guessNamesOfPlainTextAuthor
+import re
 
 class ParsCitReader:
     def __init__(self):
@@ -26,8 +27,11 @@ class ParsCitReader:
             "year":"date",
             "volume":"volume",
             "pages":"pages",
+            "journal":"journal",
             "publisher":"publisher",
             "location":"location",
+            "raw_string":"rawstring",
+            "institution":"institution",
         }
 
         for key in metadata:
@@ -38,6 +42,35 @@ class ParsCitReader:
             else:
                 text=""
             metadata[key]=text
+
+        # often the title will end up as anything else: location, journal
+        if len(metadata["title"]) < 2:
+            if len(metadata.get("journal","")) > 2:
+                metadata["title"]=metadata["journal"]
+                metadata["journal"]=""
+            elif len(metadata.get("location","")) > 2:
+                metadata["title"]=metadata["location"]
+                metadata["location"]=""
+
+        if metadata["title"].startswith("Building and Using"):
+            pass
+
+        # All parsers get the "In Proceedings of..." wrong and put it in the title.
+        # this is a manual hack fix
+        rx_fix_title_in=re.compile(r"([,.] ?In[\:]? (\w.*))")
+        match=rx_fix_title_in.search(metadata["title"])
+        if match:
+            metadata["journal"]=match.group(2) + metadata.get("journal","")
+            metadata["title"]=rx_fix_title_in.sub("", metadata["title"]).strip(" ,")
+
+        rx_fix_title_thesis=re.compile(r", ((?:(?:Doctoral|MSc)? ?[Tt]hesis|(?:\w+|([A-Z]\. ?)+)[Dd]issertation).*)",flags=re.IGNORECASE)
+        match=rx_fix_title_thesis.search(metadata["title"])
+        if match:
+            metadata["journal"]=match.group(1) + metadata.get("journal","")
+            metadata["title"]=rx_fix_title_thesis.sub("", metadata["title"]).strip(" ,")
+
+        # remove hanging ". In" at the end of the title
+        metadata["title"]=re.sub(r"[.,;] ?In ?$","",metadata["title"])
 
         for atype in ["journal", "booktitle"]:
             node=reference.find(atype)
@@ -74,7 +107,8 @@ class ParsCitReader:
             This is meant to load the full output from ParsCit, whichever it may be.
             Currently only reads references.
         """
-        soup = BeautifulStoneSoup(xml_string)
+        soup = BeautifulStoneSoup(xml_string, convertEntities=BeautifulStoneSoup.HTML_ENTITIES)
+##        print(xml_string)
         references=self.readReferences(soup)
         # TODO implement reading the rest of the ParsCit/ParsHed tagging
         return references

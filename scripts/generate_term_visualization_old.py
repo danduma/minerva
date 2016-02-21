@@ -13,7 +13,7 @@
 from pandas import *
 from corpora import Corpus
 from general_utils import writeFileText
-from context_extract import tokenizeText, tokenCounts
+from context_extract import tokenizeText, getDictOfTokenCounts
 import nlp_functions
 
 import json, re
@@ -42,7 +42,7 @@ class VisGenerator:
         # remove many stopwords. hack!
         tokens=[token for token in tokens
             if token not in local_stopwords_list]
-        counts=tokenCounts(tokens)
+        counts=getDictOfTokenCounts(tokens)
         return counts
 
     def getOverlappingTokens(self, counts1, counts2):

@@ -1,29 +1,18 @@
-#-------------------------------------------------------------------------------
-# Name:        classify_az
-# Purpose:
+# AZ classification
 #
-# Author:      Daniel Duma
-#
-# Created:     03/10/2014
 # Copyright:   (c) Daniel Duma 2014
-# Licence:     <your licence>
-#-------------------------------------------------------------------------------
+# Author: Daniel Duma <danielduma@gmail.com>
 
+# For license information, see LICENSE.TXT
 
-from scidoc import *
-from xmlformats.azscixml import *
+from minerva.scidoc.scidoc import SciDoc
+from minerva.scidoc.xmlformats.azscixml import *
 
-import collections
-import random
-
-import nltk
-
+import collections, random, nltk
 import nltk.classify.util, nltk.metrics
 from nltk.classify import NaiveBayesClassifier, MaxentClassifier
 
-##import context_extract
-from az_features import *
-
+##from az_features import
 
 import glob
 import os

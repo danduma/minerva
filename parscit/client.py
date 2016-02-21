@@ -40,22 +40,26 @@ class ParsCitClient:
                           contain multiple references
         """
         res=[]
-        for ref in ref_list:
-            # Hack so ParsCit will actually recognize the references
-            if format=="raw":
-                ref=u"References\n\n%s" % ref
-            else:
-                ref=u"<references>%s</references>" % ref
-            data={"text":ref, "format":format}
-            r=requests.post(self.api_url+"extract_citations/", json=data)
+        if isinstance(ref_list, list):
+            ref_list ="\n\n".join(ref_list)
 
-            if r.status_code != 200:
-                # TODO specialized exceptions
-                print(ref_list)
-                raise Exception
+        # Hack so ParsCit will actually recognize the references
+        if format=="raw":
+            ref_list=u"References\n\n%s" % ref_list
+        else:
+            ref_list=u"<references>%s</references>" % ref_list
 
-            json_data=json.loads(r.content)
-            res.append(self.reader.parseParsCitXML(json_data["parsed_xml"]))
+        data={"text":ref_list, "format":format}
+
+        r=requests.post(self.api_url+"extract_citations/", json=data)
+
+        if r.status_code != 200:
+            # TODO specialized exceptions
+            print(ref_list)
+            raise ValueError("ParsCit exception")
+
+        json_data=json.loads(r.content)
+        res=self.reader.parseParsCitXML(json_data["parsed_xml"])
         return res
 
 def simpleTest():

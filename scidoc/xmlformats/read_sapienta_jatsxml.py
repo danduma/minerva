@@ -1,0 +1,197 @@
+# <purpose>
+#
+# Copyright:   (c) Daniel Duma 2015
+# Author: Daniel Duma <danielduma@gmail.com>
+
+# For license information, see LICENSE.TXT
+
+import re
+
+from read_jatsxml import JATSXMLReader
+from BeautifulSoup import BeautifulStoneSoup
+
+from minerva.scidoc.citation_utils import annotateCitationsInSentence, CITATION_FORM
+
+class SapientaJATSXMLReader(JATSXMLReader):
+    """
+        Reader class for JATS/NLM XML
+
+        Main entry point: read()
+    """
+    def __init__(self):
+        super(self.__class__, self).__init__()
+        # Need to create new IDs for references because we're annotating references again
+        self.USE_ORIGINAL_REF_ID=False
+
+    def loadJATSSectionTitle(self, sec):
+        """
+            Loads a section's title.
+
+            :param sec: section XML node
+        """
+        header_text=""
+        title=sec.find("title", recursive=False)
+        if not title:
+            header_id=0
+        else:
+            header_id=0 # CHANGE
+            text=title.find("text", recursive=False)
+            if text:
+                plain=text.find("s",recursive=False).find("plain")
+                if plain:
+                    header_text=re.sub(r"</?title.*?>","",plain.text)
+                    # make sure first letter is capitalized
+                    header_text=header_text[0].upper()+header_text[1:]
+            else:
+                print title
+
+        return header_text, header_id
+
+    def loadJATSParagraph(self, p, newDocument, parent):
+        """
+            Creates a paragraph in newDocument, splits the text into sentences,
+            creates a sentence object for each
+        """
+        newPar_id=newDocument.addParagraph(parent)
+        texts=p.findChildren("text", recursive=False)
+        if texts:
+            for text in texts:
+                sent_tags=text.findChildren("s",recursive=True)
+                for s in sent_tags:
+                    self.loadJATSSentence(s, newDocument, newPar_id, parent)
+        else:
+            pass
+##            par_text=p.renderContents(encoding=None)
+##
+##            sentences=sentenceSplit(par_text)
+##            for s in sentences:
+##                self.loadJATSSentence(s, newDocument, newPar_id, parent)
+
+        return newPar_id
+
+    def annotatePlainTextCitations(self, s, newDocument, newSent, newSent_id):
+        """
+            If the citations aren't tagged with <xref> because Sapienta stripped
+            them away, try to extract the citations from plain text. *sigh*
+
+        """
+
+        def replaceTempCitToken(s, temp, final):
+            """
+                replace temporary citation placeholder with permanent one
+            """
+            return re.sub(CITATION_FORM % temp, CITATION_FORM % final, annotated_s, flags=re.IGNORECASE)
+
+        annotated_s,citations_found=annotateCitationsInSentence(s, newDocument.metadata["original_citation_style"])
+        annotated_citations=[]
+
+        if newDocument.metadata["original_citation_style"]=="APA":
+            for index,citation in enumerate(citations_found):
+                newCit=newDocument.addCitation()
+                newCit["parent"]=newSent_id
+                reference=matchCitationWithReference(citation, newDocument["references"])
+##                print (citation["text"]," -> ", formatReference(reference))
+                if reference:
+                    newCit["ref_id"]=reference["id"]
+                else:
+                    # do something else?
+                    newCit["ref_id"]=None
+                annotated_citations.append(newCit)
+                annotated_s=replaceTempCitToken(annotated_s, index+1, newCit["id"])
+
+        elif newDocument.metadata["original_citation_style"]=="AFI":
+            for index,citation in enumerate(citations_found):
+                newCit=newDocument.addCitation()
+                newCit["parent"]=newSent_id
+                # TODO check this: maybe not this simple. May need matching function.
+                newCit["ref_id"]="ref"+str(int(citation["num"])-1)
+
+                annotated_citations.append(newCit)
+                annotated_s=replaceTempCitToken(annotated_s, index+1, newCit["id"])
+
+        if len(annotated_citations) > 0:
+            newSent["citations"]=[acit["id"] for acit in annotated_citations]
+        newSent["text"]=annotated_s
+
+    def loadJATSSentence(self, s, newDocument, par_id, section_id):
+        """
+            Loads a Sapienta-tagged JATS sentence
+
+            :param s_soup: the <s> tag from BeautifulStoneSoup
+            :param newDocument: SciDoc
+            :type newDocument: SciDoc
+            :param par_id: id of the paragraph containing this sentence
+            :type par_id: string
+            :param section_id: id of the section containing the paragraph
+        """
+        s_soup=s.find("plain",recursive=True)
+        if s_soup is None:
+            # <s> tag that contains no actual text. We can return without adding any sentence
+            return
+
+        newSent_id=newDocument.addSentence(par_id,"")
+        newSent=newDocument.element_by_id[newSent_id]
+        coresc_tag=s.find("coresc1",recursive=False)
+        newSent["csc_type"]=coresc_tag["type"]
+        newSent["csc_adv"]=coresc_tag["advantage"]
+        newSent["csc_nov"]=coresc_tag["novelty"]
+
+        refs=s_soup.findAll("xref",{"ref-type":"bibr"})
+        citations_found=[]
+        for r in refs:
+            citations_found.extend(self.loadJATSCitation(r, newSent_id, newDocument, section=section_id))
+
+        non_refs=s_soup.findAll(lambda tag:tag.name.lower()=="xref" and tag.has_key("ref-type") and tag["ref-type"].lower() != "bibr")
+        for nr in non_refs:
+            nr.name="inref"
+
+        if len(citations_found) > 0:
+            newSent["citations"]=[acit["id"] for acit in citations_found]
+            # TODO replace <xref> tags with <cit> tags
+            newSent["text"]=newDocument.extractSentenceTextWithCitationTokens(s_soup, newSent_id)
+        else:
+            self.annotatePlainTextCitations(s_soup.text,  newDocument, newSent, newSent_id)
+
+##            print(newSent["text"])
+        # deal with many citations within characters of each other: make them know they are a cluster
+        # TODO cluster citations? Store them in some other way?
+        newDocument.countMultiCitations(newSent)
+
+    def read(self, xml, identifier):
+        """
+            Load a Sapienta-annotated JATS/NLM (PubMed) XML into a SciDoc.
+
+            :param xml: full xml string
+            :type xml: basestring
+            :param identifier: an identifier for this document, e.g. file name
+                        If an actual full path, the path will be removed from it
+                        when stored
+            :type identifier: basestring
+            :return: :class:`SciDoc <SciDoc>` object
+            :rtype: SciDoc
+        """
+        # this solves a "bug" in BeautifulStoneSoup with "text" tags
+        BeautifulStoneSoup.NESTABLE_TAGS["text"]=[]
+        return super(self.__class__, self).read(xml, identifier)
+
+
+
+def main():
+    import minerva.db.corpora as cp
+
+    drive="g"
+    cp.useLocalCorpus()
+    cp.Corpus.connectCorpus(drive+":\\nlp\\phd\\pmc_coresc\\")
+
+    import read_jatsxml
+
+    debugging_files=[
+        r"Out_PMC549041_PMC1240567.xml.gz.gz\555959_done.xml",
+        r"Out_PMC549041_PMC1240567.xml.gz.gz\555763_done.xml",
+    ]
+
+    read_jatsxml.generateSideBySide(debugging_files)
+    pass
+
+if __name__ == '__main__':
+    main()

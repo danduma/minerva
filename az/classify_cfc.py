@@ -1,17 +1,13 @@
-#-------------------------------------------------------------------------------
-# Name:        classify_cfc
-# Purpose:
+# functions for Citation Function Classification
 #
-# Author:      Daniel Duma
-#
-# Created:     25/10/2014
 # Copyright:   (c) Daniel Duma 2014
-# Licence:     <your licence>
-#-------------------------------------------------------------------------------
+# Author: Daniel Duma <danielduma@gmail.com>
+
+# For license information, see LICENSE.TXT
 
 
-from scidoc import *
-from xmlformats.azscixml import *
+from minerva.scidoc import SciDoc
+from minerva.scidoc.xmlformats.azscixml import *
 
 import itertools
 import collections

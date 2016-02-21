@@ -10,7 +10,7 @@ from __future__ import print_function
 
 import json, sys, re
 from copy import deepcopy
-from minerva.xmlformats.citation_utils import CITATION_FORM
+from citation_utils import CITATION_FORM
 
 SENTENCE_TYPES=["s","fig-caption","s-li"]
 PARAGRAPH_TYPES=["p","footnote","p-li"]
@@ -40,7 +40,7 @@ class SciDoc(object):
                 - bullet point lists & ordered lists: sentences, paragraphs?
 
     """
-    def __init__(self, filename=None):
+    def __init__(self, data=None):
         # the actual contents, as serialized to JSON
         self.data={
             "content":[], # all inline elements
@@ -59,11 +59,13 @@ class SciDoc(object):
         # global variables to keep track of importing/exporting
         self.glob={}
 
-        if filename:
-            if isinstance(filename,basestring):
-                self.loadFromFile(filename)
-        else:
-            self.updateContentLists()
+        if data:
+            if isinstance(data,basestring):
+                self.loadFromFile(data)
+            elif isinstance(data,dict) and "content" in data and "references" in data and "metadata" in data:
+                self.data=data
+
+        self.updateContentLists()
 
     def __repr__(self):
         return self.data.__repr__()
@@ -73,6 +75,12 @@ class SciDoc(object):
 
     def __setitem__(self, key, item):
         self.data[key] = item
+
+    def loadExistingMetadata(self, metadata):
+        """
+        """
+        self.data["metadata"]=metadata
+        self.updateContentLists()
 
     def processSingleElement(self, element):
         """
@@ -119,16 +127,27 @@ class SciDoc(object):
         if len(self.allsections) > 0:
             self.abstract=self.allsections[0]
 
+        self.updateReferences()
+
     def updateReferences(self):
         """
             Updates the dictionary of quick access to references with the data
+            and updates the ["citations"] links for each reference
         """
+        self.reference_by_id={}
+        self.citation_by_id={}
+
         for ref in self.data["references"]:
             if self.isReference(ref):
                 self.reference_by_id[ref["id"]]=ref
 
         for cit in self.data["citations"]:
             self.citation_by_id[cit["id"]]=cit
+            # update citations link for the reference
+            if cit["ref_id"]:
+                ref_citations=self.reference_by_id[cit["ref_id"]]["citations"]
+                if cit["id"] not in ref_citations:
+                    ref_citations.append(cit["id"])
 
     def isSentence(self, element):
         """
@@ -157,6 +176,18 @@ class SciDoc(object):
         """
         return element["type"] == "cit"
 
+
+    def getElementIndex(self, element):
+        """
+        """
+        if self.isSentence(element):
+            return self.allsentences.index(element)
+        elif self.isParagraph(element):
+            return self.allparagraphs.index(element)
+        elif self.isSection(element):
+            return self.allsections.index(element)
+        else:
+            return None
 
     def addElement(self,element):
         """
@@ -192,24 +223,28 @@ class SciDoc(object):
         newElement={"type":"p", "content":[], "parent":parent}
         return self.addElement(newElement)
 
-    def addSentence(self, parent, text):
+    def addSentence(self, parent, text=""):
         """
             Create a new sentence element, add to SciDoc
         """
-        newElement={"type":"s", "text":text, "citations":[], "parent":parent}
+        newElement={"type":"s", "text":text, "parent":parent}
         return self.addElement(newElement)
 
-    def addCitation(self):
+    def addCitation(self, sent_id=None, ref_id=None):
         """
             Create a new citation element, automatically set id, return it
             for further filling of fields
         """
-        newCitation={"id":"cit"+str(len(self.data["citations"]))}
+        newCitation={
+            "id":"cit"+str(len(self.data["citations"])),
+            "parent_s":sent_id,
+            "ref_id":ref_id,
+        }
         self.data["citations"].append(newCitation)
         self.citation_by_id[newCitation["id"]]=newCitation
         return newCitation
 
-    def addReference(self, existing_reference=None):
+    def addReference(self):
         """
             Create a new reference element, automatically set id, return it
             for further filling of fields
@@ -283,7 +318,7 @@ class SciDoc(object):
             res=json.load(f)
             f.close()
         except:
-            print ("Exception in SciDoc.loadFromFile(): %s" % sys.exc_info()[:2])
+            print ("Exception in SciDoc.loadFromFile():", sys.exc_info()[:2])
             return None
 
         self.loadFromData(res)
@@ -328,7 +363,7 @@ class SciDoc(object):
             # add commas in between citation tokens
             text=re.sub(r"(<cit.*?/>)\s*?(<cit.*?/>)",r"\1, \2",text,0,re.IGNORECASE|re.DOTALL)
 
-        for cit_id in s["citations"]:
+        for cit_id in s.get("citations",[]):
             match=self.matchReferenceByCitationId(cit_id)
             if match:
                 sub=formatCitation(match, citation_style)
@@ -405,7 +440,7 @@ class SciDoc(object):
             if self.isSection(element):
                 if headers:
                     result+=element["header"]+" \n"
-            if isSentence(element):
+            if self.isSentence(element):
                 result+=element["text"]+" "
             return result
 
@@ -446,7 +481,7 @@ class SciDoc(object):
 ##        cits=list(set(cits))
 ##        for cit in cits:
 ##    ##        cit=int(str(cit).replace("\"", "").replace("'", ""))
-##            for cit_id in newSent["citations"]:
+##            for cit_id in newSent.get("citations",[]):
 ##                if cit_id ==cit:
 ##                    ref=newDocument.citation_by_id[cit_id]
 ##                    ref["multi"]=len(cits)
