@@ -35,13 +35,14 @@ class AutoXMLReader(BaseSciDocXMLReader):
         """
         match=re.findall("<!DOCTYPE\s(.*?)>",xml[:300],flags=re.IGNORECASE|re.DOTALL)
         if not match:
-            print("no DOCTYPE")
-            print(xml[:100])
+##            print("no DOCTYPE")
+##            print(xml[:100])
 ##            print(input_file)
-##        if match:
+            pass
         for format in XML_FORMATS_LIST:
             if re.findall(XML_FORMATS_LIST[format]["regex"], xml, flags=re.IGNORECASE|re.DOTALL):
                 return format
+        print(xml[:200])
         return None
 
     def read(self, xml, identifier):

@@ -121,7 +121,6 @@ class SciDoc(object):
         for section in self.allsections:
             if section["header"].lower()=="abstract":
                 self.abstract=section
-                return
 
         # if unsuccessful, set the first section to be the abstract
         if len(self.allsections) > 0:
@@ -206,7 +205,7 @@ class SciDoc(object):
             self.element_by_id[element["parent"]]["content"].append(element["id"])
 
         self.processSingleElement(element)
-        return element["id"]
+        return element
 
     def addSection(self,parent, header, header_id=None):
         """
@@ -525,7 +524,19 @@ class SciDoc(object):
                 cit["group"]=group
 
 
-    def extractSentenceTextWithCitationTokens(self, s, newSent_id):
+    def updateAuthorsAffiliations(self):
+        """
+            It adds the doc's guid to the authors' list of publications per
+            affiliation
+        """
+        for author in self.metadata["authors"]:
+            for aff in author.get("affiliation",[]):
+                if self.metadata["guid"] != "":
+                    aff["papers"]=[self.metadata["guid"]]
+                else:
+                    aff["papers"]=[]
+
+    def extractSentenceTextWithCitationTokens(self, s, sent_id):
         """
             Returns a printable representation of the sentence where all
             references are now placeholders with numbers.
@@ -533,7 +544,7 @@ class SciDoc(object):
         global ref_rep_count
         ref_rep_count=0
 
-        newSent=self.element_by_id[newSent_id]
+        newSent=self.element_by_id[sent_id]
 
         def repFunc(match):
             """

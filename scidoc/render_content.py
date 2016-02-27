@@ -274,7 +274,7 @@ class SciDocRenderer(object):
 
         result_text="".join(result)
         if wrap_with_HTML_tags:
-            result_text=u"<html><head><link href=\"scidocview.css\" rel='stylesheet'></head><body>%s</body></html>" % result_text
+            result_text=u"<html><head><meta charset=\"utf-8\" /> <link href=\"scidocview.css\" rel='stylesheet'></head><body>%s</body></html>" % result_text
 
         self.doc.glob=glob
         return result_text

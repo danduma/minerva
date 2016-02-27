@@ -5,15 +5,15 @@
 
 # For license information, see LICENSE.TXT
 
-import os, sys, json, glob, codecs, uuid, unicodedata
+import os, sys, re, json, glob, codecs, uuid, unicodedata
 from minerva.proc.general_utils import (AttributeDict, ensureTrailingBackslash,
-ensureDirExists, normalizeTitle)
+ensureDirExists, normalizeTitle, removeSymbols)
 from minerva.scidoc.scidoc import SciDoc
 
 class BaseReferenceMatcher(object):
     """
         Base class for ReferenceMatcher. This class provides the matchReference
-        function, which must
+        function, which must find the right reference in the corpus
     """
     def __init__(self, corpus):
         """
@@ -39,13 +39,20 @@ class BaseReferenceMatcher(object):
             if author_record:
                 return author_record
 
-        # if it can't be matched by id
-        hash=normalizeTitle(ref["title"])
+        for field in ["given","middle","family"]:
+            if field in author:
+                author[field]=removeSymbols(author[field])
 
-        if not isinstance(hash, unicode):
-            hash=unicode(hash, errors="ignore")
+        query="SELECT author FROM authors WHERE author.given=\"%s\" and author.family=\"%s\""% (author["given"],author["family"])
+        if author.get("middle","") != "":
+            query+=" and author.middle=\"%s\"" % author["middle"]
 
-        raise NotImplementedError
+        matches=self.corpus.SQLQuery(query)
+
+        if matches:
+            return matches[0]
+        else:
+            return None
 
 ##        rows=self.corpus.listFieldByField("author_id","norm_title",hash, table="authors")
 ##
@@ -85,12 +92,12 @@ class DefaultReferenceMatcher(BaseReferenceMatcher):
                     return doc_meta
 
         # if it can't be matched by id
-        hash=normalizeTitle(ref["title"])
+        norm_title=normalizeTitle(ref["title"])
 
-        if not isinstance(hash, unicode):
-            hash=unicode(hash, errors="ignore")
+        if not isinstance(norm_title, unicode):
+            norm_title=unicode(norm_title, errors="ignore")
 
-        rows=self.corpus.listFieldByField("metadata","norm_title",hash)
+        rows=self.corpus.listFieldByField("metadata","norm_title",norm_title)
 
         for row in rows:
             doc_meta=row
@@ -122,6 +129,7 @@ class BaseCorpus(object):
         self.matcher=DefaultReferenceMatcher(self)
         # any extra data to hold
         self.global_counters={}
+        self.AUTO_ADD_AUTHORS=True
 
     def setPaths(self, root_dir):
         """
@@ -211,7 +219,7 @@ class BaseCorpus(object):
         """
 
         res=[]
-        for paper_guid in self.listAllPapers():
+        for paper_guid in self.listPapers():
             metadata=self.getMetadataByGUID(paper_guid)
             old_outlinks=metadata["outlinks"]
             doc=self.loadSciDoc(metadata["guid"])
@@ -336,12 +344,12 @@ class BaseCorpus(object):
         path=self.cachedDataIDString("bow", guid, params)
         return self.loadCachedJson(path)
 
-    def saveResolvableCitations(self, guid, tin_can):
+    def saveResolvableCitations(self, guid, citations_data):
         """
             Wrapper function to make the code cleaner
         """
         guid=guid.lower()
-        self.saveCachedJson(self.cachedDataIDString("resolvable",guid),tin_can)
+        self.saveCachedJson(self.cachedDataIDString("resolvable",guid),citations_data)
 
     def loadResolvableCitations(self,guid):
         """
@@ -361,35 +369,15 @@ class BaseCorpus(object):
         missing_references=[]
         if not self.cachedJsonExists("resolvable",doc_file["metadata"]["guid"]):
             resolvable, outlinks, missing_references=self.selectDocResolvableCitations(doc_file, year)
-            tin_can={"resolvable":resolvable,"outlinks":outlinks,"missing_references":missing_references}
-            self.saveResolvableCitations(doc_file["metadata"]["guid"],tin_can)
+            citations_data={"resolvable":resolvable,"outlinks":outlinks,"missing_references":missing_references}
+            self.saveResolvableCitations(doc_file["metadata"]["guid"],citations_data)
         else:
-            tin_can=self.loadResolvableCitations(doc_file["metadata"]["guid"])
-            if not tin_can:
+            citations_data=self.loadResolvableCitations(doc_file["metadata"]["guid"])
+            if not citations_data:
                 resolvable, outlinks, missing_references=self.selectDocResolvableCitations(doc_file)
 
-        return tin_can
+        return citations_data
 
-##    def generateOrLoadResolvableCitations(self, guid, doc):
-##        """
-##            Loads if available, generates otherwise
-##        """
-##        guid=guid.lower()
-##        if self.cachedJsonExists("resolvable",doc_file["metadata"]["guid"]):
-##            tin_can=self.loadResolvableCitations(guid) # load the citations in the document that are resolvable
-##            if tin_can:
-##                return tin_can
-##            else:
-##                return None
-##        else:
-##            try:
-##                data=self.selectDocResolvableCitations(doc)
-##                tin_can={"resolvable":data[0],"outlinks":data[1]}
-##                self.saveResolvableCitations(guid,tin_can)
-##                return tin_can
-##            except:
-##                print "Exception in generateOrLoadResolvableCitations() while saving data"
-##                return None
     def checkConnectedToDB(self):
         """
             Asserts that the DB is connected
@@ -468,6 +456,30 @@ class BaseCorpus(object):
         """
         raise NotImplementedError
 
+    def getRecord(self, id, table="papers"):
+        """
+            Abstracts over getting data from a row in the db. Returns all the
+            fields of the record for one type of table.
+
+            :param id: id of the record
+            :param table: table alias, e.g. ["papers", "scidocs"]
+        """
+        raise NotImplementedError
+
+    def getRecordField(self, id, table="papers"):
+        """
+            Abstracts over getting data from a row in the db. Returns one field
+            for one type of table.
+        """
+        raise NotImplementedError
+
+    def recordExists(self, id, table="papers"):
+        """
+            Returns True if the specified record exists in the given table, False
+            otherwise.
+        """
+        raise NotImplementedError
+
     def getMetadataByGUID(self,guid):
         """
             Returns a paper's metadata by GUID
@@ -497,12 +509,6 @@ class BaseCorpus(object):
         """
             Return a list of GUIDs in papers table where [conditions]. It's a
             SELECT query
-        """
-        raise NotImplementedError
-
-    def listAllPapers(self):
-        """
-            Return a list of all GUIDs of all papers in papers table
         """
         raise NotImplementedError
 

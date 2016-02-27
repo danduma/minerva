@@ -29,6 +29,45 @@ class ElasticRetrieval(BaseRetrieval):
         self.method=method # never used?
         self.logger=logger
 
+    def rewriteQueryAsDSL(self, structured_query):
+        """
+            Creates a multi_match query for elasticsearch
+        """
+        original_query=structured_query
+        if not structured_query or len(structured_query) == 0:
+            return None
+
+        self.last_query=structured_query
+
+        lucene_query=""
+
+        for qindex, token in enumerate(structured_query):
+            # TODO proper computing of the boost formula. Different methods?
+            boost=token["boost"]*token["count"]
+            bool=token.get("bool", None) or ""
+
+            lucene_query+=bool+token["token"]
+            if boost != 1:
+                lucene_query+="\"^"+str(boost)
+            lucene_query+=" "
+
+        fields=[]
+        for index, param in enumerate(parameters):
+            fields.append(param+"^"+str(parameters[param]))
+
+        dsl_query={
+          "multi_match" : {
+            "query": lucene_query,
+            "type":  "best_fields",
+            "fields": fields,
+            "operator": "or",
+##            "tie_breaker": 0.3
+          }
+        }
+
+        return dsl_query
+
+
     def runQuery(self, structured_query, max_results=MAX_RESULTS_RECALL):
         """
             Interfaces with the elasticsearch query API

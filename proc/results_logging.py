@@ -20,16 +20,26 @@ class ProgressIndicator:
         Shows a basic progress indicator of items processed, left to process and
         estimated time until finishing
     """
-    def __init__(self,start_counting_now=False):
+    def __init__(self,start_counting_now=False, numitems=None, print_out=True, dot_every_xitems=None):
         self.message_text="Processing"
         if start_counting_now:
             self.startCounting()
+        if numitems:
+            self.setNumItems(numitems,print_out, dot_every_xitems)
 
     def startCounting(self):
         self.start_time=datetime.datetime.now()
         self.last_report=self.start_time
 
     def setNumItems(self, numitems, print_out=True, dot_every_xitems=None):
+        """
+            Set the number of items total.
+
+            :param numitems: number of items
+            :param print_out: if True, it prints out a message when called.
+            :param dot_every_xitems: if not None, it determines how often the
+                progress message appears
+        """
         self.numitems=numitems
         if not dot_every_xitems:
             dot_every_xitems=max(numitems / 1000,1)

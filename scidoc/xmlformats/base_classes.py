@@ -31,13 +31,12 @@ class BaseSciDocXMLReader(object):
             Abstract method that implements the reading. Override in descendant
             classes.
 
-            Args:
-                xml: full xml string
-                identifier: an identifier for this document, e.g. file name
+            :param xml: full xml string
+            :param identifier: an identifier for this document, e.g. file name
                         If an actual full path, the path will be removed from it
                         when stored
-            Returns:
-                SciDoc instance
+            :return: SciDoc instance
+            :rtype: SciDoc
         """
         raise NotImplementedError
 

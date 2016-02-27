@@ -14,12 +14,9 @@ import corpus_import
 import minerva.db.corpora as cp
 from minerva.db.base_corpus import BaseReferenceMatcher
 from minerva.scidoc.xmlformats.read_paperxml import PaperXMLReader
-from minerva.db.aan_metadata import convertAANcitations
+from aan_metadata import convertAANcitations
 from minerva.proc.nlp_functions import tokenizeText, basic_stopwords
 from string import punctuation
-
-corpus_import.FILES_TO_PROCESS_FROM=10778
-##corpus_import.FILES_TO_PROCESS_TO=5
 
 class AANReferenceMatcher(BaseReferenceMatcher):
     """
@@ -32,6 +29,7 @@ class AANReferenceMatcher(BaseReferenceMatcher):
             Args:
                 infile: path to acl.txt
         """
+        super(self.__class__, self).__init__(cp.Corpus)
         self.citations=convertAANcitations(infile)
         # keep track of which document we're processing so that we only load
         # the references once
@@ -124,9 +122,9 @@ class AANReferenceMatcher(BaseReferenceMatcher):
         self.doc_outlinks=[]
 
         for cited_id in self.citations[doc.metadata["corpus_id"]]:
-            metadata=cp.Corpus.getMetadataByField("corpus_id",cited_id)
+            metadata=cp.Corpus.getMetadataByField("metadata.corpus_id",cited_id)
             if metadata:
-                metadata=metadata["metadata"]
+##                metadata=metadata["metadata"]
                 self.doc_outlinks.append({
                     "bow":self.makeBOW(metadata),
                     "data":metadata,
@@ -187,22 +185,46 @@ def import_aac_corpus():
 ##    cp.useLocalCorpus()
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac")
-    cp.Corpus.deleteAll("papers")
-    cp.Corpus.deleteAll("scidocs")
-    cp.Corpus.deleteAll("authors")
-    cp.Corpus.deleteAll("cache")
-    cp.Corpus.deleteAll("links")
-    cp.Corpus.deleteAll("venues")
+
+    options={
+##        "list_missing_references":True, # default: False
+        "convert_and_import_docs":False, # default: True
+    }
+
+##    corpus_import.FILES_TO_PROCESS_FROM=10222
+##    corpus_import.FILES_TO_PROCESS_TO=500
+
+    importer.restartCollectionImport(options)
     cp.Corpus.createAndInitializeDatabase()
     cp.Corpus.matcher=AANReferenceMatcher("g:\\nlp\\phd\\aan\\release\\acl_full.txt")
 
-    importer.num_processes = 4
-##    importer.importCorpus("g:\\nlp\\phd\\aac\\inputXML",file_mask="*-paper.xml")
-    cp.Corpus.deleteByQuery("cache", "_id:resolvable*")
-    importer.updateInCollectionReferences(cp.Corpus.listAllPapers(), {})
+    importer.use_celery = True
+    importer.importCorpus("g:\\nlp\\phd\\aac\\inputXML",file_mask="*-paper.xml", import_options=options)
+
+##    from corpus_import import updatePaperInCollectionReferences
+    # G:\NLP\PhD\aac\inputXML\anthology\W\W11-2139-paper.xml
+##    updatePaperInCollectionReferences("faa45dc5-44f1-4990-921c-674e616f8a94", options)
+
+
+def fix_citation_parent_aac():
+    """
+    """
+    from minerva.proc.results_logging import ProgressIndicator
+    cp.useElasticCorpus()
+    cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac")
+    guids=cp.Corpus.listPapers("metadata.collection_id:\"AAC\"")
+    progress=ProgressIndicator(True, len(guids), True)
+    for guid in guids:
+        doc=cp.Corpus.loadSciDoc(guid)
+        for cit in doc.citations:
+            if "parent" in cit:
+                cit["parent_s"]=cit.pop("parent")
+        cp.Corpus.saveSciDoc(doc)
+        progress.showProgressReport("Fixing badly imported PaperXML")
 
 def main():
     import_aac_corpus()
+##    fix_citation_parent_aac()
 
 ##    import corpora as cp
 ##    cp.useElasticCorpus()

@@ -10,7 +10,8 @@ import re
 from read_jatsxml import JATSXMLReader
 from BeautifulSoup import BeautifulStoneSoup
 
-from minerva.scidoc.citation_utils import annotateCitationsInSentence, CITATION_FORM
+from minerva.scidoc.citation_utils import (annotateCitationsInSentence,
+CITATION_FORM, matchCitationWithReference)
 
 class SapientaJATSXMLReader(JATSXMLReader):
     """
@@ -43,7 +44,7 @@ class SapientaJATSXMLReader(JATSXMLReader):
                     # make sure first letter is capitalized
                     header_text=header_text[0].upper()+header_text[1:]
             else:
-                print title
+                print("Weird, title tag is there but no text is to be found: %s" % (title))
 
         return header_text, header_id
 
@@ -52,24 +53,24 @@ class SapientaJATSXMLReader(JATSXMLReader):
             Creates a paragraph in newDocument, splits the text into sentences,
             creates a sentence object for each
         """
-        newPar_id=newDocument.addParagraph(parent)
+        newPar=newDocument.addParagraph(parent)
         texts=p.findChildren("text", recursive=False)
         if texts:
             for text in texts:
                 sent_tags=text.findChildren("s",recursive=True)
                 for s in sent_tags:
-                    self.loadJATSSentence(s, newDocument, newPar_id, parent)
+                    self.loadJATSSentence(s, newDocument, newPar["id"], parent)
         else:
             pass
 ##            par_text=p.renderContents(encoding=None)
 ##
 ##            sentences=sentenceSplit(par_text)
 ##            for s in sentences:
-##                self.loadJATSSentence(s, newDocument, newPar_id, parent)
+##                self.loadJATSSentence(s, newDocument, newPar["id"], parent)
 
-        return newPar_id
+        return newPar["id"]
 
-    def annotatePlainTextCitations(self, s, newDocument, newSent, newSent_id):
+    def annotatePlainTextCitations(self, s, newDocument, newSent):
         """
             If the citations aren't tagged with <xref> because Sapienta stripped
             them away, try to extract the citations from plain text. *sigh*
@@ -82,13 +83,14 @@ class SapientaJATSXMLReader(JATSXMLReader):
             """
             return re.sub(CITATION_FORM % temp, CITATION_FORM % final, annotated_s, flags=re.IGNORECASE)
 
+        if not newDocument.metadata.get("original_citation_style", None):
+            newDocument.metadata["original_citation_style"]="AFI"
         annotated_s,citations_found=annotateCitationsInSentence(s, newDocument.metadata["original_citation_style"])
         annotated_citations=[]
 
         if newDocument.metadata["original_citation_style"]=="APA":
             for index,citation in enumerate(citations_found):
-                newCit=newDocument.addCitation()
-                newCit["parent"]=newSent_id
+                newCit=newDocument.addCitation(sent_id=newSent["id"])
                 reference=matchCitationWithReference(citation, newDocument["references"])
 ##                print (citation["text"]," -> ", formatReference(reference))
                 if reference:
@@ -101,10 +103,14 @@ class SapientaJATSXMLReader(JATSXMLReader):
 
         elif newDocument.metadata["original_citation_style"]=="AFI":
             for index,citation in enumerate(citations_found):
-                newCit=newDocument.addCitation()
-                newCit["parent"]=newSent_id
+                cit_num=int(citation["num"])-1
+                if cit_num < 0:
+                    # this is not a citation! Probably something like "then sampled a random number from uniform distribution, u ~ U[0,1]"
+                    continue
+
+                newCit=newDocument.addCitation(sent_id=newSent["id"])
                 # TODO check this: maybe not this simple. May need matching function.
-                newCit["ref_id"]="ref"+str(int(citation["num"])-1)
+                newCit["ref_id"]="ref"+str(cit_num)
 
                 annotated_citations.append(newCit)
                 annotated_s=replaceTempCitToken(annotated_s, index+1, newCit["id"])
@@ -129,8 +135,7 @@ class SapientaJATSXMLReader(JATSXMLReader):
             # <s> tag that contains no actual text. We can return without adding any sentence
             return
 
-        newSent_id=newDocument.addSentence(par_id,"")
-        newSent=newDocument.element_by_id[newSent_id]
+        newSent=newDocument.addSentence(par_id,"")
         coresc_tag=s.find("coresc1",recursive=False)
         newSent["csc_type"]=coresc_tag["type"]
         newSent["csc_adv"]=coresc_tag["advantage"]
@@ -139,7 +144,7 @@ class SapientaJATSXMLReader(JATSXMLReader):
         refs=s_soup.findAll("xref",{"ref-type":"bibr"})
         citations_found=[]
         for r in refs:
-            citations_found.extend(self.loadJATSCitation(r, newSent_id, newDocument, section=section_id))
+            citations_found.extend(self.loadJATSCitation(r, newSent["id"], newDocument, section=section_id))
 
         non_refs=s_soup.findAll(lambda tag:tag.name.lower()=="xref" and tag.has_key("ref-type") and tag["ref-type"].lower() != "bibr")
         for nr in non_refs:
@@ -148,9 +153,9 @@ class SapientaJATSXMLReader(JATSXMLReader):
         if len(citations_found) > 0:
             newSent["citations"]=[acit["id"] for acit in citations_found]
             # TODO replace <xref> tags with <cit> tags
-            newSent["text"]=newDocument.extractSentenceTextWithCitationTokens(s_soup, newSent_id)
+            newSent["text"]=newDocument.extractSentenceTextWithCitationTokens(s_soup, newSent["id"])
         else:
-            self.annotatePlainTextCitations(s_soup.text,  newDocument, newSent, newSent_id)
+            self.annotatePlainTextCitations(s_soup.text,  newDocument, newSent)
 
 ##            print(newSent["text"])
         # deal with many citations within characters of each other: make them know they are a cluster

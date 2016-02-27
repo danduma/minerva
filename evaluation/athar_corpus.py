@@ -69,28 +69,27 @@ class AtharCorpusReader(object):
         text=loadFileText(filename)
         return self.read(text, filename)
 
-    def loadCitation(self, ref, sentence_id, newDocument, section):
-        """
-            Extract all info from <ref> tag, return dictionary
-        """
-        newCit=newDocument.addCitation()
-
-        if ref.has_key("citation_id"):
-            res["original_id"]=ref["citation_id"]
-
-        newCit["original_text"]=ref.__repr__()
-        newCit["ref_id"]=cit
-        newCit["parent_section"]=section
-        newCit["parent_s"]=sentence_id
-
-        if not newDocument.reference_by_id.has_key(cit):
-            # something strange is going on: no reference with that key
-            print ("No reference found with id: %s" % cit)
-##            continue
-        else:
-            newDocument.reference_by_id[cit]["citations"].append(newCit["id"])
-
-        res.append(newCit)
+##    def loadCitation(self, ref, sentence_id, newDocument, section_id):
+##        """
+##            Extract all info from <ref> tag, return dictionary
+##        """
+##        newCit=newDocument.addCitation(sent_id=sentence_id)
+##
+##        if ref.has_key("citation_id"):
+##            res["original_id"]=ref["citation_id"]
+##
+##        newCit["original_text"]=ref.__repr__()
+##        newCit["ref_id"]=cit
+##        newCit["parent_section"]=section_id
+##
+##        if not newDocument.reference_by_id.has_key(cit):
+##            # something strange is going on: no reference with that key
+##            print ("No reference found with id: %s" % cit)
+####            continue
+##        else:
+##            newDocument.reference_by_id[cit]["citations"].append(newCit["id"])
+##
+##        res.append(newCit)
 
     def wrapInSciDoc(self, contexts, doc_from_id, doc_to_id):
         """
@@ -105,7 +104,7 @@ class AtharCorpusReader(object):
                 SciDoc
         """
         newDocument=SciDoc()
-        metadata=cp.Corpus.getMetadataByField("corpus_id",doc_from_id)
+        metadata=cp.Corpus.getMetadataByField("metadata.corpus_id",doc_from_id)
         if metadata:
             newDocument.loadExistingMetadata(metadata)
             assert newDocument.metadata["guid"] != ""
@@ -117,7 +116,7 @@ class AtharCorpusReader(object):
 
         newSection_id=newDocument.addSection("root", "", 0)
 
-        metadata=cp.Corpus.getMetadataByField("corpus_id",doc_to_id)
+        metadata=cp.Corpus.getMetadataByField("metadata.corpus_id",doc_to_id)
         if not metadata:
             raise ValueError("Target document %s is not in corpus!" % doc_to_id)
             return
@@ -288,7 +287,7 @@ class AtharQueryGenerator(QueryGenerator):
 
     def getResolvableCitations(self, guid, doc):
         """
-            Returns the tin_can of resolvable citations and outlinks
+            Returns the citations_data of resolvable citations and outlinks
         """
         res=[]
         sents_with_multicitations=[]
@@ -302,8 +301,8 @@ class AtharQueryGenerator(QueryGenerator):
             # deal with many citations within characters of each other: make them know they are a cluster
             doc.countMultiCitations(sent)
 
-        tin_can={"resolvable":res,"outlinks":doc["references"][0]}
-        return tin_can
+        citations_data={"resolvable":res,"outlinks":doc["references"][0]}
+        return citations_data
 
     def loadDocAndResolvableCitations(self, guid):
         """
@@ -322,9 +321,9 @@ class AtharQueryGenerator(QueryGenerator):
         doctext=doc.getFullDocumentText() #  store a plain text representation
 
         # load the citations in the document that are resolvable, or generate if necessary
-        tin_can=self.getResolvableCitations(guid, doc)
+        citations_data=self.getResolvableCitations(guid, doc)
 
-        return doc,doctext,tin_can
+        return doc,doctext,citations_data
 
 
 def getOutlinkContextAtharWindowOfWords(context, left, right):

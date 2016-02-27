@@ -111,7 +111,7 @@ class BaseIndexer(object):
 ##            cp.Corpus.paths.get("fullLuceneIndex","")+indexName
             fwriters[indexName]=self.createIndexWriter(actual_dir)
 
-        ALL_GUIDS=cp.Corpus.listAllPapers()
+        ALL_GUIDS=cp.Corpus.listPapers()
     ##    ALL_GUIDS=["j98-2002"]
 
         dot_every_xfiles=max(len(ALL_GUIDS) / 1000,1)

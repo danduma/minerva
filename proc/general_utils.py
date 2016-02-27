@@ -268,13 +268,19 @@ def copyDictExceptKeys(dict_to_copy,except_keys):
             newdict[key]=dict_to_copy[key]
     return newdict
 
+def removeSymbols(text):
+    """
+        Remove all symbols from a string, including all kinds of brackets and quotation marks.
+    """
+    return re.sub(r"[\"\#\$\%\&\\\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\¿\!\¡\@\[\]\^\_\`\{\|\}\~]"," ",text)
+
 def normalizeTitle(title):
     """
         Returns a "hashed" title for easy matching
     """
     title=title.lower()
     title=title.replace("-  ","").replace("- ","")
-    title=re.sub(r"[\"\#\$\%\&\\\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\¿\!\¡\@\[\]\^\_\`\{\|\}\~]"," ",title)
+    title=removeSymbols(title)
     title=re.sub(r"\s+"," ",title)
     title=title.strip()
     return title

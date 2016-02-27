@@ -10,12 +10,12 @@ from __future__ import print_function
 from base_classes import BaseSciDocXMLReader
 from minerva.scidoc.citation_utils import guessNamesOfPlainTextAuthor, fixNumberCitationsXML, detectCitationStyle
 
-import os, glob, re, codecs, json
+import os, glob, re, codecs, json, logging
 import cPickle, random
 from BeautifulSoup import BeautifulStoneSoup
 
 from minerva.proc.nlp_functions import sentenceSplit
-from minerva.proc.general_utils import (writeFileText, pathSelect)
+from minerva.proc.general_utils import (writeFileText, pathSelect, cleanxml)
 
 from minerva.scidoc.scidoc import SciDoc
 from minerva.scidoc.render_content import SciDocRenderer
@@ -136,11 +136,15 @@ class JATSXMLReader(BaseSciDocXMLReader):
                 newDocument: SciDoc
                 section: section containing citation
         """
-        citations=ref["rid"].split()
+        citations_list=ref["rid"].split()
         res=[]
 
-        for ref_id in citations:
-            newCit=newDocument.addCitation(sentence_id, ref_id)
+        for ref_id in citations_list:
+            #TODO does this work?
+            real_ref=newDocument.findMatchingReferenceByOriginalId(ref_id)
+            real_ref_id=["id"] if real_ref else ref_id
+
+            newCit=newDocument.addCitation(sentence_id, real_ref_id)
 
             if ref.has_key("citation_id"):
                 res["original_id"]=ref["citation_id"]
@@ -148,12 +152,12 @@ class JATSXMLReader(BaseSciDocXMLReader):
             newCit["original_text"]=ref.__repr__()
             newCit["parent_section"]=section
 
-            if not newDocument.reference_by_id.has_key(cit):
+            if not newDocument.reference_by_id.has_key(real_ref_id):
                 # something strange is going on: no reference with that key
-                print ("No reference found with id: %s" % cit)
+                print ("No reference found with id: %s" % real_ref_id)
     ##            continue
             else:
-                newDocument.reference_by_id[cit]["citations"].append(newCit["id"])
+                newDocument.reference_by_id[real_ref_id]["citations"].append(newCit["id"])
 
             res.append(newCit)
         return res
@@ -170,10 +174,11 @@ class JATSXMLReader(BaseSciDocXMLReader):
         res={"family":"","given":""}
         name=author_node.find("name")
 
-        for item in [("surname","family"),("given-names","given"),("degrees","degrees")]:
-            node=name.findChild(item[0],recursive=False)
-            if node:
-                res[item[1]]=node.text
+        if name:
+            for item in [("surname","family"),("given-names","given"),("degrees","degrees")]:
+                node=name.findChild(item[0],recursive=False)
+                if node:
+                    res[item[1]]=node.text
 
         xrefs=author_node.findAll("xref",{"ref-type":"aff"})
         affs=author_node.parent.parent.findAll("aff")
@@ -202,14 +207,15 @@ class JATSXMLReader(BaseSciDocXMLReader):
 
     def loadMetadataIfExists(self, branch, key, doc):
         """
-            If branch is not none, load its text
+            If branch is not none, load its text into the metadata dict under the
+            given key
         """
         if branch:
             doc.metadata[key]=branch.text
 
     def loadJATSMetadataFromPaper(self, newDocument, soup):
         """
-            Tries to recover metadata from JATS file
+            Tries to recover metadata from the header of the JATS file
         """
         front=soup.find("front")
         if not front:
@@ -257,6 +263,9 @@ class JATSXMLReader(BaseSciDocXMLReader):
 
         # load all publication dates and choose the "year"
         self.selectBestDateFromMetadata(meta, newDocument)
+        if newDocument.metadata.get("pmc_id","") != "":
+            newDocument.metadata["corpus_id"]=newDocument.metadata["pmc_id"]
+
 ##        print (json.dumps(newDocument.metadata),"\n\n\n\n\n")
 
     def loadJATSAbstract(self, soup, newDocument):
@@ -268,24 +277,25 @@ class JATSXMLReader(BaseSciDocXMLReader):
         """
         abstract=soup.find("abstract")
         if not abstract:
-            debugAddMessage(newDocument,"error","CANNOT LOAD ABSTRACT! file: %s\n" % newDocument.metadata.get("filename","None"))
+##            debugAddMessage(newDocument,"error","CANNOT LOAD ABSTRACT! file: %s\n" % newDocument.metadata.get("filename","None"))
+            logging.warning("CANNOT LOAD ABSTRACT! file: %s\n" % newDocument.metadata.get("filename","None"))
             # TODO: LOAD first paragraph as abstract if no abstract available
         else:
-            abstract_id=newDocument.addSection("root","Abstract")
+            newAbstract=newDocument.addSection("root","Abstract")
 
             abstract_sections=abstract.findAll("sec")
             if abstract_sections:
                 for sec in abstract_sections:
                     title=sec.find("title")
                     title=sec.title.text if title else ""
-                    newSection_id=newDocument.addSection(abstract_id,title)
+                    newSection=newDocument.addSection(newAbstract["id"],title)
                     for p in sec.findAll("p"):
-                        self.loadJATSParagraph(p,newDocument,newSection_id)
+                        self.loadJATSParagraph(p,newDocument,newSection["id"])
             else:
                 for p in abstract.findAll("p"):
-                    self.loadJATSParagraph(p,newDocument,abstract_id)
+                    self.loadJATSParagraph(p,newDocument,newAbstract["id"])
 
-            newDocument.abstract=newDocument.element_by_id[abstract_id]
+            newDocument.abstract=newDocument.element_by_id[newAbstract["id"]]
 
     def loadJATSSectionTitle(self, sec):
         """
@@ -315,15 +325,15 @@ class JATSXMLReader(BaseSciDocXMLReader):
         """
         header_text, header_id=self.loadJATSSectionTitle(sec)
 
-        newSection_id=newDocument.addSection(parent, header_text, header_id)
+        newSection=newDocument.addSection(parent, header_text, header_id)
 
         contents=sec.findChildren(["sec","p"],recursive=False)
         if contents:
             for element in contents:
                 if element.name=="sec":
-                    self.loadJATSSection(element,newDocument,newSection_id)
+                    self.loadJATSSection(element,newDocument,newSection["id"])
                 elif element.name=="p":
-                    newPar_id=self.loadJATSParagraph(element, newDocument, newSection_id)
+                    newPar_id=self.loadJATSParagraph(element, newDocument, newSection["id"])
 
 
     def loadJATSSentence(self, s, newDocument, par_id, section_id):
@@ -335,14 +345,13 @@ class JATSXMLReader(BaseSciDocXMLReader):
             :param par_id: id of the paragraph containing this sentence
             :param section_id: id of the section containing the paragraph
         """
-        newSent_id=newDocument.addSentence(par_id,"")
-        newSent=newDocument.element_by_id[newSent_id]
+        newSent=newDocument.addSentence(par_id,"")
         s_soup=BeautifulStoneSoup(s)
 
         refs=s_soup.findAll("xref",{"ref-type":"bibr"})
         citations_found=[]
         for r in refs:
-            citations_found.extend(self.loadJATSCitation(r, newSent_id, newDocument, section=section_id))
+            citations_found.extend(self.loadJATSCitation(r, newSent["id"], newDocument, section=section_id))
 
         non_refs=s_soup.findAll(lambda tag:tag.name.lower()=="xref" and tag.has_key("ref-type") and tag["ref-type"].lower() != "bibr")
         for nr in non_refs:
@@ -350,7 +359,7 @@ class JATSXMLReader(BaseSciDocXMLReader):
 
         newSent["citations"]=[acit["id"] for acit in citations_found]
         # TODO replace <xref> tags with <cit> tags
-        newSent["text"]=newDocument.extractSentenceTextWithCitationTokens(s_soup, newSent_id)
+        newSent["text"]=newDocument.extractSentenceTextWithCitationTokens(s_soup, newSent["id"])
 ##            print(newSent["text"])
         # deal with many citations within characters of each other: make them know they are a cluster
         # TODO cluster citations? Store them in some other way?
@@ -361,13 +370,13 @@ class JATSXMLReader(BaseSciDocXMLReader):
             Creates a paragraph in newDocument, splits the text into sentences,
             creates a sentence object for each
         """
-        newPar_id=newDocument.addParagraph(parent)
+        newPar=newDocument.addParagraph(parent)
         par_text=p.renderContents(encoding=None)
         sentences=sentenceSplit(par_text)
         for s in sentences:
-            self.loadJATSSentence(s, newDocument, newPar_id, parent)
+            self.loadJATSSentence(s, newDocument, newPar["id"], parent)
 
-        return newPar_id
+        return newPar
 
     def loadJATSReference(self, ref, doc):
         """
@@ -402,7 +411,14 @@ class JATSXMLReader(BaseSciDocXMLReader):
             else:
                 author_group=ref
 
-        authors=author_group.findAll("name")
+        if author_group:
+            authors=author_group.findAll("name")
+        else:
+            authors=None
+            collab=ref.find("collab")
+            if collab:
+                authorlist.append({"family":collab.text, "given":""})
+                surnames.append(collab.text)
 
         if authors:
             for a in authors:
@@ -511,7 +527,7 @@ class JATSXMLReader(BaseSciDocXMLReader):
         if not body:
             # TODO: Make the error handling less terrible
             debugAddMessage(newDocument,"error","NO <BODY> IN THIS PAPER! file: "+identifier)
-            newDocument["metadata"]["guid"]=cp.Corpus.getFileUID(metadata["filename"])
+            newDocument["metadata"]["guid"]=cp.Corpus.generateGUID()
             return newDocument
 
         # Load metadata, either from corpus or from file
@@ -535,6 +551,7 @@ class JATSXMLReader(BaseSciDocXMLReader):
         for sec in body.findChildren("sec", recursive=False):
             self.loadJATSSection(sec, newDocument, "root")
 
+        newDocument.updateAuthorsAffiliations()
         return newDocument
 
 def generateSideBySide(doc_list):

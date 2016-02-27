@@ -63,7 +63,7 @@ def prebuildBOWsForTests(parameters, maxfiles=1000000, FILE_LIST=None, force_pre
     if FILE_LIST:
         cp.Corpus.ALL_FILES=FILE_LIST
     else:
-        cp.Corpus.ALL_FILES=cp.Corpus.listAllPapers()
+        cp.Corpus.ALL_FILES=cp.Corpus.listPapers()
 
     if rhetorical_annotations != []:
         print("Loading AZ/CFC classifiers")

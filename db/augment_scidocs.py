@@ -26,7 +26,7 @@ def augmentAllSciDocsWithAZ():
     """
         Goes through the files in the cp.Corpus, annotating all of them with AZ and CFC
     """
-    guids=cp.Corpus.listAllPapers()
+    guids=cp.Corpus.listPapers()
     for guid in guids:
         print guid
         augmentSciDocWithAZ(guid)
@@ -54,7 +54,7 @@ def augmentAllSciDocsWithSapienta(sapienta_output_dir):
         augmentSciDocWithSapienta()
     """
     sapienta_output_dir=ensureTrailingBackslash(sapienta_output_dir)
-    guids=cp.Corpus.listAllPapers()
+    guids=cp.Corpus.listPapers()
     for guid in guids:
         print guid
         doc=cp.Corpus.loadSciDoc(guid)

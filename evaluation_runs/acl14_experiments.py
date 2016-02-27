@@ -17,10 +17,10 @@ from minerva.evaluation.query_generation import QueryGenerator
 
 # BOW files to prebuild for generating document representation.
 prebuild_bows={
-"full_text":{"function":"getDocBOWfull", "parameters":[1]},
+##"full_text":{"function":"getDocBOWfull", "parameters":[1]},
 ##"title_abstract":{"function":"getDocBOWTitleAbstract", "parameters":[1]},
 ##"passage":{"function":"getDocBOWpassagesMulti", "parameters":[150,175,200,250,300,350,400,450]},
-"inlink_context":{"function":"generateDocBOWInlinkContext", "parameters":[200] },
+"inlink_context":{"function":"getDocBOWInlinkContextCache", "parameters":[30, 40, 50, 100] },
 ##"ilc_AZ":{"function":"generateDocBOW_ILC_Annotated", "parameters":["paragraph","1up_1down","1up","1only"] },
 ##"az_annotated":{"function":"getDocBOWannotated", "parameters":[1]},
 ##"section_annotated":{"function":"getDocBOWannotatedSections", "parameters":[1]},
@@ -31,7 +31,7 @@ prebuild_indexes={
 ##    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "title_abstract":{"type":"standard_multi", "bow_name":"title_abstract", "parameters":[1]},
 ##    "passage":{"type":"standard_multi", "bow_name":"passage", "parameters":[150,175,200,250,300,350,400,450]},
-    "inlink_context":{"type":"standard_multi", "bow_name":"inlink_context", "parameters":[20, 30, 40, 50, 100]},
+    "inlink_context":{"type":"standard_multi", "bow_name":"inlink_context", "parameters":[30, 40, 50, 100]},
 ##    "inlink_context_year":{"type":"standard_multi", "bow_name":"inlink_context", "parameters":[5, 10, 15, 20, 30, 40, 50], "options":{"max_year":True}},
 ##    "az_annotated":{"type":"standard_multi", "bow_methods":[("az_annotated",[1])], "parameters":[1]},
 ##    "section_annotated":{"type":"standard_multi", "bow_methods":[("section_annotated",[1])], "parameters":[1]},
@@ -62,8 +62,8 @@ doc_methods={
 ##    "title_abstract":{"type":"standard_multi", "index":"title_abstract", "parameters":[1], "runtime_parameters":{"text":"1"}},
 ##    "passage":{"type":"standard_multi", "index":"passage", "parameters":[250,350,400], "runtime_parameters":{"text":"1"}},
 ##
-##    "inlink_context":{"type":"standard_multi", "index":"inlink_context",
-##        "parameters": [10, 20, 30], "runtime_parameters":{"inlink_context":"1"}},
+    "inlink_context":{"type":"standard_multi", "index":"inlink_context",
+        "parameters": [20, 30, 40, 50, 100], "runtime_parameters":{"inlink_context":"1"}},
 ##
 ##    "inlink_context_year":{"type":"standard_multi", "index":"inlink_context_year",
 ##        "parameters": [10, 20, 30], "runtime_parameters":{"inlink_context":"1"}},
@@ -120,26 +120,26 @@ qmethods={
 "window":{"parameters":[
 ##                (3,3),
 ##                (5,5),
-                (10,10),
+##                (10,10),
 ##                (5,10),
 ##                (10,5),
-                (20,20),
+##                (20,20),
 ##                (20,10),
 ##                (10,20),
-                (30,30),
+##                (30,30),
                 (50,50),
-                (100,100),
+##                (100,100),
 ##                (500,500),
                 ],
                 "method":"Window",
                 },
 
             "sentence":{"parameters":[
-                "1only",
-                "paragraph",
-                "1up",
-                "0up_1down",
-                "1up_1down",
+##                "1only",
+##                "paragraph",
+##                "1up",
+##                "0up_1down",
+##                "1up_1down",
                 "2up_2down"
                 ],
                 "method":"Sentences",

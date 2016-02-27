@@ -16,6 +16,8 @@ CITATION_PLACEHOLDER, unTokenize, ESTIMATED_AVERAGE_WORD_LENGTH, removeCitations
 PAR_MARKER, CIT_MARKER, BR_MARKER, AZ_ZONES_LIST, CORESC_LIST, formatSentenceForIndexing,
 getDictOfTokenCounts, removeStopwords)
 
+
+from general_utils import removeSymbols
 from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
 import minerva.db.corpora as cp
 
@@ -93,11 +95,12 @@ class BaseQueryExtractor(object):
         """
             Remove symbols from the query that can lead to errors when parsing the query
         """
-        rep_list=["~","^","\"","+","-","(",")", "{","}","[","]","?",":","*"]
-        rep_list.extend(punctuation)
+##        rep_list=["~","^","\"","+","-","(",")", "{","}","[","]","?",":","*"]
+##        rep_list.extend(punctuation)
         query=query.lower()
-        for r in rep_list:
-            query=query.replace(r," ")
+##        for r in rep_list:
+##            query=query.replace(r," ")
+        query=removeSymbols(query)
         query=re.sub(r"\s+"," ",query)
         query=query.strip()
         return query

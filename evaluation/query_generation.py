@@ -14,7 +14,7 @@ import lucene
 from sklearn import cross_validation
 
 import minerva.db.corpora as cp
-from minerva.proc.results_logging import ProgressIndicator, ResultsLogger
+from minerva.proc.results_logging import ResultsLogger
 from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
 from minerva.proc.doc_representation import findCitationInFullText
 from testing_pipelines import getDictOfTestingMethods
@@ -90,8 +90,8 @@ class QueryGenerator(object):
         doctext=doc.getFullDocumentText() #  store a plain text representation
 
         # load the citations in the document that are resolvable, or generate if necessary
-        tin_can=cp.Corpus.loadOrGenerateResolvableCitations(doc)
-        return doc,doctext,tin_can
+        citations_data=cp.Corpus.loadOrGenerateResolvableCitations(doc)
+        return [doc,doctext,citations_data]
 
     def generateQueries(self, m, doc, doctext, precomputed_query):
         """
@@ -203,13 +203,13 @@ class QueryGenerator(object):
             logger.showProgressReport(guid) # prints out info on how it's going
 
             try:
-                doc,doctext,tin_can=self.loadDocAndResolvableCitations(guid)
+                doc,doctext,citations_data=self.loadDocAndResolvableCitations(guid)
             except ValueError:
                 print("Can't load SciDoc ",guid)
                 continue
 
-            resolvable=tin_can["resolvable"] # list of resolvable citations
-            in_collection_references=tin_can["outlinks"] # list of cited documents (refereces)
+            resolvable=citations_data["resolvable"] # list of resolvable citations
+            in_collection_references=citations_data["outlinks"] # list of cited documents (refereces)
 
             # TODO do I really need all this information? Recomputed as well?
             num_in_collection_references=len(in_collection_references)

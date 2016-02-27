@@ -15,7 +15,7 @@ from pybtex.database.input.bibtexml import Parser as BibTeXMLParser
 from pybtex.database import BibliographyDataError
 
 from base_classes import BaseSciDocXMLReader
-from minerva.scidoc.citation_utils import guessNamesOfPlainTextAuthor, fixNumberCitationsXML, detectCitationStyle
+
 from minerva.proc.nlp_functions import sentenceSplit
 from minerva.proc.general_utils import loadFileText, writeFileText, normalizeUnicode, normalizeTitle
 from minerva.scidoc.scidoc import SciDoc
@@ -23,7 +23,9 @@ from minerva.scidoc.render_content import SciDocRenderer
 import minerva.db.corpora as cp
 from minerva.parscit import ParsCitClient
 
-from minerva.scidoc.citation_utils import annotateCitationsInSentence, matchCitationWithReference, normalizeAuthor, CITATION_FORM
+from minerva.scidoc.citation_utils import (annotateCitationsInSentence,
+matchCitationWithReference, normalizeAuthor, CITATION_FORM,
+guessNamesOfPlainTextAuthor, fixNumberCitationsXML, detectCitationStyle)
 
 from minerva.scidoc.reference_formatting import formatReference
 
@@ -138,20 +140,20 @@ class PaperXMLReader(BaseSciDocXMLReader):
         """
             Loads the abstract, including sections
         """
-        abstract=soup.find("abstract")
-        if not abstract:
+        abstract_node=soup.find("abstract")
+        if not abstract_node:
             debugAddMessage(newDocument,"error","CANNOT LOAD ABSTRACT! file: %s\n" % newDocument.metadata.get("filename","None"))
             # !TODO: LOAD first paragraph as abstract if no abstract available?
         else:
-            abstract_id=newDocument.addSection("root","Abstract")
+            abstract=newDocument.addSection("root","Abstract")
 
-            paras=abstract.findAll("p")
+            paras=abstract_node.findAll("p")
             if len(paras) == 0:
                 paras.append(abstract)
             for p in paras:
-                self.loadPaperParagraph(p,newDocument,abstract_id)
+                self.loadPaperParagraph(p,newDocument,abstract["id"])
 
-            newDocument.abstract=newDocument.element_by_id[abstract_id]
+            newDocument.abstract=abstract
 
     def loadPaperSection(self, sec, newDocument, parent):
         """
@@ -168,19 +170,18 @@ class PaperXMLReader(BaseSciDocXMLReader):
         if len(header_text) > 0:
             header_text=header_text[0].upper()+header_text[1:]
 
-        newSection_id=newDocument.addSection(parent, header_text, header_id)
+        newSection=newDocument.addSection(parent, header_text, header_id)
 
         contents=sec.findChildren(["subsection", "p", "figure"], recursive=False)
         if contents:
             for element in contents:
                 if element.name=="subsection":
-                    self.loadPaperSection(element,newDocument,newSection_id)
+                    self.loadPaperSection(element,newDocument,newSection["id"])
                 elif element.name=="p":
-                    newPar_id=self.loadPaperParagraph(element, newDocument, newSection_id)
+                    newPar=self.loadPaperParagraph(element, newDocument, newSection["id"])
                 elif element.name=="figure":
-                    newPar_id=newDocument.addParagraph(newSection_id)
-                    newSent_id=newDocument.addSentence(newPar_id,"")
-                    newSent=newDocument.element_by_id[newSent_id]
+                    newPar=newDocument.addParagraph(newSection["id"])
+                    newSent=newDocument.addSentence(newPar["id"],"")
                     newSent["text"]=element.get("caption","")
                     newSent["type"]="fig-caption"
                     # TODO improve figure loading
@@ -202,17 +203,14 @@ class PaperXMLReader(BaseSciDocXMLReader):
             """
             return re.sub(CITATION_FORM % temp, CITATION_FORM % final, annotated_s, flags=re.IGNORECASE)
 
-        newSent_id=newDocument.addSentence(parent,"")
-        newSent=newDocument.element_by_id[newSent_id]
+        newSent=newDocument.addSentence(parent,"")
 
         annotated_s,citations_found=annotateCitationsInSentence(s, newDocument.metadata["original_citation_style"])
-
         annotated_citations=[]
 
         if newDocument.metadata["original_citation_style"]=="APA":
             for index,citation in enumerate(citations_found):
-                newCit=newDocument.addCitation()
-                newCit["parent"]=newSent_id
+                newCit=newDocument.addCitation(sent_id=newSent["id"])
                 reference=matchCitationWithReference(citation, newDocument["references"])
 ##                print (citation["text"]," -> ", formatReference(reference))
                 if reference:
@@ -225,8 +223,7 @@ class PaperXMLReader(BaseSciDocXMLReader):
 
         elif newDocument.metadata["original_citation_style"]=="AFI":
             for index,citation in enumerate(citations_found):
-                newCit=newDocument.addCitation()
-                newCit["parent"]=newSent_id
+                newCit=newDocument.addCitation(sent_id=newSent["id"])
                 # TODO check this: maybe not this simple. May need matching function.
                 newCit["ref_id"]="ref"+str(int(citation["num"])-1)
 
@@ -241,7 +238,7 @@ class PaperXMLReader(BaseSciDocXMLReader):
         newDocument.countMultiCitations(newSent)
 
 
-    def loadPaperParagraph(self, p, newDocument, parent):
+    def loadPaperParagraph(self, p, newDocument, parent_id):
         """
             Creates a paragraph in newDocument, splits the text into sentences,
             creates a sentence object for each
@@ -255,7 +252,7 @@ class PaperXMLReader(BaseSciDocXMLReader):
             # This is not a content paragraph, we throw it away
             return None
 
-        newPar_id=newDocument.addParagraph(parent)
+        newPar=newDocument.addParagraph(parent_id)
 
         try:
             sentences=sentenceSplit(par_text)
@@ -264,8 +261,8 @@ class PaperXMLReader(BaseSciDocXMLReader):
             sentences=[par_text]
 
         for s in sentences:
-            self.loadPaperSentence(s,newDocument,newPar_id)
-        return newPar_id
+            self.loadPaperSentence(s,newDocument,newPar["id"])
+        return newPar
 
     def loadPaperReferences(self, ref_section, doc):
         """
@@ -356,7 +353,7 @@ class PaperXMLReader(BaseSciDocXMLReader):
             debugAddMessage(newDocument,"error","NO TITLE file: "+identifier)
             return newDocument
 
-##        metadata["guid"]=cp.Corpus.generateGUID(metadata)
+        metadata["guid"]=cp.Corpus.generateGUID(metadata)
 
         # Load all references from the XML
         references=body.find("references")
@@ -364,8 +361,8 @@ class PaperXMLReader(BaseSciDocXMLReader):
             self.loadPaperReferences(references, newDocument)
 
         newDocument.updateReferences()
-        print (newDocument.references)
-        print("\n\n")
+##        print (newDocument.references)
+##        print("\n\n")
         sections=body.findChildren("section", recursive=False)
 
         detect_style_text="".join([sec.renderContents() for sec in sections[:3]])
@@ -381,7 +378,7 @@ class PaperXMLReader(BaseSciDocXMLReader):
             self.loadPaperSection(sec, newDocument, "root")
 
         newDocument.updateReferences()
-
+        newDocument.updateAuthorsAffiliations()
         return newDocument
 
 

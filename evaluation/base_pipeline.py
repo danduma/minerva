@@ -14,7 +14,7 @@ from collections import defaultdict, namedtuple, OrderedDict
 from base_retrieval import BaseRetrieval, MAX_RESULTS_RECALL
 
 import minerva.db.corpora as cp
-from minerva.proc.results_logging import ProgressIndicator, ResultsLogger
+from minerva.proc.results_logging import ResultsLogger
 from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
 from minerva.proc.general_utils import getSafeFilename, exists, ensureDirExists
 

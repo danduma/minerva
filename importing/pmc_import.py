@@ -40,7 +40,7 @@ def import_pmc_corpus():
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc")
 
     importer.importCorpus("g:\\nlp\\phd\\pmc\\inputXML",file_mask="*.nxml")
-    importer.updateInCollectionReferences(cp.Corpus.listAllPapers(), {})
+    importer.updateInCollectionReferences(cp.Corpus.listPapers(), {})
 
 
 def main():

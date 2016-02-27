@@ -224,19 +224,12 @@ class LocalCorpus(BaseCorpus):
         self.globalDBconn.commit()
         c.close()
 
-    def listPapers(self,conditions):
+    def listPapers(self,conditions=None, field="guid"):
         """
             Return a list of GUIDs in papers table where [conditions]
         """
         query=self.filterQuery(conditions)
-        return self.runSingleValueQuery("select guid from papers where "+query)
-
-    def listAllPapers(self):
-        """
-            Return a list of all GUIDs of all papers in papers table
-        """
-        return self.runSingleValueQuery("select guid from papers")
-
+        return self.runSingleValueQuery("select %s from papers %s" % (field,conditions if conditions else ""))
 
     def cachedDataIDString(self, type, guid, params=None):
         """
@@ -441,7 +434,7 @@ class LocalCorpus(BaseCorpus):
         """
 
         res=[]
-        for paper_guid in self.listAllPapers():
+        for paper_guid in self.listPapers():
             metadata=self.getMetadataByGUID(paper_guid)
             old_outlinks=metadata["outlinks"]
             doc=self.loadSciDoc(metadata["guid"])

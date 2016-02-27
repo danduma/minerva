@@ -23,6 +23,7 @@ class BaseRetrieval(object):
 
         raise NotImplementedError
 
+
     def rewriteQuery(self, structured_query, parameters, test_guid=None):
         """
             Modify a ready build LuceneQuery to add other field weights

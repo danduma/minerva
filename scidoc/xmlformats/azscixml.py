@@ -309,7 +309,7 @@ def loadCitation(ref, sentence_id, newDocument, section):
     """
         Extract all info from <ref> tag, return dictionary
     """
-    res=newDocument.addCitation()
+    res=newDocument.addCitation(sent_id=sentence_id)
 
     if ref.has_key("citation_id"):
         res["original_id"]=ref["citation_id"]
@@ -340,7 +340,6 @@ def loadCitation(ref, sentence_id, newDocument, section):
 
     res["authors"]=authors
     res["date"]=date
-    res["parent_s"]=sentence_id
     return res
 
 def loadRefauthor(refauthor, sentence_id, newDocument, section):

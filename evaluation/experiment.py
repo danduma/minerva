@@ -152,7 +152,7 @@ class Experiment:
 
         # PREBUILD BOWS
         if self.exp["full_corpus"]:
-            prebuild_list=cp.Corpus.listAllPapers()
+            prebuild_list=cp.Corpus.listPapers()
         else:
             prebuild_list=cp.Corpus.listIncollectionReferencesOfList(cp.Corpus.TEST_FILES)
             prebuild_list.extend(cp.Corpus.TEST_FILES)

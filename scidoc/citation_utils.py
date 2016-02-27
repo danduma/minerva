@@ -21,7 +21,7 @@ rxsingleyear=re.compile(r"in\spress|to\sappear|forthcoming|submitted|\d{4}\w{0,1
 rxwtwoauthors=re.compile(r"(\w+)\sand\s(\w+)", re.IGNORECASE | re.DOTALL)
 rxetal=re.compile(r"(\w+)\set\sal", re.IGNORECASE | re.DOTALL)
 
-rxseparatebrackets=re.compile(r"(?:(?:\[([\d\-\s,]+)\][ ,]+\[([\d\-,])+\]))", re.IGNORECASE)
+rxseparatebrackets=re.compile(r"(?:(?:\[.*?(\d+)\][\s,]+\[(\d+)[\-\,\s]?))", re.IGNORECASE)
 
 apa_pre_family_name="de |von |van "
 apa_author = "((?:"+apa_pre_family_name+")?[A-Z][A-Za-z'`-]+)"
@@ -280,7 +280,7 @@ def matchCitationWithReference(citation_data, references):
                     diff=abs(y1-y2)
                 except:
                     diff=99
-                    lev_diff=levenshtein(str(year).lower(),str(p[0]["year"]).lower())
+                    lev_diff=levenshtein(str(year).lower(),str(p[0].get("year","9999")).lower())
             if diff <= 2 or lev_diff <=1:
                 scores.append(p)
 
@@ -290,7 +290,7 @@ def matchCitationWithReference(citation_data, references):
 ##            print("with confidence %s" % scores[0][1])
             return scores[0][0]
 
-    print("Couldn't match citation data with any reference:", citation_data)
+##    print("Couldn't match citation data with any reference:", citation_data)
 
     return None
 
@@ -516,7 +516,7 @@ def annotateCitationsAFI(text):
     return text,extracted_citations
 
 
-DOCTEST=False
+DOCTEST=True
 
 if DOCTEST:
     import doctest

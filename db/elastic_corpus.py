@@ -7,9 +7,11 @@
 
 from __future__ import print_function
 
-import os, sys, json, glob, uuid, unicodedata, datetime, re
+import os, sys, json, glob, uuid, unicodedata, datetime, re, copy
 
 from elasticsearch import Elasticsearch
+from elasticsearch.exceptions import ConnectionTimeout, ConnectionError
+import requests
 
 from minerva.proc.general_utils import AttributeDict, ensureTrailingBackslash, ensureDirExists
 from minerva.scidoc.scidoc import SciDoc
@@ -32,7 +34,8 @@ ES_TYPE_VENUE="venue"
 ES_TYPE_MISSING_REFERENCES="missing_reference"
 
 index_equivalence={
-    "papers":{"index":ES_INDEX_PAPERS,"type":ES_TYPE_PAPER, "source":"metadata"},
+    "papers":{"index":ES_INDEX_PAPERS,"type":ES_TYPE_PAPER, "source":"metadata",
+        "non_nested_fields":["norm_title", "author_ids", "has_scidoc"]},
     "scidocs":{"index":ES_INDEX_SCIDOCS,"type":ES_TYPE_SCIDOC, "source":"scidoc"},
     "authors":{"index":ES_INDEX_AUTHORS,"type":ES_TYPE_AUTHOR, "source":"author"},
     "cache":{"index":ES_INDEX_CACHE,"type":ES_TYPE_CACHE, "source":"data"},
@@ -84,14 +87,22 @@ class ElasticCorpus(BaseCorpus):
             Ensures that the directory structure is in place and creates
             the SQLite database and tables
         """
-        settings={
-            "number_of_shards" : 3,
-            "number_of_replicas" : 3
-        }
 
+        def createTable(name, options, properties):
+            """
+            """
+            if not self.es.indices.exists(index=index_equivalence[name]["index"]):
+                self.es.indices.create(
+                    index=index_equivalence[name]["index"],
+                    body={"settings":settings,"mappings":{index_equivalence[name]["type"]:{"properties":properties}}})
+
+        settings={
+            "number_of_shards" : 2,
+            "number_of_replicas" : 0
+        }
         properties={
             "guid": {"type":"string", "index":"not_analyzed"},
-            "metadata": {"type":"object"},
+            "metadata": {"type":"nested"},
             "norm_title": {"type":"string", "index":"not_analyzed"},
             "author_ids":{"type":"string", "index":"not_analyzed", "store":True},
             "num_in_collection_references": {"type":"integer"},
@@ -111,40 +122,29 @@ class ElasticCorpus(BaseCorpus):
 ##            "in_collection_references": {"type":"string", "index":"not_analyzed", "store":True},
 ##            "inlinks": {"type":"string", "index":"not_analyzed", "store":True},
             }
+        createTable("papers", settings, properties)
 
-        if not self.es.indices.exists(index=ES_INDEX_PAPERS):
-            self.es.indices.create(
-                index=ES_INDEX_PAPERS,
-                body={"settings":settings,"mappings":{ES_TYPE_PAPER:{"properties":properties}}})
 
-        if not self.es.indices.exists(index=ES_INDEX_SCIDOCS):
-            properties={
-                "scidoc": {"type":"string", "index": "no", "store":True},
-                "time_created": {"type":"date"},
-                "time_modified": {"type":"date"},
-                }
-            self.es.indices.create(
-                index=ES_INDEX_SCIDOCS,
-                body={"settings":settings,"mappings":{ES_TYPE_SCIDOC:{"properties":properties}}})
+        properties={
+            "scidoc": {"type":"string", "index": "no", "store":True},
+            "time_created": {"type":"date"},
+            "time_modified": {"type":"date"},
+            }
+        createTable("scidocs", settings, properties)
 
         settings={
             "number_of_shards" : 1,
             "number_of_replicas" : 1
         }
+        properties={
+            "data": {"type":"string", "index": "no", "store":True},
+            "time_created": {"type":"date"},
+            "time_modified": {"type":"date"},
+            }
+        createTable("cache", settings, properties)
 
-        if not self.es.indices.exists(index=ES_INDEX_CACHE):
-            properties={
-                "data": {"type":"string", "index": "no", "store":True},
-                "time_created": {"type":"date"},
-                "time_modified": {"type":"date"},
-                }
-            self.es.indices.create(
-                index=ES_INDEX_CACHE,
-                body={"settings":settings,"mappings":{ES_TYPE_CACHE:{"properties":properties}}})
-
-        if not self.es.indices.exists(index=ES_INDEX_LINKS):
-            properties={
-                "link":{"type":"nested"},
+        properties={
+            "link":{"type":"nested"},
 ##                "guid_from": {"type":"string", "index":"not_analyzed", "store":True},
 ##                "guid_to": {"type":"string", "index":"not_analyzed", "store":True},
 ##                "authors_from": {"type":"string", "index":"not_analyzed", "store":True},
@@ -153,16 +153,13 @@ class ElasticCorpus(BaseCorpus):
 ##                "year_from": {"type":"integer", "index":"not_analyzed", "store":True},
 ##                "year_to": {"type":"integer", "index":"not_analyzed", "store":True},
 ##                "numcitations": {"type":"integer", "index":"not_analyzed", "store":True},
-                "time_created": {"type":"date"}}
+            "time_created": {"type":"date"}}
 
-            self.es.indices.create(
-                index=ES_INDEX_LINKS,
-                body={"settings":settings,"mappings":{ES_TYPE_LINK:{"properties":properties}}})
+        createTable("links", settings, properties)
 
-        if not self.es.indices.exists(index=ES_INDEX_AUTHORS):
-            properties={
+        properties={
 ##                "author_id": {"type":"string", "index":"not_analyzed", "store":True},
-                "author": {"type":"nested"},
+            "author": {"type":"nested"},
 ##                "given": {"type":"string", "index":"analyzed", "store":True},
 ##                "middle": {"type":"string", "index":"analyzed", "store":True},
 ##                "family": {"type":"string", "index":"analyzed", "store":True},
@@ -170,23 +167,23 @@ class ElasticCorpus(BaseCorpus):
 ##                "papers_first_author": {"type":"string", "index":"not_analyzed", "store":True},
 ##                "papers_last_author": {"type":"string", "index":"not_analyzed", "store":True},
 ##                "affiliations": {"type":"nested", "index":"not_analyzed", "store":True},
-                "time_created": {"type":"date"}
-                }
+            "time_created": {"type":"date"}
+            }
+        createTable("authors", settings, properties)
 
-            self.es.indices.create(
-                index=ES_INDEX_AUTHORS,
-                body={"settings":settings,"properties":properties})
+        properties={
+            "venue": {"type":"nested"},
+            "time_created": {"type":"date"},
+            "norm_title": {"type":"string", "index":"not_analyzed"},
+            }
+        createTable("venues", settings, properties)
 
-
-        if not self.es.indices.exists(index=ES_INDEX_VENUES):
-            properties={
-                "venue": {"type":"nested"},
-                "time_created": {"type":"date"}
-                }
-
-            self.es.indices.create(
-                index=ES_INDEX_VENUES,
-                body={"settings":settings,"properties":properties})
+        properties={
+            "missing": {"type":"nested"},
+            "time_created": {"type":"date"},
+            "norm_title": {"type":"string", "index":"not_analyzed"},
+            }
+        createTable("missing_references", settings, properties)
 
 
     def connectedToDB(self):
@@ -213,7 +210,34 @@ class ElasticCorpus(BaseCorpus):
         else:
             return "idx_"+guid+"_"+index_filename
 
-    def getRecord(self, id, table="papers"):
+    def getRecord(self, id, table="papers", source=None):
+        """
+            Abstracts over getting data from a row in the db. Returns all the
+            fields of the record for one type of table.
+
+            :param id: id of the record
+            :param table: table alias, e.g. ["papers", "scidocs"]
+        """
+        self.checkConnectedToDB()
+
+        if table not in index_equivalence:
+            raise ValueError("Unknown record type")
+
+        try:
+            res=self.es.get(
+                index=index_equivalence[table]["index"],
+                doc_type=index_equivalence[table]["type"],
+                id=id,
+                _source=source
+                )
+        except:
+            raise ValueError
+
+        if not res:
+            raise IndexError("Can't find record with id %s" % id)
+        return res["_source"]
+
+    def getRecordField(self, id, table="papers"):
         """
             Abstracts over getting data from a row in the db. Returns one field
             for one type of table.
@@ -221,21 +245,37 @@ class ElasticCorpus(BaseCorpus):
             All other "getter" functions like getMetadataByGUID and loadSciDoc
             are aliases for this function
         """
+        return self.getRecord(id, table,source=index_equivalence[table]["source"])[index_equivalence[table]["source"]]
+
+    def recordExists(self, id, table="papers"):
+        """
+            Returns True if the specified record exists in the given table, False
+            otherwise.
+        """
         self.checkConnectedToDB()
 
-        if record_type not in index_equivalence:
-            raise ValueError("Unknown record type")
-
-        res=self.es.get(
+        return self.es.exists(
+            id=id,
             index=index_equivalence[table]["index"],
             doc_type=index_equivalence[table]["type"],
-            id=id,
-            _source=index_equivalence[table]["source"]
             )
 
-        if not res:
-            raise IndexError("Can't find record with id %s" % id)
-        return res["_source"]["data"]
+    def SQLQuery(self, query):
+        """
+            Runs a SQL Query, returning a dict per result with the fields required.
+
+            :param query: SQL query
+            :type query: string
+        """
+        uri="http://%s:%s/_sql?sql=%s" % (self.endpoint["host"],self.endpoint["port"],query)
+        response = requests.get(uri)
+        hits = json.loads(response.text)
+
+        if "error" in hits:
+            raise ConnectionError("Error in query: " + str(hits["error"]["root_cause"]))
+        hits=hits["hits"]["hits"]
+
+        return [hits[r]["_source"] for r in hits]
 
     def cachedJsonExists(self, type, guid, params=None):
         """
@@ -265,7 +305,7 @@ class ElasticCorpus(BaseCorpus):
             id=path,
             op_type="index",
             body={
-                "data": data,
+                "data": json.dumps(data),
                 "time_created": timestamp,
                 "time_modified": timestamp,
                 }
@@ -277,13 +317,17 @@ class ElasticCorpus(BaseCorpus):
 
             :param path: unique ID of resource to load
         """
-        return self.getRecord(path,"cache")
+        return json.loads(self.getRecordField(path,"cache"))
 
     def loadSciDoc(self,guid):
         """
             If a SciDocJSON file exists for guid, it returns it, otherwise None
         """
-        return self.getRecord(guid,"papers")
+        try:
+            data=json.loads(self.getRecordField(guid,"scidocs"))
+            return SciDoc(data)
+        except:
+            raise ValueError
 
     def saveSciDoc(self,doc):
         """
@@ -303,7 +347,7 @@ class ElasticCorpus(BaseCorpus):
                     id=doc["metadata"]["guid"],
                     op_type="index",
                     body={
-                        "scidoc": doc.data,
+                        "scidoc": json.dumps(doc.data),
                         "time_created": timestamp,
                         "time_modified": timestamp,
                         }
@@ -323,43 +367,49 @@ class ElasticCorpus(BaseCorpus):
         """
             Returns a paper's metadata by GUID
         """
-        return self.getRecord(guid, "papers")
+        return self.getRecordField(guid, "papers")
 
     def getMetadataByField(self,field,value):
         """
             Returns a paper's metadata by any other field
         """
-        assert self.connectedToDB(), "Not connected to DB!"
+        self.checkConnectedToDB()
 
         query=self.filterQuery("%s:\"%s\"" % (field,value))
 
         res=self.es.search(
             index=ES_INDEX_PAPERS,
             doc_type=ES_TYPE_PAPER,
+            _source="metadata",
             q=query)
 
         hits=res["hits"]["hits"]
         if len(hits) == 0:
             return None
 
-        return hits[0]["_source"]
+        return hits[0]["_source"]["metadata"]
 
-    def filterQuery(self, query):
+    def filterQuery(self, query, table="papers"):
         """
             Adds a global filter to the query so it only matches the selected
             collection, date, etc.
 
             :param query: string
         """
-##        query=re.sub( query.replace(">=",":")
+        if table !="papers":
+            raise NotImplementedError
+
         return self.query_filter+" "+query
 
 
-    def listFieldByField(self,field1,field2,value,table="papers"):
+    def listFieldByField(self,field1,field2,value,table="papers",max_results=100):
         """
             Returns a list: for each paper, field1 if field2==value
         """
         self.checkConnectedToDB()
+
+        if table not in index_equivalence:
+            raise ValueError("Unknown record type")
 
         query=self.filterQuery("%s:\"%s\"" % (field2,value))
 
@@ -368,17 +418,49 @@ class ElasticCorpus(BaseCorpus):
                 index=index_equivalence[table]["index"],
                 doc_type=index_equivalence[table]["type"],
                 _source=field1,
+
         )
 
         return [r["_source"][field1] for r in hits]
 
-    def listPapers(self,conditions,field="guid"):
+
+    def isNestedQuery(self, query_string):
+        """
+            Returns True if a nested field is found in the query string, e.g.
+            author.name
+
+            :param query_string: query string
+            :return: boolean
+        """
+        query_without_quotes=re.sub(r"[^\\]\".*?[^\\]\"","",query_string)
+        nested_query=re.search(r"[a-zA-Z]\.[a-zA-Z]",query_without_quotes) is not None
+        return nested_query
+
+    def abstractNestedResults(self, query_string, hits, field=None):
+        """
+            Selects results from elasticsearch API
+        """
+        if self.isNestedQuery(field):
+            if field:
+                return [r["_source"]["metadata"][field] for r in hits]
+            else:
+                return [r["_source"] for r in hits]
+        else:
+            if field:
+                return [r["_source"][field] for r in hits]
+            else:
+                return [r["_source"] for r in hits]
+
+    def listPapers(self,conditions=None,field="guid"):
         """
             Return a list of GUIDs in papers table where [conditions]
         """
         self.checkConnectedToDB()
 
-        query=self.filterQuery("guid:* AND (%s)" % conditions)
+        if conditions:
+            query=self.filterQuery(conditions)
+        else:
+            query=self.filterQuery(field+":*")
 
         hits=self.unlimitedQuery(
                 q=query,
@@ -387,31 +469,7 @@ class ElasticCorpus(BaseCorpus):
                 _source=field,
         )
 
-        return [r["_source"][field] for r in hits]
-
-    def listAllPapers(self,field="guid"):
-        """
-            Return a list of ALL GUIDs of all papers in papers table
-
-            :param field: which field to return. Default: `guid`
-            :type field:string
-            :return: list
-        """
-        assert self.connectedToDB(), "Not connected to DB!"
-
-        hits=self.unlimitedQuery(
-                    index=ES_INDEX_PAPERS,
-            doc_type=ES_TYPE_PAPER,
-            _source=field,
-            q="guid:*")
-
-##        res=self.es.search(
-##            index=ES_INDEX_PAPERS,
-##            doc_type=ES_TYPE_PAPER,
-##            _source=field,
-##            q="guid:*")
-##        hits=res["hits"]["hits"]
-        return [r["_source"][field] for r in hits]
+        return self.abstractNestedResults(query, hits, field)
 
     def runSingleValueQuery(self,query):
         raise NotImplementedError
@@ -425,6 +483,39 @@ class ElasticCorpus(BaseCorpus):
         author["author_id"]=self.generateAuthorID
         self.updateAuthor(author,"create")
 
+    def mergeAuthorDetails(self, author_record, new_author_data):
+        """
+        """
+        def findAffiliation(aff_list, new_aff):
+            """
+            """
+            if new_aff.get("name","") in ["",None]:
+                return None
+
+            for aff in aff_list:
+                if aff.get("name","")==new_aff["name"]:
+                    return aff
+
+        def mergeList(new_list, record_list):
+            """
+                Adds the missing papers from the new_list to to the record_list
+            """
+            for paper in new_list:
+                if paper not in record_list:
+                    record_list.append(paper)
+
+        #TODO Fuzzywuzzy this!
+        for aff in new_author_data:
+            match=findAffiliation(author_record["affiliation"],aff)
+            if match:
+                mergeList(aff.get("papers",[]), match["papers"])
+            else:
+                author_record["affiliation"].append(aff)
+
+        mergeList(new_author_data["papers"], author_record["papers"])
+        mergeList(new_author_data["papers_first_author"], author_record["papers_first_author"])
+        mergeList(new_author_data["papers_last_author"], author_record["papers_last_author"])
+
     def updateAuthorsFromPaper(self, metadata):
         """
             Make sure authors are in database
@@ -433,11 +524,17 @@ class ElasticCorpus(BaseCorpus):
         """
         self.checkConnectedToDB()
 
-        for index, author in enumerate(metadata["authors"]):
-            author_record=self.matcher.matchAuthor(author)
+        for index, new_author in enumerate(metadata["authors"]):
+            creating_new_record=False
+            author_record=self.matcher.matchAuthor(new_author)
             if not author_record:
-                author_record=copy.deepcopy(author)
+                creating_new_record=True
+                author_record=copy.deepcopy(new_author)
+                author_record["author_id"]=self.generateAuthorID()
                 author_record["papers"]=[]
+                author_record["papers_first_author"]=[]
+                author_record["papers_last_author"]=[]
+                author_record["num_papers"]=0
 
             if metadata["guid"] not in author_record["papers"]:
                 author_record["papers"].append(metadata["guid"])
@@ -445,8 +542,25 @@ class ElasticCorpus(BaseCorpus):
                     author_record["papers_first_author"].append(metadata["guid"])
                 if index==len(metadata["authors"]):
                     author_record["papers_last_author"].append(metadata["guid"])
+            author_record["num_papers"]=len(author_record["papers"])
 
-            updateAuthor(author)
+            if not creating_new_record:
+                self.mergeAuthorDetails(author_record, new_author)
+
+            self.updateAuthor(author_record, op_type="create" if creating_new_record else "index")
+
+    def updateVenuesFromPaper(self, metadata):
+        """
+            Progressive update of venues
+        """
+        raise NotImplementedError
+##        res=self.es.search(
+##            index=ES_INDEX_VENUES,
+##            doc_type=ES_TYPE_VENUE,
+##            _source=field,
+##            q="guid:*")
+##
+##        return [r["_source"] for r in hits]
 
     def updateAuthor(self, author, op_type="index"):
         """
@@ -482,7 +596,8 @@ class ElasticCorpus(BaseCorpus):
         """
         op_type="create" if check_existing else "index"
         self.updatePaper(metadata, op_type, has_scidoc)
-        self.updateAuthorsFromPaper(metadata)
+        if self.AUTO_ADD_AUTHORS:
+            self.updateAuthorsFromPaper(metadata)
 
     def updatePaper(self, metadata, op_type="index", has_scidoc=True):
         """
@@ -595,18 +710,38 @@ class ElasticCorpus(BaseCorpus):
             :param query: a query to select documents to delete
             :type query: string
         """
+        self.checkConnectedToDB()
+
+        if not self.es.indices.exists(index=index_equivalence[record_type]["index"]):
+            return
+
         es_table=index_equivalence[record_type]["index"]
         es_type=index_equivalence[record_type]["type"]
 
         to_delete=self.unlimitedQuery(
             index=es_table,
             doc_type=es_type,
-
             q=query)
 
+        self.bulkDelete([item["_id"] for item in to_delete])
+
+    def bulkDelete(self, id_list, table="papers"):
+        """
+            Deletes all entries in id_list from the given table that match on id.
+
+
+        """
+        self.checkConnectedToDB()
+
+        if not self.es.indices.exists(index=index_equivalence[table]["index"]):
+            return
+
+        es_table=index_equivalence[table]["index"]
+        es_type=index_equivalence[table]["type"]
+
         bulk_commands=[]
-        for item in to_delete:
-            bulk_commands.append( "{ \"delete\" : {  \"_id\" : \"%s\" } }" % item["_id"] )
+        for item in id_list:
+            bulk_commands.append( "{ \"delete\" : {  \"_id\" : \"%s\" } }" % item )
 
         if len(bulk_commands) > 0:
             self.es.bulk(
@@ -615,7 +750,7 @@ class ElasticCorpus(BaseCorpus):
                 doc_type=es_type,
             )
 
-    def unlimitedQuery(self, *args, **kwargs):
+    def unlimitedQuery(self, max_results=sys.maxint, *args, **kwargs):
         """
             Wraps elasticsearch querying to enable auto scroll for retrieving
             large amounts of results
@@ -633,13 +768,13 @@ class ElasticCorpus(BaseCorpus):
             **kwargs
             )
 
-        results = []
+        results = res['hits']['hits']
         scroll_size = res['hits']['total']
-        while (scroll_size > 0):
+        while (scroll_size > 0) and len(results) < max_results:
             try:
                 scroll_id = res['_scroll_id']
                 rs = self.es.scroll(scroll_id=scroll_id, scroll=scroll_time)
-                results += rs['hits']['hits']
+                results.extend(rs['hits']['hits'])
                 scroll_size = len(rs['hits']['hits'])
             except:
                 break
