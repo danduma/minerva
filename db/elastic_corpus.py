@@ -360,7 +360,7 @@ class ElasticCorpus(BaseCorpus):
         """
             Connects to database
         """
-        self.es = Elasticsearch([self.endpoint])
+        self.es = Elasticsearch([self.endpoint], timeout=60)
         self.es.retry_on_timeout=True
 
     def getMetadataByGUID(self,guid):
@@ -805,9 +805,9 @@ class ElasticCorpus(BaseCorpus):
 
         self.query_filter=" AND ".join(query_items)+" AND "
 
-##ec=ElasticCorpus()
-##ec.connectCorpus("",endpoint={"host":"129.215.91.3", "port":9200})
-##print(ec.getMetadataByGUID("df8c8824-1784-46f1-b621-cc6e5aca0dad"))
+ec=ElasticCorpus()
+ec.connectCorpus("",endpoint={"host":"129.215.91.3", "port":9200})
+print(ec.getMetadataByGUID("df8c8824-1784-46f1-b621-cc6e5aca0dad"))
 
 DOCTEST = False
 
