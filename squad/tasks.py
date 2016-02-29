@@ -37,7 +37,7 @@ def checkCorpusConnection(local_corpus_dir="",
         cp.useElasticCorpus()
         cp.Corpus.connectCorpus(local_corpus_dir, corpus_endpoint)
 
-@app.task
+@app.task(ignore_result=True)
 def t_convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, extra_arg1, extra_arg2):
     """
         Reads the input XML and saves a SciDoc
@@ -65,7 +65,7 @@ def t_convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, e
             xml_string=r.content)
 
 
-@app.task
+@app.task(ignore_result=True)
 def t_updatePaperInCollectionReferences(doc_id):
     """
 
