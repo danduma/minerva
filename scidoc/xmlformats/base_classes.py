@@ -35,7 +35,7 @@ class BaseSciDocXMLReader(object):
             :param identifier: an identifier for this document, e.g. file name
                         If an actual full path, the path will be removed from it
                         when stored
-            :return: SciDoc instance
+            :returns: SciDoc instance
             :rtype: SciDoc
         """
         raise NotImplementedError

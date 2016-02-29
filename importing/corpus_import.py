@@ -133,7 +133,7 @@ class CorpusImporter(object):
                 ALL_GUIDS: list of guids
         """
         print("Finding resolvable references, populating database...")
-        progress=ProgressIndicator(True, len(ALL_GUIDS))
+        progress=ProgressIndicator(True, len(ALL_GUIDS), dot_every_xitems=100)
         for doc_id in ALL_GUIDS[FILES_TO_PROCESS_FROM:FILES_TO_PROCESS_TO]:
             doc_meta=updatePaperInCollectionReferences(doc_id, import_options)
             filename=doc_meta["filename"] if doc_meta else "<ERROR>"
@@ -225,6 +225,7 @@ class CorpusImporter(object):
         if import_options.get("convert_and_import_docs",True):
             self.convertAllFilesAndAddToDB(ALL_INPUT_FILES, inputdir)
 
+        print("Updating in-collection links...")
         ALL_GUIDS=cp.Corpus.listPapers("metadata.collection_id:\"%s\"" % self.collection_id)
         self.updateInCollectionReferences(ALL_GUIDS, import_options)
         self.end_time=datetime.datetime.now()

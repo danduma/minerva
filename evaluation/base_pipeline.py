@@ -32,7 +32,7 @@ def getDictOfTestingMethods(methods):
     """
         Make a simple dictionary of {method_10:{method details}}
 
-        new: prepare for using a single Lucene index with fields for the parameters
+        new: prepare for using a single index with fields for the parameters
     """
     res=OrderedDict()
     for method in methods:
@@ -91,6 +91,7 @@ class BasePipeline(object):
 
     def loadModel(self, guid):
         """
+            Loads all the retrieval models for a single file
         """
         for model in self.files_dict[guid]["tfidf_models"]:
             # create a Lucene search instance for each method
@@ -253,10 +254,20 @@ class BasePipeline(object):
         total_overlap_points+=1
 
 
+    def saveResultsAndCleanUp(self):
+        """
+            This executes after the whole pipeline is done. This is where we
+            save all data that needs to be saved, report statistics, etc.
+        """
+        self.logger.writeDataToCSV()
+        self.logger.showFinalSummary()
+
     def runPipeline(self, exp):
         """
-            Using Lucene, run Citation Resolution
-            Load everything from precomputed queries
+            Run the whole experiment pipeline, loading everything from
+            precomputed json
+
+            :param exp: experiment dict
         """
         self.exp=exp
 
@@ -284,6 +295,7 @@ class BasePipeline(object):
 
             all_doc_methods=deepcopy(self.main_all_doc_methods)
 
+            # If we're running per-file resolution and we are now on a different file, load its model
             if not exp["full_corpus"] and guid != previous_guid:
                 previous_guid=guid
                 self.loadModel(guid)
@@ -292,12 +304,15 @@ class BasePipeline(object):
             for method in self.main_all_doc_methods:
                 all_doc_methods[method]["runtime_parameters"]={x:1 for x in self.main_all_doc_methods[method]["runtime_parameters"]}
 
+            self.current_all_doc_methods=all_doc_methods
+
             # for every method used for extracting BOWs
             for doc_method in all_doc_methods:
-                # ACTUAL RETRIEVAL HAPPENING - run query
+                # Log everything if the logger is enabled
                 self.logger.logReport("Citation: "+precomputed_query["citation_id"]+"\n Query method:"+precomputed_query["query_method"]+" \nDoc method: "+doc_method +"\n")
                 self.logger.logReport(precomputed_query["query_text"]+"\n")
 
+                # ACTUAL RETRIEVAL HAPPENING - run query
                 retrieved=self.tfidfmodels[doc_method].runQuery(
                     precomputed_query["structured_query"],
                     all_doc_methods[doc_method]["runtime_parameters"],
@@ -317,9 +332,7 @@ class BasePipeline(object):
             self.logger.showProgressReport(guid) # prints out info on how it's going
 ##            self.computeStatistics()
 
-        self.logger.writeDataToCSV()
-        self.logger.showFinalSummary()
-
+        self.saveResultsAndCleanUp()
 
 class CompareExplainPipeline(BasePipeline):
     """
@@ -348,98 +361,6 @@ class CompareExplainPipeline(BasePipeline):
             logger=None,
             use_default_similarity=exp["use_default_similarity"])
         self.tfidfmodels[model["method"]+"_EXPLAIN"].useExplainQuery=True
-
-class PrecomputedPipeline(BasePipeline):
-    """
-        class comment
-    """
-
-    def __init__(self):
-        pass
-
-    def runPrecomputedQuery(self, retrieval_result, parameters):
-        """
-            This takes a query that has already had the results added
-        """
-        scores=[]
-        for unique_result in retrieval_result:
-            formula=storedFormula(unique_result["formula"])
-            score=formula.computeScore(parameters)
-            scores.append((score,{"guid":unique_result["guid"]}))
-
-        scores.sort(key=lambda x:x[0],reverse=True)
-        return scores
-
-
-    def measurePrecomputedResolution(retrieval_results,method,parameters, citation_az="*"):
-        """
-            This is kind of like measureCitationResolution:
-            it takes a list of precomputed retrieval_results, then applies the new
-            parameters to them. This is how we recompute what Lucene gives us,
-            avoiding having to call Lucene again.
-
-            All we need to do is adjust the weights on the already available
-            explanation formulas.
-        """
-        logger=ResultsLogger(False, dump_straight_to_disk=False) # init all the logging/counting
-        logger.startCounting() # for timing the process, start now
-
-        logger.setNumItems(len(retrieval_results),print_out=False)
-
-        # for each query-result: (results are packed inside each query for each method)
-        for result in retrieval_results:
-            # select only the method we're testing for
-            res=result["results"]
-            retrieved=self.runPrecomputedQuery(res,parameters)
-
-            result_dict={"file_guid":result["file_guid"],
-            "citation_id":result["citation_id"],
-            "doc_position":result["doc_position"],
-            "query_method":result["query_method"],
-            "doc_method":method,
-            "az":result["az"],
-            "cfc":result["cfc"],
-            "match_guid":result["match_guid"]}
-
-            if not retrieved or len(retrieved)==0:    # the query was empty or something
-                score=0
-                precision_score=0
-    ##                        print "Error: ", doc_method , qmethod,tfidfmodels[method].indexDir
-    ##                        logger.addResolutionResult(guid,m,doc_position,qmethod,doc_method ,0,0,0)
-                result_dict["mrr_score"]=0
-                result_dict["precision_score"]=0
-                result_dict["ndcg_score"]=0
-                result_dict["rank"]=0
-                result_dict["first_result"]=""
-
-                logger.addResolutionResultDict(result_dict)
-            else:
-                result=logger.measureScoreAndLog(retrieved, result["citation_multi"], result_dict)
-
-        logger.computeAverageScores()
-        results=[]
-        for query_method in logger.averages:
-            for doc_method in logger.averages[query_method]:
-    ##            weights=all_doc_methods[doc_method]["runtime_parameters"]
-                weights=parameters
-                data_line={"query_method":query_method,"doc_method":doc_method,"citation_az":citation_az}
-
-                for metric in logger.averages[query_method][doc_method]:
-                    data_line["avg_"+metric]=logger.averages[query_method][doc_method][metric]
-                data_line["precision_total"]=logger.scores["precision"][query_method][doc_method]
-
-                signature=""
-                for w in weights:
-                    data_line[w]=weights[w]
-                    signature+=str(w)
-
-    ##            data_line["weight_signature"]=signature
-                results.append(data_line)
-
-    ##    logger.writeDataToCSV(cp.cp.Corpus.dir_output+"testing_test_precision.csv")
-
-        return results
-
 
 
 def main():

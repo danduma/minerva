@@ -45,7 +45,7 @@ if __name__ == "__main__":
         if opt == ("-d", "--dir"):
             BASE_SERVING_DIR = arg
         elif opt in ("-p", "--port"):
-            port = arg
+            port = int(arg)
 
     print("Starting serving files from %s on port %s" % (BASE_SERVING_DIR,port))
-    app.run(port=port)
+    app.run(port=port, host= '0.0.0.0')

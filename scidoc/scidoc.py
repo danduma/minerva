@@ -144,9 +144,12 @@ class SciDoc(object):
             self.citation_by_id[cit["id"]]=cit
             # update citations link for the reference
             if cit["ref_id"]:
-                ref_citations=self.reference_by_id[cit["ref_id"]]["citations"]
-                if cit["id"] not in ref_citations:
-                    ref_citations.append(cit["id"])
+                try:
+                    ref_citations=self.reference_by_id[cit["ref_id"]]["citations"]
+                    if cit["id"] not in ref_citations:
+                        ref_citations.append(cit["id"])
+                except KeyError as e:
+                    print("Error:",e.__repr__())
 
     def isSentence(self, element):
         """
@@ -527,7 +530,8 @@ class SciDoc(object):
     def updateAuthorsAffiliations(self):
         """
             It adds the doc's guid to the authors' list of publications per
-            affiliation
+            affiliation. It has to be done in this awkward way or it won't
+            be possible to know which affiliation goes with which paper.
         """
         for author in self.metadata["authors"]:
             for aff in author.get("affiliation",[]):

@@ -14,8 +14,8 @@ import minerva.db.corpora as cp
 
 from prebuild import prebuildBOWsForTests
 
-from minerva.evaluation.query_generation import QueryGenerator
-from minerva.evaluation.base_pipeline import BasePipeline
+from minerva.evaluation.query_generation import QueryGenerator, ExplainQueryGenerator
+from minerva.evaluation.base_pipeline import BasePipeline, PrecomputedPipeline
 from minerva.proc.query_extraction import EXTRACTOR_LIST
 
 from results_analysis import saveGraphForResults, makeAllGraphsForExperiment
@@ -111,7 +111,7 @@ class Experiment:
         options=self.options
 
         if options["run_precompute_retrieval"] or not exists(self.exp["exp_dir"]+"prr_"+self.exp["queries_classification"]+"_"+self.exp["train_weights_for"][0]+".json"):
-            precomputeExplainQueries(self.exp)
+            self.query_generator.precomputeQueries(self.exp)
 
         best_weights={}
         if options.get("override_folds",None):
@@ -190,6 +190,7 @@ class Experiment:
             pipeline=BasePipeline(retrieval_class=self.retrieval_class)
             pipeline.runPipeline(self.exp)
         elif self.exp["type"] == "train_weights":
+            pipeline=BasePipeline(retrieval_class=self.retrieval_class)
             self.trainWeights()
 
 

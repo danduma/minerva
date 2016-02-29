@@ -285,7 +285,7 @@ class BaseCorpus(object):
 
             :param doc: SciDoc
             :type doc: SciDoc
-            :return: tuple of (resolvable_citations, outlinks, missing_references)
+            :returns: tuple of (resolvable_citations, outlinks, missing_references)
             :param year: Maximum year to select from
         """
         res=[]

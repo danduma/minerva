@@ -9,11 +9,17 @@ from __future__ import absolute_import
 
 from celery import Celery
 
+# celery worker --app=squad.celery_app:app
+
 SERVER_IP="129.215.91.3"
+##SERVER_IP="localhost"
 
 MINERVA_FILE_SERVER_URL="http://%s:5599" % SERVER_IP
-MINERVA_AMQP_SERVER_URL="amqp://%s:5672" % SERVER_IP
-MINERVA_ELASTICSEARCH_SERVER_URL="http://%s:9200" % SERVER_IP
+MINERVA_AMQP_SERVER_URL="amqp://minerva:minerva@%s:5672//" % SERVER_IP
+MINERVA_ELASTICSEARCH_SERVER_IP=SERVER_IP
+MINERVA_ELASTICSEARCH_SERVER_PORT=9200
+#MINERVA_RABBITMQ_ADMIN="http://%s:15672" % SERVER_IP
+#MINERVA_FLOWER_ADMIN="http://%s:5555" % SERVER_IP
 
 app = Celery('squad',
              broker=MINERVA_AMQP_SERVER_URL,

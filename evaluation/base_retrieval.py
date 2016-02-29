@@ -66,6 +66,21 @@ class BaseRetrieval(object):
         return lucene_query
 
     def runQuery(self, structured_query, max_results=MAX_RESULTS_RECALL):
+        """
+        """
+        raise NotImplementedError
+
+    def formulaFromExplanation(self, query, doc_id):
+        """
+            Runs .explain() for one query/doc pair, generates and returns a \
+            StoredFormula instance from it
+
+            :param query: depends on the descendant classes. Whatever can be run
+                directly. For direct Lucene, that will be a string in the
+                Lucene query language, for Elastic, that will be a DSL query
+            :param doc_id: id of document to run .explain() for
+            :returns:
+        """
         raise NotImplementedError
 
 

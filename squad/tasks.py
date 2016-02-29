@@ -18,7 +18,6 @@ import requests
 
 import minerva.db.corpora as cp
 from minerva.db.elastic_corpus import ElasticCorpus
-
 from minerva.importing.importing_functions import convertXMLAndAddToCorpus
 
 import celery_app
@@ -27,7 +26,11 @@ from celery.utils.log import get_task_logger
 
 logger = get_task_logger(__name__)
 
-def checkCorpusConnection(local_corpus_dir="", corpus_endpoint={"host":"localhost", "port":9200}):
+RUN_LOCALLY=False
+
+def checkCorpusConnection(local_corpus_dir="",
+    corpus_endpoint={"host":celery_app.MINERVA_ELASTICSEARCH_SERVER_IP,
+    "port":celery_app.MINERVA_ELASTICSEARCH_SERVER_PORT}):
     """
     """
     if not isinstance(cp.Corpus, ElasticCorpus):
@@ -39,20 +42,27 @@ def t_convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, e
     """
         Reads the input XML and saves a SciDoc
     """
-    r=requests.get(celery_app.MINERVA_FILE_SERVER_URL+"/file/"+file_path)
-    if not r.ok:
-        logger.error("HTTP Error code %d" % r.status_code)
-        if r.status_code==500:
-            raise self.retry(countdown=120)
-        else:
-            raise RuntimeError("HTTP Error code %d: %s" % (r.status_code, r.content))
+    if RUN_LOCALLY:
+        convertXMLAndAddToCorpus(
+            file_path,
+            corpus_id,
+            import_id,
+            collection_id)
+    else:
+        r=requests.get(celery_app.MINERVA_FILE_SERVER_URL+"/file/"+file_path)
+        if not r.ok:
+            logger.error("HTTP Error code %d" % r.status_code)
+            if r.status_code==500:
+                raise self.retry(countdown=120)
+            else:
+                raise RuntimeError("HTTP Error code %d: %s" % (r.status_code, r.content))
 
-    convertXMLAndAddToCorpus(
-        file_path,
-        corpus_id,
-        import_id,
-        collection_id,
-        xml_string=r.content)
+        convertXMLAndAddToCorpus(
+            file_path,
+            corpus_id,
+            import_id,
+            collection_id,
+            xml_string=r.content)
 
 
 @app.task

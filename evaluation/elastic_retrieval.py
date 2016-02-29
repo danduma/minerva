@@ -15,6 +15,7 @@ from elasticsearch.exceptions import ConnectionError
 
 import minerva.db.corpora as cp
 from base_retrieval import BaseRetrieval, SPECIAL_FIELDS_FOR_TESTS, MAX_RESULTS_RECALL
+from stored_formula import StoredFormula
 
 ES_TYPE_DOC="doc"
 
@@ -104,6 +105,25 @@ class ElasticRetrieval(BaseRetrieval):
             result.append((hit["_score"],metadata))
         return result
 
+    def formulaFromExplanation(self, query, doc_id):
+        """
+            Runs .explain() for one query/doc pair, generates and returns a \
+            StoredFormula instance from it
+
+            :param query: Elastic DSL Query
+            :param doc_id: id of document to run .explain() for
+            :returns:
+        """
+        explanation=self.es.explain(
+            index=self.index_name,
+            doc_type=ES_TYPE_DOC,
+            query=query,
+            id=idoc_idd
+            )
+
+        formula=StoredFormula()
+        formula.fromElasticExplanation(explanation)
+        return formula
 
 class ElasticRetrievalBoost(ElasticRetrieval):
     """
@@ -179,107 +199,6 @@ class ElasticRetrievalBoost(ElasticRetrieval):
 
         return result
 
-
-class storedFormula:
-    """
-        Stores a Lucene explanation and makes it easy to set weights on the
-        formula post-hoc and recompute
-    """
-    def __init__(self, formula=None):
-        if formula:
-            self.formula=formula
-        else:
-            self.formula={}
-        self.round_to_decimal_places=4
-
-    def __getitem__(self, key): return self.formula[key]
-
-    def __setitem__(self, key, item): self.formula[key] = item
-
-    def truncate(self, f, n):
-        '''Truncates/pads a float f to n decimal places without rounding'''
-        s = '{}'.format(f)
-        if 'e' in s or 'E' in s:
-            return '{0:.{1}f}'.format(f, n)
-        i, p, d = s.partition('.')
-        return '.'.join([i, (d+'0'*n)[:n]])
-
-    def fromExplanation(self,explanation):
-        """
-            Loads the formula from a Lucene explanation
-        """
-        original_value=explanation.getValue()
-
-        if not explanation.isMatch():
-            self.formula={"coord":0,"matches":[]}
-            return
-
-        details=explanation.getDetails()
-        self.formula["matches"]=[]
-
-        if "weight(" in details[0].getDescription(): # if coord == 1 it is not reported
-            matches=details
-            self.formula["coord"]=1
-        else:
-            matches=details[0].getDetails()
-            self.formula["coord"]=details[1].getValue()
-
-        for match in matches:
-            desc=match.getDescription()
-            field=re.match(r"weight\((.*?)\:",desc,re.IGNORECASE)
-            # using dicts
-##            newMatch={"field":field.group(1)}
-##            elem=match.getDetails()[0]
-##            if "fieldWeight" in elem.getDescription():
-##                # if the queryWeight is 1, .explain() will not report it
-##                newMatch["qw"]=1.0
-##                newMatch["fw"]=elem.getValue()
-##            else:
-##                elements=elem.getDetails()
-##                newMatch["qw"]=elements[0].getValue()
-##                newMatch["fw"]=elements[1].getValue()
-            # using namedtuple
-##            newMatch=namedtuple("retrieval_result",["field","qw","fw"])
-##            newMatch.field=str(field.group(1))
-##            elem=match.getDetails()[0]
-##            if "fieldWeight" in elem.getDescription():
-##                # if the queryWeight is 1, .explain() will not report it
-##                newMatch.qw=1.0
-##                newMatch.fw=elem.getValue()
-##            else:
-##                elements=elem.getDetails()
-##                newMatch.qw=elements[0].getValue()
-##                newMatch.fw=elements[1].getValue()
-
-            # using tuple
-            field_name=str(field.group(1))
-            elem=match.getDetails()[0]
-            if "fieldWeight" in elem.getDescription():
-                # if the queryWeight is 1, .explain() will not report it
-                newMatch=(field_name,1.0,elem.getValue())
-            else:
-                elements=elem.getDetails()
-                newMatch=(field_name,elements[0].getValue(),elements[1].getValue())
-            self.formula["matches"].append(newMatch)
-
-        # just checking
-##        original_value=self.truncate(original_value,self.round_to_decimal_places)
-##        computed_value=self.truncate(self.computeScore(defaultdict(lambda:1),self.round_to_decimal_places))
-##        assert(computed_value == original_value)
-
-    def computeScore(self,parameters):
-        """
-            Simple recomputation of a Lucene explain formula using the values in
-            [parameters] as per-field query weights
-        """
-        match_sum=0.0
-        for match in self.formula["matches"]:
-##            match_sum+=(match["qw"]*parameters[match["field"]])*match["fw"]
-            match_sum+=(match[1]*parameters[match[0]])*match[2]
-        total=match_sum*self.formula["coord"]
-##        total=self.truncate(total, self.round_to_decimal_places) # x digits of precision
-        return total
-
 class precomputedExplainRetrieval(ElasticRetrievalBoost):
     """
         Class that runs the explain pipeline and extracts the data from a lucene
@@ -291,20 +210,16 @@ class precomputedExplainRetrieval(ElasticRetrievalBoost):
     """
 
     def __init__(self, index_path, method, logger=None, use_default_similarity=False):
-        LuceneRetrievalBoost.__init__(self, index_path, method, logger, use_default_similarity)
+        ElasticRetrievalBoost.__init__(self, index_path, method, logger, use_default_similarity)
 
     def precomputeExplain(self, query, parameters, test_guid, max_results=MAX_RESULTS_RECALL):
         """
-            Runs Lucene retrieval, extracts and stores the explanations in a dict:
-                one entry per potential paper, fields to set weights to as sub-entries
+            Runs elastic retrieval, extracts and stores the explanations in a dict:
+            one entry per potential paper, fields to set weights to as sub-entries
         """
 
-        query_text=self.generateLuceneQuery(query, parameters, test_guid)
-        try:
-            query = self.query_parser(LuceneVersion.LUCENE_CURRENT, "text", self.analyzer).parse(query_text)
-        except:
-            print("Lucene exception:",sys.exc_info()[:2])
-            return None
+        # TODO where does the query come from?
+        query=query
 
         results=[]
 
@@ -313,20 +228,24 @@ class precomputedExplainRetrieval(ElasticRetrievalBoost):
         # we first run a search, so that we only need to run the explain pipeline
         # for doc that actually match the query. This is just to speed up
         # whole-collection precomputing of retrieval formulas
-        collector=TopScoreDocCollector.create(max_results, True)
-        self.searcher.search(query, collector)
-        hits = collector.topDocs().scoreDocs
-        doc_list=[hit.doc for hit in hits]
 
-        for index in doc_list:
-            explanation=self.searcher.explain(query,index)
+        hits=self.runQuery(query,parameters,test_guid,max_results)
+        doc_list=[hit["_id"] for hit in hits]
 
-            formula=storedFormula()
-            formula.fromExplanation(explanation)
+        for id in doc_list:
+##            explanation=self.es.explain(
+##                index=self.index_name,
+##                doc_type=ES_TYPE_DOC,
+##                query=query,
+##                id=id
+##                )
+##
+##            formula=StoredFormula()
+##            formula.fromElasticExplanation(explanation)
+            self.formulaFromExplanation()
 
             if formula.formula["coord"] != 0:
-                doc = self.searcher.doc(index)
-                results.append({"index":index,"guid":doc.get("guid"),"formula":formula.formula})
+                results.append({"index":index,"guid":id,"formula":formula.formula})
         return results
 
 

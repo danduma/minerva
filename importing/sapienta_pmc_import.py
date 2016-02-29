@@ -41,17 +41,35 @@ def import_sapienta_pmc_corpus():
 
     options={
 ##        "list_missing_references":True, # default: False
-##        "convert_and_import_docs":False, # default: True
+        "convert_and_import_docs":False, # default: True
     }
 
 ##    corpus_import.FILES_TO_PROCESS_FROM=4500
 ##    corpus_import.FILES_TO_PROCESS_TO=500
 
-    importer.restartCollectionImport(options)
-    cp.Corpus.createAndInitializeDatabase()
+##    importer.restartCollectionImport(options)
 
     importer.use_celery = True
     importer.importCorpus("g:\\nlp\\phd\\pmc_coresc\\inputXML",file_mask="*.xml", import_options=options)
+
+
+def fix_authors_full_corpus():
+    """
+        Fixes authors in each metadata entry having a "papers" key which they
+        shouldn't
+    """
+    from minerva.proc.results_logging import ProgressIndicator
+    cp.useElasticCorpus()
+    cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc")
+    guids=cp.Corpus.listPapers()
+    progress=ProgressIndicator(True, len(guids), True)
+    for guid in guids:
+        doc_meta=cp.Corpus.getMetadataByGUID(guid)
+        new_authors=[]
+        for old_author in doc_meta.authors:
+            del old_author["papers"]
+        cp.Corpus.updatePaper(doc_meta)
+        progress.showProgressReport("Removing redundant author information")
 
 
 def main():

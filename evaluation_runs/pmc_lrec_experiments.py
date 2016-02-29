@@ -19,12 +19,12 @@ from minerva.evaluation.query_generation import QueryGenerator
 
 # BOW files to prebuild for generating document representation.
 prebuild_bows={
-"full_text":{"function":"getDocBOWfull", "parameters":[1]},
+##"full_text":{"function":"getDocBOWfull", "parameters":[1]},
 ##"title_abstract":{"function":"getDocBOWTitleAbstract", "parameters":[1]},
 ##"passage":{"function":"getDocBOWpassagesMulti", "parameters":[150,175,200,250,300,350,400,450]},
 ##"inlink_context":{"function":"generateDocBOWInlinkContext", "parameters":[200] },
 ##"ilc_AZ":{"function":"generateDocBOW_ILC_Annotated", "parameters":["paragraph","1up_1down","1up","1only"] },
-##"az_annotated":{"function":"getDocBOWannotated", "parameters":[1]},
+"az_annotated":{"function":"getDocBOWannotated", "parameters":[1]},
 ##"section_annotated":{"function":"getDocBOWannotatedSections", "parameters":[1]},
 }
 
@@ -35,7 +35,7 @@ prebuild_indexes={
 ##    "passage":{"type":"standard_multi", "bow_name":"passage", "parameters":[150,175,200,250,300,350,400,450]},
 ##    "inlink_context":{"type":"standard_multi", "bow_name":"inlink_context", "parameters":[5, 10, 15, 20, 30, 40, 50]},
 ##    "inlink_context_year":{"type":"standard_multi", "bow_name":"inlink_context", "parameters":[5, 10, 15, 20, 30, 40, 50], "options":{"max_year":True}},
-##    "az_annotated":{"type":"standard_multi", "bow_methods":[("az_annotated",[1])], "parameters":[1]},
+    "az_annotated":{"type":"standard_multi", "bow_methods":[("az_annotated",[1])], "parameters":[1]},
 ##    "section_annotated":{"type":"standard_multi", "bow_methods":[("section_annotated",[1])], "parameters":[1]},
 
 ##    # this is just ilc but split by AZ
@@ -56,11 +56,12 @@ prebuild_indexes={
 prebuild_general_indexes={
     "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "ilc_full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
+    "az_annotated":{"type":"standard_multi", "bow_methods":[("az_annotated",[1])], "parameters":[1]},
 }
 
 
 doc_methods={
-    "full_text":{"type":"standard_multi", "index":"full_text", "parameters":[1], "runtime_parameters":["text"]},
+##    "full_text":{"type":"standard_multi", "index":"full_text", "parameters":[1], "runtime_parameters":["text"]},
 ##    "title_abstract":{"type":"standard_multi", "index":"title_abstract", "parameters":[1], "runtime_parameters":{"text":"1"}},
 ##    "passage":{"type":"standard_multi", "index":"passage", "parameters":[250,350,400], "runtime_parameters":{"text":"1"}},
 ##
@@ -73,9 +74,9 @@ doc_methods={
 ##    "ilc_passage":{"type":"ilc_mashup",  "index":"ilc_passage", "mashup_method":"passage","ilc_parameters":[10, 20, 30, 40, 50],
 ##        "parameters":[250,350], "runtime_parameters":{"text":"1","inlink_context":"1"}},
 
-##    "az_annotated":{"type":"annotated_boost", "index":"az_annotated", "parameters":[1], "runtime_parameters":
-##        {"ALL":["AIM","BAS","BKG","CTR","OTH","OWN","TXT"]
-##        }},
+    "az_annotated":{"type":"annotated_boost", "index":"az_annotated", "parameters":[1], "runtime_parameters":
+        {"ALL":["AIM","BAS","BKG","CTR","OTH","OWN","TXT"]
+        }},
 
 ##    "section":{"type":"annotated_boost", "index":"section_annotated", "parameters":[1], "runtime_parameters":
 ##        {
@@ -118,7 +119,9 @@ doc_methods={
     }
 
     # this is the dict of query extraction methods
-qmethods={"window":{"parameters":[
+qmethods={
+
+##        "window":{"parameters":[
 ##                (3,3),
 ##                (5,5),
 ##                (10,10),
@@ -130,39 +133,38 @@ qmethods={"window":{"parameters":[
 ##                (30,30),
 ##                (50,50),
 ##                (100,100),
-                (500,500),
-                ],
-                "method":"Window",
-                },
+##                (500,500),
+##                ],
+##                "method":"Window",
+##                },
 
             "sentence":{"parameters":[
-                "1only",
+##                "1only",
 ##                "paragraph",
-                "1up",
-                "0up_1down",
+##                "1up",
+##                "0up_1down",
 ##                "1up_1down",
-##                "2up_2down"
+                "2up_2down"
                 ],
                 "method":"Sentences",
                 },
 
-            "annotated_sentence":{"parameters":[
+##            "annotated_sentence":{"parameters":[
 ##                "pno",
-                "po",
-                "no",
-                "n",
-                "p",
-                ],
-                "method":"SelectedSentences",
-                },
+##                "po",
+##                "no",
+##                "n",
+##                "p",
+##                ],
+##                "method":"SelectedSentences",
+##                },
 
                 }
 
 experiment={
-    "name":"athar_experiments",
+    "name":"pmc_lrec_experiments",
     "description":
-        """Compare using only selected sentences from Athar's annotated citation
-        corpus versus standard window-of-words and fixed size contexts""",
+        """Re-run the original LREC experiments, but this time with the whole Sapienta-annotated PMC""",
     # dict of bag-of-word document representations to prebuild
     "prebuild_bows":prebuild_bows,
     # dict of per-file indexes to prebuild
@@ -176,7 +178,7 @@ experiment={
     # list of files in the test set
     "test_files":[],
     # SQL condition to automatically generate the list above
-    "test_files_condition":"num_in_collection_references >= 8",
+    "test_files_condition":"num_in_collection_references >= 1",
     # Use Lucene DefaultSimilarity? As opposed to FieldAgnosticSimilarity
     "use_default_similarity":True,
     # Annotate sentences with AZ/CoreSC/etc?
@@ -207,8 +209,8 @@ experiment={
 
 
 options={
-    "run_prebuild_bows":False,
-    "force_prebuild":False,
+    "run_prebuild_bows":True,
+    "force_prebuild":True,
     "rebuild_indexes":False,
     "recompute_queries":True,
     "run_precompute_retrieval":False, # only applies if type == "train_weights"

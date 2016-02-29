@@ -60,7 +60,7 @@ class JATSXMLReader(BaseSciDocXMLReader):
             :param text: the text content of the reference
             :type text: string
             :param newRef: the already added reference dictionary
-            :return: True if patent info was found, False otherwise
+            :returns: True if patent info was found, False otherwise
             :rtype: boolean
         """
         text=re.sub(r"<ext-link.*?</ext-link>"," ",text,0,re.IGNORECASE)
@@ -384,7 +384,7 @@ class JATSXMLReader(BaseSciDocXMLReader):
 
             :param ref: xml node for reference element
             :param doc: :class `SciDoc <SciDoc>` instance we're loading this for
-            :return: dict with the new loaded reference
+            :returns: dict with the new loaded reference
             :rtype: dict
         """
 
@@ -509,7 +509,7 @@ class JATSXMLReader(BaseSciDocXMLReader):
                         If an actual full path, the path will be removed from it
                         when stored
             :type identifier: basestring
-            :return: :class:`SciDoc <SciDoc>` object
+            :returns: :class:`SciDoc <SciDoc>` object
             :rtype: SciDoc
         """
         # this solves a "bug" in BeautifulStoneSoup with "sec" tags

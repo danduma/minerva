@@ -430,7 +430,7 @@ class ElasticCorpus(BaseCorpus):
             author.name
 
             :param query_string: query string
-            :return: boolean
+            :returns: boolean
         """
         query_without_quotes=re.sub(r"[^\\]\".*?[^\\]\"","",query_string)
         nested_query=re.search(r"[a-zA-Z]\.[a-zA-Z]",query_without_quotes) is not None
@@ -599,7 +599,7 @@ class ElasticCorpus(BaseCorpus):
         if self.AUTO_ADD_AUTHORS:
             self.updateAuthorsFromPaper(metadata)
 
-    def updatePaper(self, metadata, op_type="index", has_scidoc=True):
+    def updatePaper(self, metadata, op_type="index", has_scidoc=None):
         """
             Updates an existing record in the db
 
@@ -618,7 +618,6 @@ class ElasticCorpus(BaseCorpus):
                 "num_resolvable_citations": metadata["num_resolvable_citations"],
                 "num_inlinks": len(metadata["inlinks"]),
                 "time_modified": timestamp,
-                "has_scidoc": has_scidoc
 ##                "corpus_id": metadata["corpus_id"],
 ##                "filename": metadata["filename"],
 ##                 "collection_id": metadata["collection_id"],
@@ -627,6 +626,9 @@ class ElasticCorpus(BaseCorpus):
 ##                "surnames": metadata["surnames"],
 ##                "year": metadata["year"],
                   }
+
+        if has_scidoc is not None:
+            body["has_scidoc"]=has_scidoc
 
         if op_type=="create":
             body["time_created"]=timestamp
@@ -803,7 +805,11 @@ class ElasticCorpus(BaseCorpus):
 
         self.query_filter=" AND ".join(query_items)+" AND "
 
-DOCTEST = True
+##ec=ElasticCorpus()
+##ec.connectCorpus("",endpoint={"host":"129.215.91.3", "port":9200})
+##print(ec.getMetadataByGUID("df8c8824-1784-46f1-b621-cc6e5aca0dad"))
+
+DOCTEST = False
 
 if __name__ == '__main__':
 

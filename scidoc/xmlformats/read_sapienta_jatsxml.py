@@ -75,6 +75,9 @@ class SapientaJATSXMLReader(JATSXMLReader):
             If the citations aren't tagged with <xref> because Sapienta stripped
             them away, try to extract the citations from plain text. *sigh*
 
+            :param s: BeautifulSoup tag of the sentence
+            :param newDocument: SciDoc instance we are populating
+            :param newSent: new sentence in this document that we are adding
         """
 
         def replaceTempCitToken(s, temp, final):
@@ -172,13 +175,12 @@ class SapientaJATSXMLReader(JATSXMLReader):
                         If an actual full path, the path will be removed from it
                         when stored
             :type identifier: basestring
-            :return: :class:`SciDoc <SciDoc>` object
+            :returns: :class:`SciDoc <SciDoc>` object
             :rtype: SciDoc
         """
         # this solves a "bug" in BeautifulStoneSoup with "text" tags
         BeautifulStoneSoup.NESTABLE_TAGS["text"]=[]
         return super(self.__class__, self).read(xml, identifier)
-
 
 
 def main():

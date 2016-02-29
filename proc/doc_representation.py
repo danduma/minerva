@@ -388,20 +388,9 @@ def getDocBOWpassagesMulti(doc, parameters=[100], doctext=None):
 
     return res
 
-##def getDocBOWfullHeaders(doc, parameters=None, doctext=None):
-##    """
-##        Get BOW for document using full text minus references
-##    """
-##    if not doctext:
-##        doctext=doc.getFullDocumentText(doc, headers=True)
-##    doctext=removeCitations(doctext).lower()
-##    tokens=tokenizeText(doctext)
-##    return {1:[unTokenize(tokens)]}
-
-
 def getDocBOWTitleAbstract(doc, parameters=None, doctext=None):
     """
-        Get BOW for document using only title and abstract
+        Get BOW for document made up of only title and abstract
     """
     paragraphs=[]
     doctext=doc["metadata"]["title"]+". "
@@ -416,7 +405,7 @@ def getDocBOWTitleAbstract(doc, parameters=None, doctext=None):
 
 def getDocBOWannotated(doc, parameters=None, doctext=None, keys=["az","csc_type"]):
     """
-        Get BOW for document with AZ
+        Get BOW for document with AZ/CSC
     """
     res=defaultdict(lambda:"")
     for sentence in doc.allsentences:
@@ -429,7 +418,7 @@ def getDocBOWannotated(doc, parameters=None, doctext=None, keys=["az","csc_type"
 
 def getDocBOWrandomZoning(doc, parameters=None, doctext=None, keys=["az","csc_type"]):
     """
-        Get BOW for document with AZ
+        Get BOW for document with randomized AZ/CSC
     """
     res=defaultdict(lambda:"")
     for sentence in doc.allsentences:
