@@ -8,10 +8,12 @@
 from __future__ import absolute_import
 
 from celery import Celery
+from kombu import Queue, Exchange
+##import minerva.squad.celeryconfig
 
 # celery worker --app=squad.celery_app:app
 
-SERVER_IP="129.215.91.3"
+SERVER_IP="129.215.197.73"
 ##SERVER_IP="localhost"
 
 MINERVA_FILE_SERVER_URL="http://%s:5599" % SERVER_IP
@@ -26,6 +28,7 @@ app = Celery('squad',
              backend=MINERVA_AMQP_SERVER_URL,
              include=['minerva.squad.tasks'])
 
+##app.config_from_object('celeryconfig')
 # Optional configuration, see the application user guide.
 app.conf.update(
     CELERY_TASK_SERIALIZER='json',
@@ -34,6 +37,17 @@ app.conf.update(
     CELERY_TIMEZONE='Europe/London',
     CELERY_ENABLE_UTC=True,
     CELERY_TASK_RESULT_EXPIRES=3600,
+
+    CELERY_QUEUES = (
+        Queue('default', Exchange('default'), routing_key='default'),
+        Queue('import_xml', Exchange('import_xml'), routing_key='import_xml'),
+        Queue('update_references', Exchange('update_references'), routing_key='update_references'),
+    ),
+
+    CELERY_ROUTES = {
+        't_convertXMLAndAddToCorpus': {'queue': 'import_xml', 'routing_key': 'import_xml'},
+        't_updatePaperInCollectionReferences': {'queue': 'update_references', 'routing_key': 'update_references'},
+    }
 )
 
 if __name__ == '__main__':

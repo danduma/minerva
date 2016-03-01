@@ -39,58 +39,60 @@ class BaseIndexer(object):
 ##        print("Prebuilding Lucene indeces in ",baseFullIndexDir)
 
         count=0
-        for fn in testfiles:
+        for guid in testfiles:
             count+=1
-            print("Building Lucene index for file",count,"/",len(testfiles),":",fn)
-            test_guid=cp.Corpus.getFileUID(fn)
+            print("Building index: paper ",count,"/",len(testfiles),":",guid)
 
             fwriters={}
-            baseFileIndexDir=baseFullIndexDir+test_guid+os.sep
-            ensureDirExists(baseFileIndexDir)
+##            baseFileIndexDir=baseFullIndexDir+test_guid+os.sep
+##            ensureDirExists(baseFileIndexDir)
 
-            doc=cp.Corpus.loadSciDoc(test_guid)
+            doc=cp.Corpus.loadSciDoc(guid)
             if not doc:
-                print("Error loading XML for", test_guid)
+                print("Error loading SciDoc for", guid)
                 continue
 
             indexNames=doc_representation.getDictOfLuceneIndeces(methods)
 
             for indexName in indexNames:
-##                actual_dir=cp.Corpus.paths.fileLuceneIndex+os.sep+test_guid+os.sep+indexName
-                actual_dir=cp.Corpus.getRetrievalIndexPath(test_guid, indexName, full_corpus=False)
-                fwriters[indexName]=createIndexWriter(actual_dir)
+                actual_dir=cp.Corpus.getRetrievalIndexPath(guid, indexName, full_corpus=False)
+                fwriters[indexName]=self.createIndexWriter(actual_dir)
 
             # old way, assuming the documents are fine and one can just load all in-collection references
             # ...NOT! must select them using the same method that gets the resolvable CITATIONS
             # updated! Should work well now
-            for ref in doc["references"]:
-                match=cp.Corpus.matchReferenceInIndex(ref)
-                if match:
+##            for ref in doc["references"]:
+##                match=cp.Corpus.matcher.matchReference(ref)
+##                if match:
+##                    ref_guid=match["guid"]
+            # even newer way: just use the precomputed metadata.outlinks
+            outlinks=cp.Corpus.getMetadataByGUID(guid)["outlinks"]
+            for ref_guid in outlinks:
+                match=cp.Corpus.getMetadataByGUID(ref_guid)
+                for indexName in indexNames:
+                    # get the maximum year to create inlink_context descriptions from
+                    if indexNames[indexName]["options"].get("max_year",False) == True:
+                        max_year=cp.Corpus.getMetadataByGUID(test_guid)["year"]
+                    else:
+                        max_year=None
 
-                    for indexName in indexNames:
-                        # get the maximum year to create inlink_context descriptions from
-                        if indexNames[indexName]["options"].get("max_year",False) == True:
-                            max_year=cp.Corpus.getMetadataByGUID(test_guid)["year"]
-                        else:
-                            max_year=None
+                    method=indexNames[indexName]["method"]
+                    parameter=indexNames[indexName]["parameter"]
+                    ilc_parameter=indexNames[indexName].get("ilc_parameter","")
 
-                        method=indexNames[indexName]["method"]
-                        parameter=indexNames[indexName]["parameter"]
-                        ilc_parameter=indexNames[indexName].get("ilc_parameter","")
+                    if indexNames[indexName]["type"] in ["standard_multi"]:
+                        self.addPrebuiltBOWtoIndex(fwriters[indexName], ref_guid, method, parameter)
+                    elif indexNames[indexName]["type"] in ["inlink_context"]:
+                        self.addPrebuiltBOWtoIndexExcludingCurrent(fwriters[indexName], ref_guid, [test_guid], max_year, method, parameter)
+                    elif methods[method]["type"]=="ilc_mashup":
 
-                        if indexNames[indexName]["type"] in ["standard_multi"]:
-                            addPrebuiltBOWtoIndex(fwriters[indexName], match["guid"], method, parameter)
-                        elif indexNames[indexName]["type"] in ["inlink_context"]:
-                            addPrebuiltBOWtoIndexExcludingCurrent(fwriters[indexName], match["guid"], [test_guid], max_year, method, parameter)
-                        elif methods[method]["type"]=="ilc_mashup":
+                        bows=doc_representation.mashupBOWinlinkMethods(match,[test_guid], max_year, indexNames[indexName])
+                        if not bows:
+                            print("ERROR: Couldn't load prebuilt BOWs for mashup with inlink_context and ", method, ", parameters:",parameter, ilc_parameter)
+                            continue
 
-                            bows=doc_representation.mashupBOWinlinkMethods(match,[test_guid], max_year, indexNames[indexName])
-                            if not bows:
-                                print("ERROR: Couldn't load prebuilt BOWs for mashup with inlink_context and ", method, ", parameters:",parameter, ilc_parameter)
-                                continue
-
-                            addLoadedBOWsToIndex(fwriters[indexName], match["guid"], bows,
-                            {"method":method,"parameter":parameter, "ilc_parameter":ilc_parameter})
+                        self.addLoadedBOWsToIndex(fwriters[indexName], ref_guid, bows,
+                        {"method":method,"parameter":parameter, "ilc_parameter":ilc_parameter})
 
             for fwriter in fwriters:
                 fwriters[fwriter].close()
@@ -181,6 +183,7 @@ class BaseIndexer(object):
         """
         method_dict={"method":method,"parameter":parameter}
         bow_filename=cp.Corpus.cachedDataIDString("bow",guid,method_dict)
+        print("Adding %s" % bow_filename)
         bows=cp.Corpus.loadCachedJson(bow_filename)
 
         assert isinstance(bows,list)

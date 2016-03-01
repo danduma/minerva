@@ -35,7 +35,7 @@ def tokenizeAndTag(text,glob):
 def referenceFormatting(text,glob,ref):
     """
     """
-    match=cp.Corpus.matchReferenceInIndex(ref)
+    match=cp.Corpus.matcher.matchReference(ref)
     reftype="reference"
     if match:
         reftype+=" in-collection"
@@ -74,7 +74,7 @@ def computeOverlapForAllReferences(doc, inverted_index):
     tokens1=tokenizeText(text1)
     per_reference_tokens={}
     for ref in doc["references"]:
-        match=cp.Corpus.matchReferenceInIndex(ref)
+        match=cp.Corpus.matcher.matchReference(ref)
         if match:
             doc2=cp.Corpus.loadSciDoc(match["guid"])
             text2=doc2.getFullDocumentText(True,False)

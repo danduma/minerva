@@ -87,6 +87,7 @@ class BasePipeline(object):
     def __init__(self, retrieval_class=BaseRetrieval):
         # This points to the the class of retrieval we are using
         self.retrieval_class=retrieval_class
+        self.exp={}
         pass
 
     def loadModel(self, guid):
@@ -99,7 +100,7 @@ class BasePipeline(object):
                 model["actual_dir"],
                 model["method"],
                 logger=None,
-                use_default_similarity=exp["use_default_similarity"])
+                use_default_similarity=self.exp["use_default_similarity"])
 
     def generateRetrievalModels(self, all_doc_methods, all_files,):
         """

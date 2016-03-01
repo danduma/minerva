@@ -23,14 +23,14 @@ class ElasticRetrieval(BaseRetrieval):
     """
         Interfaces with the Elasticsearch API
     """
-    def __init__(self, index_name, method, logger=None, use_default_similarity=False):
+    def __init__(self, index_name, method, logger=None, use_default_similarity=True):
         self.index_name=index_name
         self.es=Elasticsearch()
 
         self.method=method # never used?
         self.logger=logger
 
-    def rewriteQueryAsDSL(self, structured_query):
+    def rewriteQueryAsDSL(self, structured_query, parameters):
         """
             Creates a multi_match query for elasticsearch
         """
@@ -47,9 +47,9 @@ class ElasticRetrieval(BaseRetrieval):
             boost=token["boost"]*token["count"]
             bool=token.get("bool", None) or ""
 
-            lucene_query+=bool+token["token"]
+            lucene_query+="%s%s" % (bool,token["token"])
             if boost != 1:
-                lucene_query+="\"^"+str(boost)
+                lucene_query+="^%s" %str(boost)
             lucene_query+=" "
 
         fields=[]
@@ -117,8 +117,8 @@ class ElasticRetrieval(BaseRetrieval):
         explanation=self.es.explain(
             index=self.index_name,
             doc_type=ES_TYPE_DOC,
-            query=query,
-            id=idoc_idd
+            body={"query":query},
+            id=doc_id
             )
 
         formula=StoredFormula()
@@ -148,6 +148,7 @@ class ElasticRetrievalBoost(ElasticRetrieval):
         self.last_query=structured_query
 
         query_text=self.rewriteQuery(structured_query,parameters,test_guid)
+        dsl_query=self.rewriteQueryAsDSL(structured_query, parameters)
 
         if query_text=="":
             print("MAAAC! Empty query!")
@@ -155,7 +156,7 @@ class ElasticRetrievalBoost(ElasticRetrieval):
         else:
             try:
                 res=self.es.search(
-                    q=query_text,
+                    body={"query":dsl_query},
                     size=max_results,
                     index=self.index_name,
                     doc_type=ES_TYPE_DOC,
@@ -163,8 +164,8 @@ class ElasticRetrievalBoost(ElasticRetrieval):
                     )
 
                 hits=res["hits"]["hits"]
-                if len(query_text) > 2800:
-                    print("Query > 2800 and no problems! Len: ",len(query_text))
+##                if len(query_text) > 2800:
+##                    print("Query > 2800 and no problems! Len: ",len(query_text))
             except ConnectionError as e:
                 cp.Corpus.global_counters["query_error"]=cp.Corpus.global_counters.get("query_error",0)+1
                 print("Query error. Query len: ",len(query_text))
@@ -182,12 +183,12 @@ class ElasticRetrievalBoost(ElasticRetrieval):
 
             for index in range(max_explanations):
                 explanation=self.es.explain(
-                    q=query_text,
+                    body=dsl_query,
                     size=max_results,
                     index=self.index_name,
                     doc_type=ES_TYPE_DOC
                 )
-                self.logger.logReport(self.searcher.explain(query,index))
+                self.logger.logReport(explanation)
 
         result=[]
         for hit in hits:
@@ -199,57 +200,38 @@ class ElasticRetrievalBoost(ElasticRetrieval):
 
         return result
 
-class precomputedExplainRetrieval(ElasticRetrievalBoost):
+def testExplanation():
     """
-        Class that runs the explain pipeline and extracts the data from a lucene
-        explanation to then be able to run the same retrieval with different
-        field boosts.
-
-        All it does is this one-time retrieval + explanation. The further testing
-        of parameters is done in measurePrecomputedResolution()
     """
+    from minerva.proc.query_extraction import WindowQueryExtractor
 
-    def __init__(self, index_path, method, logger=None, use_default_similarity=False):
-        ElasticRetrievalBoost.__init__(self, index_path, method, logger, use_default_similarity)
+    ext=WindowQueryExtractor()
 
-    def precomputeExplain(self, query, parameters, test_guid, max_results=MAX_RESULTS_RECALL):
-        """
-            Runs elastic retrieval, extracts and stores the explanations in a dict:
-            one entry per potential paper, fields to set weights to as sub-entries
-        """
+    er=ElasticRetrieval("papers","",None)
 
-        # TODO where does the query come from?
-        query=query
+    text="method method MATCH method method sdfakjesf"
+    match_start=text.find("MATCH")
 
-        results=[]
+    queries=ext.extract({"parameters":[(5,5)],
+                        "match_start": match_start,
+                        "match_end": match_start+5,
+                        "doctext": text,
+                        "method_name": "test"
+                        })
 
-        index=0
+    q=er.rewriteQueryAsDSL(queries[0]["structured_query"], {"metadata.title":1})
+    print(q)
 
-        # we first run a search, so that we only need to run the explain pipeline
-        # for doc that actually match the query. This is just to speed up
-        # whole-collection precomputing of retrieval formulas
-
-        hits=self.runQuery(query,parameters,test_guid,max_results)
-        doc_list=[hit["_id"] for hit in hits]
-
-        for id in doc_list:
-##            explanation=self.es.explain(
-##                index=self.index_name,
-##                doc_type=ES_TYPE_DOC,
-##                query=query,
-##                id=id
-##                )
-##
-##            formula=StoredFormula()
-##            formula.fromElasticExplanation(explanation)
-            self.formulaFromExplanation()
-
-            if formula.formula["coord"] != 0:
-                results.append({"index":index,"guid":id,"formula":formula.formula})
-        return results
-
+    hits=er.es.search(index="papers", doc_type="paper", body={"query":q}, _source="guid")
+    doc_ids=[hit["_id"] for hit in hits["hits"]["hits"]]
+    print(doc_ids)
+    global ES_TYPE_DOC
+    ES_TYPE_DOC="paper"
+    formula=er.formulaFromExplanation(q, doc_ids[0])
+    print(formula.formula)
 
 def main():
+    testExplanation()
     pass
 
 if __name__ == '__main__':

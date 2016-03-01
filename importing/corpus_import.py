@@ -18,10 +18,9 @@ from minerva.proc.results_logging import ProgressIndicator
 import minerva.db.corpora as cp
 from minerva.scidoc.xmlformats.read_auto import AutoXMLReader
 
-from importing_functions import (addSciDocToDB, convertXMLAndAddToCorpus,
-updatePaperInCollectionReferences)
+from importing_functions import (convertXMLAndAddToCorpus, updatePaperInCollectionReferences)
 
-from minerva.squad.tasks import t_convertXMLAndAddToCorpus
+from minerva.squad.tasks import (t_convertXMLAndAddToCorpus, t_updatePaperInCollectionReferences)
 
 
 exception_file=None
@@ -81,7 +80,7 @@ class CorpusImporter(object):
         """
         progress=ProgressIndicator(True, self.num_files_to_process, dot_every_xitems=20)
 
-        ALL_FILES_IN_DB=cp.Corpus.listPapers(field="filename") or []
+##        ALL_FILES_IN_DB=cp.Corpus.listPapers(field="filename") or []
 
         if self.use_celery:
             tasks=[]
@@ -89,26 +88,34 @@ class CorpusImporter(object):
                 filename=cp.Corpus.paths.inputXML+fn
     ##            print("Processing",filename)
                 corpus_id=self.generate_corpus_id(fn)
-
-                tasks.append(t_convertXMLAndAddToCorpus.delay(
-                        os.path.join(cp.Corpus.paths.inputXML,fn),
-                        corpus_id,
-                        self.import_id,
-                        self.collection_id,
-                        None,
-                        None,
-                        ))
-
+                match=cp.Corpus.getMetadataByField("metadata.filename",os.path.basename(fn))
+                if not match:
+##                    tasks.append(t_convertXMLAndAddToCorpus.delay(
+##                            os.path.join(cp.Corpus.paths.inputXML,fn),
+##                            corpus_id,
+##                            self.import_id,
+##                            self.collection_id,
+##                            None,
+##                            None,
+##                            ))
+                    tasks.append(t_convertXMLAndAddToCorpus.apply_async(args=[
+                            os.path.join(cp.Corpus.paths.inputXML,fn),
+                            corpus_id,
+                            self.import_id,
+                            self.collection_id,
+                            None,
+                            None,],
+                            queue="import_xml"
+                            ))
         else:
             # main loop over all files
             for fn in ALL_INPUT_FILES[FILES_TO_PROCESS_FROM:FILES_TO_PROCESS_TO]:
                 filename=cp.Corpus.paths.inputXML+fn
     ##            print("Processing",filename)
                 corpus_id=self.generate_corpus_id(fn)
-        ##        match=cp.Corpus.getMetadataByField("metadata.filename",os.path.basename(fn))
-        ##        if not match:
-    ##            try:
-                if fn not in ALL_FILES_IN_DB:
+
+                match=cp.Corpus.getMetadataByField("metadata.filename",os.path.basename(fn))
+                if not match:
                     try:
                         doc=convertXMLAndAddToCorpus(
                             os.path.join(cp.Corpus.paths.inputXML,fn),
@@ -134,10 +141,20 @@ class CorpusImporter(object):
         """
         print("Finding resolvable references, populating database...")
         progress=ProgressIndicator(True, len(ALL_GUIDS), dot_every_xitems=100)
+
+        tasks=[]
+
         for doc_id in ALL_GUIDS[FILES_TO_PROCESS_FROM:FILES_TO_PROCESS_TO]:
-            doc_meta=updatePaperInCollectionReferences(doc_id, import_options)
-            filename=doc_meta["filename"] if doc_meta else "<ERROR>"
-            progress.showProgressReport("Updating references -- latest paper "+filename)
+            if self.use_celery:
+                tasks.append(t_updatePaperInCollectionReferences.apply_async(
+                    args=[doc_id, import_options],
+                    kwargs={},
+                    queue="update_references"
+                    ))
+            else:
+                doc_meta=updatePaperInCollectionReferences(doc_id, import_options)
+                filename=doc_meta["filename"] if doc_meta else "<ERROR>"
+                progress.showProgressReport("Updating references -- latest paper "+filename)
 
     def listAllFiles(self, start_dir, file_mask):
         """

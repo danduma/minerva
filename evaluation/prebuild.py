@@ -49,7 +49,7 @@ def prebuildMulti(method_name, parameters, function, guid, doc, doctext, force_p
                 all_bows[param])
     return [doc,doctext]
 
-def prebuildBOWsForTests(parameters, maxfiles=1000000, FILE_LIST=None, force_prebuild=False, rhetorical_annotations=[]):
+def prebuildBOWsForTests(parameters, maxfiles=sys.maxint, FILE_LIST=None, force_prebuild=False, rhetorical_annotations=[]):
     """
         Generates BOWs for each document from its inlinks, stores them in a
         corpus cached file
@@ -65,7 +65,7 @@ def prebuildBOWsForTests(parameters, maxfiles=1000000, FILE_LIST=None, force_pre
     else:
         cp.Corpus.ALL_FILES=cp.Corpus.listPapers()
 
-    if rhetorical_annotations != []:
+    if len(rhetorical_annotations) > 0:
         print("Loading AZ/CFC classifiers")
         cp.Corpus.loadAnnotators()
 
@@ -93,9 +93,8 @@ def prebuildBOWsForTests(parameters, maxfiles=1000000, FILE_LIST=None, force_pre
             )
 
 
-
-
 def main():
+
     pass
 
 if __name__ == '__main__':

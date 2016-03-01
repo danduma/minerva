@@ -8,7 +8,6 @@ from __future__ import print_function
 
 import os, json
 
-import minerva.proc.context_extract as context_extract
 from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
 
 import minerva.db.corpora as cp
@@ -187,7 +186,7 @@ experiment={
     # ?
     "split_set":None,
     # use full-collection retrival? If False, it runs "citation resolution"
-    "full_corpus":True,
+    "full_corpus":False,
     # "compute_once","train_weights"
     "type":"compute_once",
     "numchunks":10,
@@ -209,25 +208,21 @@ experiment={
 
 
 options={
-    "run_prebuild_bows":True,
-    "force_prebuild":True,
-    "rebuild_indexes":False,
-    "recompute_queries":True,
-    "run_precompute_retrieval":False, # only applies if type == "train_weights"
+    "run_prebuild_bows":True, # should the whole BOW building process run?
+    "force_prebuild":False,   # if a BOW exists already, should we overwrite it?
+    "rebuild_indexes":False,   # rebuild indices?
+    "recompute_queries":False, # force rebuilding of queries too?
+    "run_precompute_retrieval":True, # only applies if type == "train_weights"
     "override_folds":4,
     "override_metric":"avg_mrr",
 }
 
 def main():
-##    exp_dir=r"G:\NLP\PhD\bob\experiments"+os.sep
-##    json.dump(experiment,open(exp_dir+experiment["name"]+".json","w"), indent=3)
-    cp.useLocalCorpus()
-    cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac")
-    generator=AtharQueryGenerator(r"G:\NLP\PhD\citation_context\doc_dict.json")
-    experiment["test_files"]=generator.docs.keys()
+    cp.useElasticCorpus()
+    cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc")
 
+    experiment["test_files"]=["456f8c80-9807-46a9-8455-cd4a7e346f9d"]
     exp=Experiment(experiment, options)
-    exp.query_generator=generator
     exp.run()
     pass
 

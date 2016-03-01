@@ -14,8 +14,9 @@ import minerva.db.corpora as cp
 
 from prebuild import prebuildBOWsForTests
 
-from minerva.evaluation.query_generation import QueryGenerator, ExplainQueryGenerator
-from minerva.evaluation.base_pipeline import BasePipeline, PrecomputedPipeline
+from minerva.evaluation.query_generation import QueryGenerator
+from minerva.evaluation.base_pipeline import BasePipeline
+from minerva.evaluation.precomputed_pipeline import PrecomputedPipeline
 from minerva.proc.query_extraction import EXTRACTOR_LIST
 
 from results_analysis import saveGraphForResults, makeAllGraphsForExperiment
@@ -190,7 +191,7 @@ class Experiment:
             pipeline=BasePipeline(retrieval_class=self.retrieval_class)
             pipeline.runPipeline(self.exp)
         elif self.exp["type"] == "train_weights":
-            pipeline=BasePipeline(retrieval_class=self.retrieval_class)
+            pipeline=PrecomputedPipeline(retrieval_class=self.retrieval_class)
             self.trainWeights()
 
 

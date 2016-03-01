@@ -5,27 +5,20 @@
 
 # For license information, see LICENSE.TXT
 
-import glob, math, os, re, sys, gc, random, json
+import glob, math, os, re, sys, random, json
 from copy import deepcopy
 from collections import defaultdict, namedtuple, OrderedDict
 
-import pandas as pd
-import lucene
 from sklearn import cross_validation
 
 import minerva.db.corpora as cp
 from minerva.proc.results_logging import ResultsLogger
 from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
 from minerva.proc.doc_representation import findCitationInFullText
-from testing_pipelines import getDictOfTestingMethods
+from base_pipeline import getDictOfTestingMethods
 import minerva.proc.doc_representation as doc_representation
-from minerva.proc.general_utils import getSafeFilename, exists, ensureDirExists
-from minerva.evaluation.results_analysis import drawWeights, drawScoreProgression
-
-from minerva.evaluation.lucene_retrieval import LuceneRetrieval,LuceneRetrievalBoost,storedFormula,precomputedExplainRetrieval
 
 GLOBAL_FILE_COUNTER=0
-
 
 class QueryGenerator(object):
     """
@@ -111,8 +104,8 @@ class QueryGenerator(object):
 
         match=findCitationInFullText(m["cit"],doctext)
         if not match:
-            assert match
-            print("Weird! can't find citation in text!!")
+##            assert match
+            print("Weird! can't find citation in text!", m["cit"])
             return generated_queries
 
         # this is where we are in the document

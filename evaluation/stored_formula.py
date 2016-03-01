@@ -5,6 +5,9 @@
 
 # For license information, see LICENSE.TXT
 
+import re
+from collections import defaultdict
+
 class StoredFormula:
     """
         Stores a Lucene explanation and makes it easy to set weights on the
@@ -96,68 +99,54 @@ class StoredFormula:
         """
             Loads the formula from a Lucene explanation
         """
-        original_value=explanation.getValue()
+        def iterateDetail(detail):
+            """
+                This
+            """
+            if detail["description"].startswith("coord"):
+                new_element={"type":"coord", "value":detail["value"]}
+            elif detail["description"].startswith("sum of"):
+                new_element={"type":"+", "parts":[]}
+                for new_detail in detail["details"]:
+                    new_element["parts"].append(iterateDetail(new_detail))
+            elif detail["description"].startswith("product of"):
+                new_element={"type":"*", "parts":[]}
+                for new_detail in detail["details"]:
+                    new_element["parts"].append(iterateDetail(new_detail))
+            else:
+                field=re.match(r"weight\((.*?)\:",detail["description"],re.IGNORECASE)
+                if field:
+                    field_name=str(field.group(1))
+                    elem=detail["details"][0]
+                    if elem["description"].startswith("fieldWeight"):
+                        # if the queryWeight is 1, .explain() will not report it
+                        new_element={"type":"field", "field":field_name, "qw": 1.0, "fw":elem["value"]}
+                    else:
+                        elements=elem["details"]
+                        new_element={"type":"field", "field":field_name, "qw": elements[0]["value"], "fw":elements[1]["value"]}
+##                        newMatch=[field_name,elements[0]["value"],elements[1]["value"]]
+##                    self.formula["matches"].append(newMatch)
+                elif detail["description"].startswith("match on required clause, product of"):
+                    new_element={"type":"const", "value":detail["value"]}
 
-        if not explanation.isMatch():
+            return new_element
+
+        original_value=explanation["explanation"]["value"]
+
+        if not explanation["matched"]:
             self.formula={"coord":0,"matches":[]}
             return
 
-        details=explanation.getDetails()
-        self.formula["matches"]=[]
+##        self.formula["coord"]=1
+        self.formula=iterateDetail(explanation["explanation"])
 
-        if "weight(" in details[0].getDescription(): # if coord == 1 it is not reported
-            matches=details
-            self.formula["coord"]=1
-        else:
-            matches=details[0].getDetails()
-            self.formula["coord"]=details[1].getValue()
-
-        for match in matches:
-            desc=match.getDescription()
-            field=re.match(r"weight\((.*?)\:",desc,re.IGNORECASE)
-            # using dicts
-##            newMatch={"field":field.group(1)}
-##            elem=match.getDetails()[0]
-##            if "fieldWeight" in elem.getDescription():
-##                # if the queryWeight is 1, .explain() will not report it
-##                newMatch["qw"]=1.0
-##                newMatch["fw"]=elem.getValue()
-##            else:
-##                elements=elem.getDetails()
-##                newMatch["qw"]=elements[0].getValue()
-##                newMatch["fw"]=elements[1].getValue()
-            # using namedtuple
-##            newMatch=namedtuple("retrieval_result",["field","qw","fw"])
-##            newMatch.field=str(field.group(1))
-##            elem=match.getDetails()[0]
-##            if "fieldWeight" in elem.getDescription():
-##                # if the queryWeight is 1, .explain() will not report it
-##                newMatch.qw=1.0
-##                newMatch.fw=elem.getValue()
-##            else:
-##                elements=elem.getDetails()
-##                newMatch.qw=elements[0].getValue()
-##                newMatch.fw=elements[1].getValue()
-
-            # using tuple
-            field_name=str(field.group(1))
-            elem=match.getDetails()[0]
-            if "fieldWeight" in elem.getDescription():
-                # if the queryWeight is 1, .explain() will not report it
-                newMatch=(field_name,1.0,elem.getValue())
-            else:
-                elements=elem.getDetails()
-                newMatch=(field_name,elements[0].getValue(),elements[1].getValue())
-            self.formula["matches"].append(newMatch)
-
-        # just checking
-##        original_value=self.truncate(original_value,self.round_to_decimal_places)
-##        computed_value=self.truncate(self.computeScore(defaultdict(lambda:1),self.round_to_decimal_places))
-##        assert(computed_value == original_value)
+        # While not done checking that this works, this assert is in place
+        original_value=self.truncate(original_value,self.round_to_decimal_places)
+        computed_value=self.truncate(self.computeScore(self.formula,defaultdict(lambda:1)),self.round_to_decimal_places)
+        assert(computed_value == original_value)
 
 
-
-    def computeScore(self,parameters):
+    def computeScore_old(self,parameters):
         """
             Simple recomputation of a Lucene explain formula using the values in
             [parameters] as per-field query weights
@@ -169,6 +158,22 @@ class StoredFormula:
         total=match_sum*self.formula["coord"]
 ##        total=self.truncate(total, self.round_to_decimal_places) # x digits of precision
         return total
+
+    def computeScore(self, part, parameters):
+        """
+            Recomputation of a Lucene explain formula using the values in
+            [parameters] as per-field query weights
+        """
+        if part["type"] == "*":
+            scores=[self.computeScore(part, parameters) for part in part["parts"]]
+            return reduce(lambda x, y: x*y, scores)
+        elif part["type"] == "+":
+            scores=[self.computeScore(part, parameters) for part in part["parts"]]
+            return sum(scores)
+        elif part["type"] in ["const", "coord"]:
+            return part["value"]
+        elif part["type"] == "field":
+            return part["qw"] * parameters[part["field"]] * part["fw"]
 
 
 def main():

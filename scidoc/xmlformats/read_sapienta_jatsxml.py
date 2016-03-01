@@ -38,11 +38,15 @@ class SapientaJATSXMLReader(JATSXMLReader):
             header_id=0 # CHANGE
             text=title.find("text", recursive=False)
             if text:
-                plain=text.find("s",recursive=False).find("plain")
+                s=text.find("s",recursive=False)
+                if s: plain=s.find("plain")
                 if plain:
                     header_text=re.sub(r"</?title.*?>","",plain.text)
                     # make sure first letter is capitalized
-                    header_text=header_text[0].upper()+header_text[1:]
+                    try:
+                        header_text=header_text[0].upper()+header_text[1:]
+                    except:
+                        header_text=""
             else:
                 print("Weird, title tag is there but no text is to be found: %s" % (title))
 

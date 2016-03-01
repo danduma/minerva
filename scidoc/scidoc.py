@@ -522,9 +522,10 @@ class SciDoc(object):
 
         for group in groups:
             for cit_id in group:
-                cit=self.citation_by_id[cit_id]
-                cit["multi"]=len(group)
-                cit["group"]=group
+                if cit_id in self.citation_by_id:
+                    cit=self.citation_by_id[cit_id]
+                    cit["multi"]=len(group)
+                    cit["group"]=group
 
 
     def updateAuthorsAffiliations(self):

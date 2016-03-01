@@ -6,7 +6,7 @@
 # For license information, see LICENSE.TXT
 
 from base_pipeline import BasePipeline
-
+from base_retrieval import BaseRetrieval
 
 class PrecomputedPipeline(BasePipeline):
     """
@@ -14,8 +14,8 @@ class PrecomputedPipeline(BasePipeline):
         each result is stored and weights are trained.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, retrieval_class=BaseRetrieval):
+        super(self.__class__, self).__init__(retrieval_class)
 
     def addResult(self, guid, precomputed_query, doc_method, retrieved):
         """

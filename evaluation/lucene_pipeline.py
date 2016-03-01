@@ -12,8 +12,8 @@ from copy import deepcopy
 from collections import defaultdict, namedtuple, OrderedDict
 
 import lucene
-from minerva.evaluation.lucene_retrieval import LuceneRetrieval, \
-LuceneRetrievalBoost,storedFormula,precomputedExplainRetrieval, MAX_RESULTS_RECALL
+from minerva.evaluation.lucene_retrieval import (LuceneRetrieval,
+LuceneRetrievalBoost,precomputedExplainRetrieval, MAX_RESULTS_RECALL)
 
 from base_pipeline import BasePipeline
 

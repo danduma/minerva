@@ -257,6 +257,7 @@ class BaseCorpus(object):
             Will return all in-collection references of all the files in the list
         """
         res=[]
+        assert isinstance(guid_list, list)
         for guid in guid_list:
             res.extend(self.getMetadataByGUID(guid)["outlinks"])
         res=list(set(res))

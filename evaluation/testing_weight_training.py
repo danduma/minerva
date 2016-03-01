@@ -9,7 +9,7 @@ from collections import defaultdict, namedtuple, OrderedDict
 
 import lucene
 from minerva.evaluation.lucene_retrieval import (LuceneRetrieval,
-LuceneRetrievalBoost,storedFormula,precomputedExplainRetrieval, MAX_RESULTS_RECALL)
+    LuceneRetrievalBoost,precomputedExplainRetrieval)
 
 import minerva.db.corpora as cp
 from minerva.proc.results_logging import ProgressIndicator, ResultsLogger

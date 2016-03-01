@@ -18,7 +18,8 @@ import requests
 
 import minerva.db.corpora as cp
 from minerva.db.elastic_corpus import ElasticCorpus
-from minerva.importing.importing_functions import convertXMLAndAddToCorpus
+from minerva.importing.importing_functions import (convertXMLAndAddToCorpus,
+    updatePaperInCollectionReferences)
 
 import celery_app
 from celery_app import app
@@ -66,10 +67,10 @@ def t_convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, e
 
 
 @app.task(ignore_result=True)
-def t_updatePaperInCollectionReferences(doc_id):
+def t_updatePaperInCollectionReferences(doc_id, import_options):
     """
-
+        Updates one paper's in-collection references, etc.
     """
-    return
+    updatePaperInCollectionReferences(doc_id, import_options)
 
 checkCorpusConnection()

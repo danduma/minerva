@@ -30,7 +30,7 @@ from java.io import File
 from collections import namedtuple
 
 from base_retrieval import BaseRetrieval, SPECIAL_FIELDS_FOR_TESTS, MAX_RESULTS_RECALL
-
+from stored_formula import StoredFormula
 
 class LuceneRetrieval(BaseRetrieval):
     """
@@ -130,6 +130,22 @@ class LuceneRetrieval(BaseRetrieval):
         return res
 
 
+    def formulaFromExplanation(self, query, doc_id):
+        """
+            Runs .explain() for one query/doc pair, generates and returns a \
+            StoredFormula instance from it
+
+            :param query: Elastic DSL Query
+            :param doc_id: id of document to run .explain() for
+            :returns:
+        """
+        explanation=self.searcher.explain(query,doc_id)
+
+        formula=StoredFormula()
+        formula.fromLuceneExplanation(explanation)
+        return formula
+
+
 class LuceneRetrievalBoost(LuceneRetrieval):
     """
         Use Lucene for retrieval boosting different AZ fields differently
@@ -202,54 +218,54 @@ class LuceneRetrievalBoost(LuceneRetrieval):
 
         return res
 
-class precomputedExplainRetrieval(LuceneRetrievalBoost):
-    """
-        Class that runs the explain pipeline and extracts the data from a lucene
-        explanation to then be able to run the same retrieval with different
-        field boosts.
-
-        All it does is this one-time retrieval + explanation. The further testing
-        of parameters is done in measurePrecomputedResolution()
-    """
-
-    def __init__(self, index_path, method, logger=None, use_default_similarity=False):
-        LuceneRetrievalBoost.__init__(self, index_path, method, logger, use_default_similarity)
-
-    def precomputeExplain(self, query, parameters, test_guid, max_results=MAX_RESULTS_RECALL):
-        """
-            Runs Lucene retrieval, extracts and stores the explanations in a dict:
-                one entry per potential paper, fields to set weights to as sub-entries
-        """
-
-        query_text=self.generateLuceneQuery(query, parameters, test_guid)
-        try:
-            query = self.query_parser(LuceneVersion.LUCENE_CURRENT, "text", self.analyzer).parse(query_text)
-        except:
-            print("Lucene exception:",sys.exc_info()[:2])
-            return None
-
-        results=[]
-
-        index=0
-
-        # we first run a search, so that we only need to run the explain pipeline
-        # for doc that actually match the query. This is just to speed up
-        # whole-collection precomputing of retrieval formulas
-        collector=TopScoreDocCollector.create(max_results, True)
-        self.searcher.search(query, collector)
-        hits = collector.topDocs().scoreDocs
-        doc_list=[hit.doc for hit in hits]
-
-        for index in doc_list:
-            explanation=self.searcher.explain(query,index)
-
-            formula=storedFormula()
-            formula.fromExplanation(explanation)
-
-            if formula.formula["coord"] != 0:
-                doc = self.searcher.doc(index)
-                results.append({"index":index,"guid":doc.get("guid"),"formula":formula.formula})
-        return results
+##class precomputedExplainRetrieval(LuceneRetrievalBoost):
+##    """
+##        Class that runs the explain pipeline and extracts the data from a lucene
+##        explanation to then be able to run the same retrieval with different
+##        field boosts.
+##
+##        All it does is this one-time retrieval + explanation. The further testing
+##        of parameters is done in measurePrecomputedResolution()
+##    """
+##
+##    def __init__(self, index_path, method, logger=None, use_default_similarity=False):
+##        LuceneRetrievalBoost.__init__(self, index_path, method, logger, use_default_similarity)
+##
+##    def precomputeExplain(self, query, parameters, test_guid, max_results=MAX_RESULTS_RECALL):
+##        """
+##            Runs Lucene retrieval, extracts and stores the explanations in a dict:
+##                one entry per potential paper, fields to set weights to as sub-entries
+##        """
+##
+##        query_text=self.generateLuceneQuery(query, parameters, test_guid)
+##        try:
+##            query = self.query_parser(LuceneVersion.LUCENE_CURRENT, "text", self.analyzer).parse(query_text)
+##        except:
+##            print("Lucene exception:",sys.exc_info()[:2])
+##            return None
+##
+##        results=[]
+##
+##        index=0
+##
+##        # we first run a search, so that we only need to run the explain pipeline
+##        # for doc that actually match the query. This is just to speed up
+##        # whole-collection precomputing of retrieval formulas
+##        collector=TopScoreDocCollector.create(max_results, True)
+##        self.searcher.search(query, collector)
+##        hits = collector.topDocs().scoreDocs
+##        doc_list=[hit.doc for hit in hits]
+##
+##        for index in doc_list:
+##            explanation=self.searcher.explain(query,index)
+##
+##            formula=StoredFormula()
+##            formula.fromExplanation(explanation)
+##
+##            if formula.formula["coord"] != 0:
+##                doc = self.searcher.doc(index)
+##                results.append({"index":index,"guid":doc.get("guid"),"formula":formula.formula})
+##        return results
 
 
 def main():

@@ -90,7 +90,7 @@ def identifyReferenceLinkIndex(docfrom, target_guid):
             target_guid: document that is cited by docfrom
     """
     for ref in docfrom["references"]:
-        match=cp.Corpus.matchReferenceInIndex(ref)
+        match=cp.Corpus.matcher.matchReference(ref)
         if match and match["guid"]==target_guid:
             return ref["id"]
     return None

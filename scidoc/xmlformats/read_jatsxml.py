@@ -109,7 +109,7 @@ class JATSXMLReader(BaseSciDocXMLReader):
         pubs=meta.findAll("pub-date")
         all_pubs=[]
         for pub in pubs:
-            pubdate={"pub-type":pub["pub-type"]}
+            pubdate={"pub-type":pub.get("pub-type","")}
             for item in["day","month","year"]:
                 found=pub.find(item)
                 if found:
@@ -118,9 +118,9 @@ class JATSXMLReader(BaseSciDocXMLReader):
 
         newDocument["metadata"]["publication_history"]=all_pubs
 
-        for priority in ["pmc-release","epub","ppub","pub"]:
+        for priority in ["pmc-release","epub","ppub","pub",""]:
             for pub in all_pubs:
-                if pub["pub-type"]==priority:
+                if pub.get("pub-type","")==priority:
                     newDocument["metadata"]["year"]=pub["year"]
                     return newDocument
 
