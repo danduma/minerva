@@ -40,8 +40,9 @@ def import_sapienta_pmc_corpus():
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc")
 
     options={
+        "reload_xml_if_doc_in_collection": True,
 ##        "list_missing_references":True, # default: False
-        "convert_and_import_docs":False, # default: True
+##        "convert_and_import_docs":False, # default: True
     }
 
 ##    corpus_import.FILES_TO_PROCESS_FROM=4500

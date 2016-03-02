@@ -807,6 +807,7 @@ class ElasticCorpus(BaseCorpus):
 
 ##ec=ElasticCorpus()
 ##ec.connectCorpus("",endpoint={"host":"localhost", "port":9200})
+##print(ec.loadSciDoc("f9c08f84-1e5e-4d57-80bc-b576fefa109f"))
 ##print(ec.SQLQuery("SELECT guid,metadata.filename FROM papers where metadata.year >2013"))
 ##print(ec.getMetadataByGUID("df8c8824-1784-46f1-b621-cc6e5aca0dad"))
 

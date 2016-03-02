@@ -33,13 +33,16 @@ def checkCorpusConnection(local_corpus_dir="",
     corpus_endpoint={"host":celery_app.MINERVA_ELASTICSEARCH_SERVER_IP,
     "port":celery_app.MINERVA_ELASTICSEARCH_SERVER_PORT}):
     """
+        Connects this worker to the elasticsearch server. By default, uses
+        values from celery_app.py
     """
     if not isinstance(cp.Corpus, ElasticCorpus):
         cp.useElasticCorpus()
         cp.Corpus.connectCorpus(local_corpus_dir, corpus_endpoint)
 
 @app.task(ignore_result=True)
-def t_convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, existing_guid=None):
+def importXMLTask(file_path, corpus_id, import_id, collection_id,
+    import_options, existing_guid=None):
     """
         Reads the input XML and saves a SciDoc
     """
@@ -49,6 +52,7 @@ def t_convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, e
             corpus_id,
             import_id,
             collection_id,
+            import_options,
             existing_guid=existing_guid)
     else:
         r=requests.get(celery_app.MINERVA_FILE_SERVER_URL+"/file/"+file_path)
@@ -58,21 +62,32 @@ def t_convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, e
                 raise self.retry(countdown=120)
             else:
                 raise RuntimeError("HTTP Error code %d: %s" % (r.status_code, r.content))
-
-        convertXMLAndAddToCorpus(
-            file_path,
-            corpus_id,
-            import_id,
-            collection_id,
-            xml_string=r.content,
-            existing_guid=existing_guid)
-
+        try:
+            convertXMLAndAddToCorpus(
+                file_path,
+                corpus_id,
+                import_id,
+                collection_id,
+                import_options,
+                xml_string=r.content,
+                existing_guid=existing_guid)
+        except MemoryError:
+            logging.exception("Exception: Out of memory in importXMLTask")
+            raise self.retry(countdown=120, max_retries=4)
+        except:
+            #TODO what other exceptions?
+            logging.exception("Exception in importXMLTask")
+            raise self.retry(countdown=60, max_retries=2)
 
 @app.task(ignore_result=True)
-def t_updatePaperInCollectionReferences(doc_id, import_options):
+def updateReferencesTask(doc_id, import_options):
     """
         Updates one paper's in-collection references, etc.
     """
-    updatePaperInCollectionReferences(doc_id, import_options)
+    try:
+        updatePaperInCollectionReferences(doc_id, import_options)
+    except:
+        logging.exception("Exception in updateReferencesTask")
+        raise self.retry(countdown=120, max_retries=4)
 
 checkCorpusConnection()

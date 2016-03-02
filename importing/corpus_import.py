@@ -7,20 +7,18 @@
 
 from __future__ import print_function
 
-import json, sys, os, datetime, fnmatch, random
+import sys, os, datetime, fnmatch, random
 import logging
 
 from minerva.proc.general_utils import (ensureTrailingBackslash, loadFileList,
-saveFileList, ensureDirExists)
+    saveFileList, ensureDirExists)
 from minerva.proc.results_logging import ProgressIndicator
 
 import minerva.db.corpora as cp
 
 from importing_functions import (convertXMLAndAddToCorpus, updatePaperInCollectionReferences)
-from minerva.squad.tasks import (t_convertXMLAndAddToCorpus, t_updatePaperInCollectionReferences)
+from minerva.squad.tasks import (importXMLTask, updateReferencesTask)
 
-
-exception_file=None
 
 FILES_TO_PROCESS_FROM=0
 FILES_TO_PROCESS_TO=sys.maxint
@@ -70,49 +68,50 @@ class CorpusImporter(object):
 ##        cp.Corpus.saveSciDoc(doc)
 ##        return doc
 
-    def convertAllFilesAndAddToDB(self, ALL_INPUT_FILES, inputdir):
+    def convertAllFilesAndAddToDB(self, ALL_INPUT_FILES, inputdir, import_options):
         """
             Loads each XML file, saves it as a SciDoc JSON file, adds its metadata to
             the database
         """
         progress=ProgressIndicator(True, self.num_files_to_process, dot_every_xitems=20)
+        tasks=[]
 
-##        ALL_FILES_IN_DB=cp.Corpus.listPapers(field="filename") or []
+        for fn in ALL_INPUT_FILES[FILES_TO_PROCESS_FROM:FILES_TO_PROCESS_TO]:
+            corpus_id=self.generate_corpus_id(fn)
+            match=cp.Corpus.getMetadataByField("metadata.filename",os.path.basename(fn))
+            if not match or import_options.get("reload_xml_if_doc_in_collection",False):
+                if self.use_celery:
+                        match_id=match["guid"] if match else None
+                        tasks.append(importXMLTask.apply_async(args=[
+                                os.path.join(inputdir,fn),
+                                corpus_id,
+                                self.import_id,
+                                self.collection_id,
+                                import_options
+                                ],
+                                kwargs={"existing_guid":match_id},
+                                queue="import_xml"
+                                ))
+                else:
+                    # main loop over all files
+                    filename=cp.Corpus.paths.inputXML+fn
+                    corpus_id=self.generate_corpus_id(fn)
 
-        if self.use_celery:
-            tasks=[]
-            for fn in ALL_INPUT_FILES[FILES_TO_PROCESS_FROM:FILES_TO_PROCESS_TO]:
-                corpus_id=self.generate_corpus_id(fn)
-                match=cp.Corpus.getMetadataByField("metadata.filename",os.path.basename(fn))
-                if not match:
-                    tasks.append(t_convertXMLAndAddToCorpus.apply_async(args=[
-                            os.path.join(inputdir,fn),
-                            corpus_id,
-                            self.import_id,
-                            self.collection_id,
-                            ],
-                            queue="import_xml"
-                            ))
-        else:
-            # main loop over all files
-            for fn in ALL_INPUT_FILES[FILES_TO_PROCESS_FROM:FILES_TO_PROCESS_TO]:
-                filename=cp.Corpus.paths.inputXML+fn
-                corpus_id=self.generate_corpus_id(fn)
+                    match=cp.Corpus.getMetadataByField("metadata.filename",os.path.basename(fn))
+                    if not match:
+                        try:
+                            doc=convertXMLAndAddToCorpus(
+                                os.path.join(inputdir,fn),
+                                corpus_id,
+                                self.import_id,
+                                self.collection_id,
+                                import_options
+                                )
+                        except ValueError:
+                            logging.exception("ERROR: Couldn't convert %s" % fn)
+                            continue
 
-                match=cp.Corpus.getMetadataByField("metadata.filename",os.path.basename(fn))
-                if not match:
-                    try:
-                        doc=convertXMLAndAddToCorpus(
-                            os.path.join(inputdir,fn),
-                            corpus_id,
-                            self.import_id,
-                            self.collection_id,
-                            )
-                    except ValueError:
-                        logging.exception("ERROR: Couldn't convert %s" % fn)
-                        continue
-
-                    progress.showProgressReport("Importing -- latest file %s" % fn)
+                        progress.showProgressReport("Importing -- latest file %s" % fn)
 
 
 
@@ -131,7 +130,7 @@ class CorpusImporter(object):
 
         for doc_id in ALL_GUIDS[FILES_TO_PROCESS_FROM:FILES_TO_PROCESS_TO]:
             if self.use_celery:
-                tasks.append(t_updatePaperInCollectionReferences.apply_async(
+                tasks.append(updateReferencesTask.apply_async(
                     args=[doc_id, import_options],
                     kwargs={},
                     queue="update_references"
@@ -232,7 +231,7 @@ class CorpusImporter(object):
         self.num_files_to_process=min(len(ALL_INPUT_FILES),FILES_TO_PROCESS_TO-FILES_TO_PROCESS_FROM)
         print("Converting input files to SciDoc format and loading metadata...")
         if import_options.get("convert_and_import_docs",True):
-            self.convertAllFilesAndAddToDB(ALL_INPUT_FILES, inputdir)
+            self.convertAllFilesAndAddToDB(ALL_INPUT_FILES, inputdir, import_options)
 
         print("Updating in-collection links...")
         ALL_GUIDS=cp.Corpus.listPapers("metadata.collection_id:\"%s\"" % self.collection_id)
@@ -266,15 +265,17 @@ class CorpusImporter(object):
 
         tasks=[]
         progress=ProgressIndicator(True,len(files_to_process))
+        import_options={"reload_xml_if_doc_in_collection": True,}
 
         for fn in files_to_process:
             corpus_id=self.generate_corpus_id(fn[0])
             if self.use_celery:
-                tasks.append(t_convertXMLAndAddToCorpus.apply_async(args=[
+                tasks.append(importXMLTask.apply_async(args=[
                         os.path.join(cp.Corpus.paths.inputXML,fn[0]),
                         corpus_id,
                         self.import_id,
                         self.collection_id,
+                        import_options
                         ],
                         kwargs={"existing_guid":fn[1]},
                         queue="import_xml"
@@ -286,7 +287,8 @@ class CorpusImporter(object):
                         corpus_id,
                         self.import_id,
                         self.collection_id,
-                        existing_guid=fn[1]
+                        import_options,
+                        existing_guid=fn[1],
                         )
                 except ValueError:
                     logging.exception("ERROR: Couldn't convert %s" % fn)
@@ -294,14 +296,13 @@ class CorpusImporter(object):
 
                 progress.showProgressReport("Importing -- latest file %s" % fn)
 
-def simpleTest():
-    """
-    """
-    cp.Corpus.globalDBconn.close()
-    f=open(os.path.join(cp.Corpus.paths.fileDB_db,"missing_references.json"),"w")
-    json.dump(global_missing_references,f)
-    f.close()
-
+# To inspect queues
+##from celery.task.control import inspect
+##i = inspect('scrapper_start')
+##i.active()  #  get a list of active tasks
+##i.registered() # get a list of tasks registered
+##i.scheduled # get a list of tasks waiting
+##i.reserved() #tasks that has been received, but waiting to be executed
 
 def main():
 

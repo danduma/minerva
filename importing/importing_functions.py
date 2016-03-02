@@ -37,7 +37,8 @@ def addSciDocToDB(doc, import_id, collection_id):
     meta["collection_id"]=collection_id
     cp.Corpus.addPaper(meta)
 
-def convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, xml_string=None, existing_guid=None):
+def convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id,
+    import_options, xml_string=None, existing_guid=None):
     """
         Reads the input XML and saves a SciDoc
     """
@@ -46,8 +47,9 @@ def convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, xml
         existing_guid=cp.Corpus.getMetadataByField("metadata.corpus_id", corpus_id)
 
     if existing_guid:
-        print("Document %s is already in the collection, updating SciDoc only" % corpus_id)
-        # Doc is already in collection
+        if not import_options.get("reload_xml_if_doc_in_collection",False):
+            print("Document %s is already in the collection. Ignoring." % corpus_id)
+            return
         update_existing=True
 
     reader=AutoXMLReader()
