@@ -43,8 +43,7 @@ def checkCorpusConnection(local_corpus_dir="",
         cp.Corpus.connectCorpus(local_corpus_dir, corpus_endpoint)
 
 @app.task(ignore_result=True, bind=True)
-def importXMLTask(file_path, corpus_id, import_id, collection_id,
-    import_options, existing_guid=None):
+def importXMLTask(self, file_path, corpus_id, import_id, collection_id, import_options, existing_guid):
     """
         Reads the input XML and saves a SciDoc
     """
@@ -82,7 +81,7 @@ def importXMLTask(file_path, corpus_id, import_id, collection_id,
             raise self.retry(countdown=60, max_retries=2)
 
 @app.task(ignore_result=True, bind=True)
-def updateReferencesTask(doc_id, import_options):
+def updateReferencesTask(self, doc_id, import_options):
     """
         Updates one paper's in-collection references, etc.
     """
