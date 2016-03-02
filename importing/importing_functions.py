@@ -75,7 +75,7 @@ def convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id,
     cp.Corpus.saveSciDoc(doc)
 
     if not update_existing:
-        addSciDocToDB(doc, import_id, collection_id, update_existing)
+        addSciDocToDB(doc, import_id, collection_id)
 
     return doc
 
