@@ -231,7 +231,10 @@ class JATSXMLReader(BaseSciDocXMLReader):
 
         meta=front.find("article-meta")
         if meta:
-            newDocument.metadata["title"]=meta.find("title-group").find("article-title").text
+            try:
+                newDocument.metadata["title"]=meta.find("title-group").find("article-title").text
+            except:
+                newDocument.metadata["title"]="<NO TITLE>"
 
             self.loadMetadataIfExists(meta.find("article-id",{"pub-id-type":"pmid"}), "pm_id", newDocument)
             self.loadMetadataIfExists(meta.find("article-id",{"pub-id-type":"pmc"}), "pmc_id", newDocument)

@@ -43,15 +43,16 @@ def import_sapienta_pmc_corpus():
         "reload_xml_if_doc_in_collection": True,
 ##        "list_missing_references":True, # default: False
 ##        "convert_and_import_docs":False, # default: True
+        "update_doc_references":False, # default: True
     }
 
 ##    corpus_import.FILES_TO_PROCESS_FROM=4500
-##    corpus_import.FILES_TO_PROCESS_TO=500
+##    corpus_import.FILES_TO_PROCESS_TO=10
 
 ##    importer.restartCollectionImport(options)
 
     importer.use_celery = True
-    importer.importCorpus("g:\\nlp\\phd\\pmc_coresc\\inputXML",file_mask="*.xml", import_options=options)
+    importer.importCorpus("g:\\nlp\\phd\\pmc_coresc\\inputXML", file_mask="*.xml", import_options=options)
 
 
 def fix_authors_full_corpus():
@@ -82,8 +83,8 @@ def fix_reload_scidocs():
         "g:\\nlp\\phd\\pmc_coresc\\inputXML", "*.xml")
 
 def main():
-##    import_sapienta_pmc_corpus()
-    fix_reload_scidocs()
+    import_sapienta_pmc_corpus()
+##    fix_reload_scidocs()
 
     pass
 

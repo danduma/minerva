@@ -82,14 +82,15 @@ class CorpusImporter(object):
             if not match or import_options.get("reload_xml_if_doc_in_collection",False):
                 if self.use_celery:
                         match_id=match["guid"] if match else None
-                        tasks.append(importXMLTask.apply_async(args=[
+                        tasks.append(importXMLTask.apply_async(
+                          args=[
                                 os.path.join(inputdir,fn),
                                 corpus_id,
                                 self.import_id,
                                 self.collection_id,
-                                import_options
+                                import_options,
+                                match_id
                                 ],
-                                kwargs={"existing_guid":match_id},
                                 queue="import_xml"
                                 ))
                 else:
@@ -229,13 +230,15 @@ class CorpusImporter(object):
         ALL_INPUT_FILES=self.loadListOrListAllFiles(inputdir,file_mask)
 
         self.num_files_to_process=min(len(ALL_INPUT_FILES),FILES_TO_PROCESS_TO-FILES_TO_PROCESS_FROM)
-        print("Converting input files to SciDoc format and loading metadata...")
         if import_options.get("convert_and_import_docs",True):
+            print("Converting input files to SciDoc format and loading metadata...")
             self.convertAllFilesAndAddToDB(ALL_INPUT_FILES, inputdir, import_options)
 
-        print("Updating in-collection links...")
-        ALL_GUIDS=cp.Corpus.listPapers("metadata.collection_id:\"%s\"" % self.collection_id)
-        self.updateInCollectionReferences(ALL_GUIDS, import_options)
+        if import_options.get("update_doc_references",True):
+            print("Updating in-collection links...")
+            ALL_GUIDS=cp.Corpus.listPapers("metadata.collection_id:\"%s\"" % self.collection_id)
+            self.updateInCollectionReferences(ALL_GUIDS, import_options)
+
         self.end_time=datetime.datetime.now()
         print("All done. Processed %d files. Took %s" % (self.num_files_to_process, str(self.end_time-self.start_time)))
 
