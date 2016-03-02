@@ -90,6 +90,15 @@ class SapientaJATSXMLReader(JATSXMLReader):
             """
             return re.sub(CITATION_FORM % temp, CITATION_FORM % final, annotated_s, flags=re.IGNORECASE)
 
+        def replaceTempCitTokenMulti(s, temp, final_list):
+            """
+                Replace temporary citation placeholder with a list of permanent
+                ones to deal with multi citations, e.g. [1,2,3]
+            """
+            assert(isinstance(final_list, list))
+            rep_string="".join([CITATION_FORM % final for final in final_list])
+            return re.sub(CITATION_FORM % temp, rep_string, annotated_s, flags=re.IGNORECASE)
+
         if not newDocument.metadata.get("original_citation_style", None):
             newDocument.metadata["original_citation_style"]="AFI"
         annotated_s,citations_found=annotateCitationsInSentence(s, newDocument.metadata["original_citation_style"])
@@ -110,17 +119,28 @@ class SapientaJATSXMLReader(JATSXMLReader):
 
         elif newDocument.metadata["original_citation_style"]=="AFI":
             for index,citation in enumerate(citations_found):
-                cit_num=int(citation["num"])-1
-                if cit_num < 0:
-                    # this is not a citation! Probably something like "then sampled a random number from uniform distribution, u ~ U[0,1]"
+                valid_citation=True
+                nums=[]
+                for num in citation["nums"]:
+                    cit_num=int(num)-1
+                    if cit_num < 0:
+                        # this is not a citation! Probably something like "then sampled a random number from uniform distribution, u ~ U[0,1]"
+                        valid_citation=False
+                        break
+                    nums.append(cit_num)
+
+                if not valid_citation:
                     continue
 
-                newCit=newDocument.addCitation(sent_id=newSent["id"])
-                # TODO check this: maybe not this simple. May need matching function.
-                newCit["ref_id"]="ref"+str(cit_num)
+                cit_ids=[]
+                for num in nums:
+                    newCit=newDocument.addCitation(sent_id=newSent["id"])
+                    # TODO check this: maybe not this simple? May need matching function.
+                    newCit["ref_id"]="ref"+str(num)
+                    cit_ids.append(newCit["id"])
+                    annotated_citations.append(newCit)
 
-                annotated_citations.append(newCit)
-                annotated_s=replaceTempCitToken(annotated_s, index+1, newCit["id"])
+                annotated_s=replaceTempCitTokenMulti(annotated_s, index+1, cit_ids)
 
         if len(annotated_citations) > 0:
             newSent["citations"]=[acit["id"] for acit in annotated_citations]
@@ -197,8 +217,9 @@ def main():
     import read_jatsxml
 
     debugging_files=[
-        r"Out_PMC549041_PMC1240567.xml.gz.gz\555959_done.xml",
-        r"Out_PMC549041_PMC1240567.xml.gz.gz\555763_done.xml",
+    r"data\scratch\mpx245\epmc\output\Out_PMC3184115_PMC3205799.xml.gz.gz\3187739_annotated.xml",
+##        r"Out_PMC549041_PMC1240567.xml.gz.gz\555959_done.xml",
+##        r"Out_PMC549041_PMC1240567.xml.gz.gz\555763_done.xml",
     ]
 
     read_jatsxml.generateSideBySide(debugging_files)

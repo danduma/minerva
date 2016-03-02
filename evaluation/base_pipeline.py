@@ -7,16 +7,14 @@
 
 from __future__ import print_function
 
-import glob, math, os, re, sys, gc, random, json
+import os, sys, json
 from copy import deepcopy
-from collections import defaultdict, namedtuple, OrderedDict
+from collections import OrderedDict
 
 from base_retrieval import BaseRetrieval, MAX_RESULTS_RECALL
 
 import minerva.db.corpora as cp
 from minerva.proc.results_logging import ResultsLogger
-from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
-from minerva.proc.general_utils import getSafeFilename, exists, ensureDirExists
 
 def analyticalRandomChanceMRR(numinlinks):
     """
@@ -80,7 +78,7 @@ def getDictOfTestingMethods(methods):
     return res
 
 
-class BasePipeline(object):
+class BaseTestingPipeline(object):
     """
         Base class for testing pipelines
     """
@@ -88,7 +86,11 @@ class BasePipeline(object):
         # This points to the the class of retrieval we are using
         self.retrieval_class=retrieval_class
         self.exp={}
-        pass
+        self.precomputed_queries=[]
+        self.tfidfmodels={}
+        self.files_dict={}
+        self.main_all_doc_methods={}
+        self.current_all_doc_methods={}
 
     def loadModel(self, guid):
         """
@@ -112,24 +114,23 @@ class BasePipeline(object):
                 actual_dir=cp.Corpus.getRetrievalIndexPath(guid,all_doc_methods[method]["index_filename"],self.exp["full_corpus"])
                 self.files_dict[guid]["tfidf_models"].append({"method":method,"actual_dir":actual_dir})
 
-    def addRandomControlResult(self, guid, precomputed_query, doc_method):
+    def addRandomControlResult(self, guid, precomputed_query):
         """
              Adds a result that is purely based on analytical chance, for
              comparison.
         """
         result_dict={"file_guid":guid,
-            "citation_id":precomputed_query["citation_id"],
-            "doc_position":precomputed_query["doc_position"],
-            "query_method":precomputed_query["query_method"],
-            "doc_method":doc_method ,
-            "match_guid":precomputed_query["match_guid"],
-            "doc_method":"RANDOM",
-            "mrr_score":analyticalRandomChanceMRR(self.files_dict[guid]["in_collection_references"]),
-            "precision_score":1/float(self.files_dict[guid]["in_collection_references"]),
-            "ndcg_score":0,
-            "rank":0,
-            "first_result":""
-            }
+                     "citation_id":precomputed_query["citation_id"],
+                     "doc_position":precomputed_query["doc_position"],
+                     "query_method":precomputed_query["query_method"],
+                     "match_guid":precomputed_query["match_guid"],
+                     "doc_method":"RANDOM",
+                     "mrr_score":analyticalRandomChanceMRR(self.files_dict[guid]["in_collection_references"]),
+                     "precision_score":1/float(self.files_dict[guid]["in_collection_references"]),
+                     "ndcg_score":0,
+                     "rank":0,
+                     "first_result":""
+                     }
 
         # Deal here with CoreSC/AZ/CFC annotation
         for annotation in self.exp.get("rhetorical_annotations",[]):
@@ -156,13 +157,17 @@ class BasePipeline(object):
 
     def startLogging(self):
         """
+            Creates the results logger and starts counting and logging.
         """
         output_filename=os.path.join(self.exp["exp_dir"],self.exp.get("output_filename","results.csv"))
-        self.logger=ResultsLogger(False,dump_filename=output_filename) # init all the logging/counting
+        self.logger=ResultsLogger(False,
+                                  dump_filename=output_filename,
+                                  message_text="Running precomputed queries") # init all the logging/counting
         self.logger.startCounting() # for timing the process, start now
 
     def loadQueriesAndFileList(self):
         """
+            Loads the precomputed queries and the list of test files to process.
         """
         precomputed_queries_file_path=self.exp.get("precomputed_queries_file_path",None)
         if not precomputed_queries_file_path:
@@ -201,13 +206,14 @@ class BasePipeline(object):
 
     def newResultDict(self, guid, precomputed_query, doc_method):
         """
+            Creates and populates a new result dict.
         """
         result_dict={"file_guid":guid,
-        "citation_id":precomputed_query["citation_id"],
-        "doc_position":precomputed_query["doc_position"],
-        "query_method":precomputed_query["query_method"],
-        "doc_method":doc_method ,
-        "match_guid":precomputed_query["match_guid"]}
+                     "citation_id":precomputed_query["citation_id"],
+                     "doc_position":precomputed_query["doc_position"],
+                     "query_method":precomputed_query["query_method"],
+                     "doc_method":doc_method ,
+                     "match_guid":precomputed_query["match_guid"]}
 
         # Deal here with CoreSC/AZ/CFC annotation
         for annotation in self.exp.get("rhetorical_annotations",[]):
@@ -217,6 +223,7 @@ class BasePipeline(object):
 
     def addEmptyResult(self, guid, precomputed_query, doc_method):
         """
+            Adds an empty result, that is, a result with 0 score due to some error.
         """
         result_dict=self.newResultDict(guid, precomputed_query, doc_method)
         result_dict["mrr_score"]=0
@@ -228,13 +235,14 @@ class BasePipeline(object):
 
     def addResult(self, guid, precomputed_query, doc_method, retrieved):
         """
+            Adds a normal (successful) result to the result log.
         """
         result_dict=self.newResultDict(guid, precomputed_query, doc_method)
-        result=self.logger.measureScoreAndLog(retrieved, precomputed_query["citation_multi"], result_dict)
+        self.logger.measureScoreAndLog(retrieved, precomputed_query["citation_multi"], result_dict)
 ##        rank_per_method[result["doc_method"]].append(result["rank"])
 ##        precision_per_method[result["doc_method"]].append(result["precision_score"])
 
-    def logTextAndReferences(self):
+    def logTextAndReferences(self, doctext, queries, qmethod):
         """
             Extra logging, not used right now
         """
@@ -243,16 +251,6 @@ class BasePipeline(object):
         post_selection_text=doctext[queries[qmethod]["right_end"]:queries[qmethod]["left_start"]+300]
         draft_text=u"<span class=document_text>{}</span> <span class=selected_text>{}</span> <span class=document_text>{}</span>".format(pre_selection_text, draft_text, post_selection_text)
 ##        print(draft_text)
-
-    def computeStatistics():
-        """
-        """
-        rank_diff=abs(rank_per_method["section_1_full_text"][-1]-rank_per_method["full_text_1"][-1])
-##        if method_overlap_temp["section_1_full_text"] == method_overlap_temp["full_text_1"]
-        if rank_diff == 0:
-            methods_overlap+=1
-        rank_differences.append(rank_diff)
-        total_overlap_points+=1
 
 
     def saveResultsAndCleanUp(self):
@@ -315,7 +313,7 @@ class BasePipeline(object):
 
                 # ACTUAL RETRIEVAL HAPPENING - run query
                 retrieved=self.tfidfmodels[doc_method].runQuery(
-                    precomputed_query["structured_query"],
+                    precomputed_query,
                     all_doc_methods[doc_method]["runtime_parameters"],
                     guid,
                     max_results=exp.get("max_results_recall",MAX_RESULTS_RECALL))
@@ -325,17 +323,14 @@ class BasePipeline(object):
                 else:
                     self.addResult(guid, precomputed_query, doc_method, retrieved)
 
-            if False:
-                self.logTextAndReferences()
             if self.exp.get("add_random_control_result", False):
-                self.addRandomControlResult(guid, precomputed_query, doc_method)
+                self.addRandomControlResult(guid, precomputed_query)
 
             self.logger.showProgressReport(guid) # prints out info on how it's going
-##            self.computeStatistics()
 
         self.saveResultsAndCleanUp()
 
-class CompareExplainPipeline(BasePipeline):
+class CompareExplainPipeline(BaseTestingPipeline):
     """
     """
     def __init__(self):
@@ -352,8 +347,9 @@ class CompareExplainPipeline(BasePipeline):
 
     def loadModel(self, model, exp):
         """
+            Overrides the default loadModel to add explain models.
         """
-        super(LuceneTestingPipeline, self).loadModel(model, exp)
+        super(self.__class__, self).loadModel(model, exp)
 
         # this is to compare bulkScorer and .explain() on their overlap
         self.tfidfmodels[model["method"]+"_EXPLAIN"]=self.retrieval_class(
@@ -362,7 +358,6 @@ class CompareExplainPipeline(BasePipeline):
             logger=None,
             use_default_similarity=exp["use_default_similarity"])
         self.tfidfmodels[model["method"]+"_EXPLAIN"].useExplainQuery=True
-
 
 def main():
     pass

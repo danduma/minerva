@@ -99,13 +99,15 @@ class LuceneRetrieval(BaseRetrieval):
             return []
 
         self.last_query=structured_query
-        query_text=self.rewriteQuery(structured_query, ["text"])
+        query_text=self.rewriteQuery(structured_query["structured_query"], ["text"])
 
         try:
             query = self.query_parser(lucene.Version.LUCENE_CURRENT, "text", self.analyzer).parse(query_text)
         except:
             print("Lucene exception:",sys.exc_info()[:2])
             return None
+
+        structured_query["lucene_query"]=query_text
 
         if self.useExplainQuery:
             # this should only exist until I fix the lucene bulkScorer to give the same results
@@ -164,7 +166,7 @@ class LuceneRetrievalBoost(LuceneRetrieval):
 
         self.last_query=structured_query
 
-        query_text=self.rewriteQuery(structured_query,parameters,test_guid)
+        query_text=self.rewriteQuery(structured_query["structured_query"],parameters,test_guid)
 
         try:
             query = self.query_parser(LuceneVersion.LUCENE_CURRENT, "text", self.analyzer).parse(query_text)
@@ -173,14 +175,8 @@ class LuceneRetrievalBoost(LuceneRetrieval):
             print("Lucene exception:",sys.exc_info()[:2])
             print("Query:",query_text)
             return []
-##            try:
-##                simplified_query_text=" ".join(query_text.split()[:(1024/len(parameters))])
-##                query_text=self.generateLuceneQuery(simplified_query_text, parameters, test_guid)
-##                query = self.query_parser(LuceneVersion.LUCENE_CURRENT, "text", self.analyzer).parse(query_text)
-##            except:
-##                print("Lucene exception:",sys.exc_info()[:2])
-##                print("Query:",query_text)
-##                return None
+
+        structured_query["lucene_query"]=query_text
 
         if self.useExplainQuery:
             # TODO remove this completely, use DisjunctionMax

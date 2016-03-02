@@ -7,7 +7,7 @@
 
 from __future__ import print_function
 
-import gc,sys,json,os
+import gc,sys,json,os,datetime
 from os.path import exists
 
 import minerva.db.corpora as cp
@@ -15,7 +15,7 @@ import minerva.db.corpora as cp
 from prebuild import prebuildBOWsForTests
 
 from minerva.evaluation.query_generation import QueryGenerator
-from minerva.evaluation.base_pipeline import BasePipeline
+from minerva.evaluation.base_pipeline import BaseTestingPipeline
 from minerva.evaluation.precomputed_pipeline import PrecomputedPipeline
 from minerva.proc.query_extraction import EXTRACTOR_LIST
 
@@ -25,6 +25,7 @@ from minerva.proc.query_extraction import EXTRACTOR_LIST
 import minerva.proc.doc_representation as doc_representation
 import minerva.evaluation.athar_corpus as athar_corpus
 from minerva.proc.general_utils import ensureDirExists
+from weight_training import dynamicWeightValues, measureScores
 
 class Experiment:
     """
@@ -111,8 +112,10 @@ class Experiment:
         gc.collect()
         options=self.options
 
-        if options["run_precompute_retrieval"] or not exists(self.exp["exp_dir"]+"prr_"+self.exp["queries_classification"]+"_"+self.exp["train_weights_for"][0]+".json"):
-            self.query_generator.precomputeQueries(self.exp)
+##        if options["run_precompute_retrieval"] or not exists(self.exp["exp_dir"]+"prr_"+self.exp["queries_classification"]+"_"+self.exp["train_weights_for"][0]+".json"):
+##            self.query_generator.precomputeQueries(self.exp)
+        # Is this where I should be loading the pre-computed formulas?
+        # They're already being loaded insinde dynamicWeightValues()
 
         best_weights={}
         if options.get("override_folds",None):
@@ -128,12 +131,14 @@ class Experiment:
             best_weights[split_fold]=dynamicWeightValues(self.exp,split_fold)
 
         print("Now applying and testing weights...\n")
-##        measureScores(self.exp, best_weights)
+        measureScores(self.exp, best_weights)
 
     def run(self):
         """
             Loads a JSON describing an experiment and runs it all
         """
+        self.exp["experiment_id"]=datetime.datetime.now().isoformat("/")
+
         # BIND EXTRACTORS
         for option in self.exp["prebuild_bows"]:
             self.exp["prebuild_bows"][option]["function"]=self.bindFunction(self.exp["prebuild_bows"][option]["function"])
@@ -188,10 +193,11 @@ class Experiment:
 
         # TESTING PIPELINE
         if self.exp["type"] == "compute_once":
-            pipeline=BasePipeline(retrieval_class=self.retrieval_class)
+            pipeline=BaseTestingPipeline(retrieval_class=self.retrieval_class)
             pipeline.runPipeline(self.exp)
         elif self.exp["type"] == "train_weights":
             pipeline=PrecomputedPipeline(retrieval_class=self.retrieval_class)
+            pipeline.runPipeline(self.exp)
             self.trainWeights()
 
 

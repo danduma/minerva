@@ -39,7 +39,7 @@ def checkCorpusConnection(local_corpus_dir="",
         cp.Corpus.connectCorpus(local_corpus_dir, corpus_endpoint)
 
 @app.task(ignore_result=True)
-def t_convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, extra_arg1, extra_arg2):
+def t_convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, existing_guid=None):
     """
         Reads the input XML and saves a SciDoc
     """
@@ -48,7 +48,8 @@ def t_convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, e
             file_path,
             corpus_id,
             import_id,
-            collection_id)
+            collection_id,
+            existing_guid=existing_guid)
     else:
         r=requests.get(celery_app.MINERVA_FILE_SERVER_URL+"/file/"+file_path)
         if not r.ok:
@@ -63,7 +64,8 @@ def t_convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, e
             corpus_id,
             import_id,
             collection_id,
-            xml_string=r.content)
+            xml_string=r.content,
+            existing_guid=existing_guid)
 
 
 @app.task(ignore_result=True)

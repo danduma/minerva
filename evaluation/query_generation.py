@@ -106,6 +106,7 @@ class QueryGenerator(object):
         if not match:
 ##            assert match
             print("Weird! can't find citation in text!", m["cit"])
+            assert False
             return generated_queries
 
         # this is where we are in the document

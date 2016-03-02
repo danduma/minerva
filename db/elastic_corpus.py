@@ -275,7 +275,7 @@ class ElasticCorpus(BaseCorpus):
             raise ConnectionError("Error in query: " + str(hits["error"]["root_cause"]))
         hits=hits["hits"]["hits"]
 
-        return [hits[r]["_source"] for r in hits]
+        return [hit["_source"] for hit in hits]
 
     def cachedJsonExists(self, type, guid, params=None):
         """
@@ -806,7 +806,8 @@ class ElasticCorpus(BaseCorpus):
         self.query_filter=" AND ".join(query_items)+" AND "
 
 ##ec=ElasticCorpus()
-##ec.connectCorpus("",endpoint={"host":"129.215.91.3", "port":9200})
+##ec.connectCorpus("",endpoint={"host":"localhost", "port":9200})
+##print(ec.SQLQuery("SELECT guid,metadata.filename FROM papers where metadata.year >2013"))
 ##print(ec.getMetadataByGUID("df8c8824-1784-46f1-b621-cc6e5aca0dad"))
 
 DOCTEST = False

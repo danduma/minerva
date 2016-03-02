@@ -6,15 +6,11 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
-import os, json
-
 from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
 
 import minerva.db.corpora as cp
-from minerva.evaluation.athar_corpus import AtharQueryGenerator
 
 from minerva.evaluation.experiment import Experiment
-from minerva.evaluation.query_generation import QueryGenerator
 
 # BOW files to prebuild for generating document representation.
 prebuild_bows={
@@ -73,8 +69,9 @@ doc_methods={
 ##    "ilc_passage":{"type":"ilc_mashup",  "index":"ilc_passage", "mashup_method":"passage","ilc_parameters":[10, 20, 30, 40, 50],
 ##        "parameters":[250,350], "runtime_parameters":{"text":"1","inlink_context":"1"}},
 
-    "az_annotated":{"type":"annotated_boost", "index":"az_annotated", "parameters":[1], "runtime_parameters":
-        {"ALL":["AIM","BAS","BKG","CTR","OTH","OWN","TXT"]
+    "az_annotated":{"type":"annotated_boost", "index":"az_annotated", "parameters":[1], "runtime_parameters":{
+##        "AZ_ALL":AZ_ZONES_LIST,
+        "CSC_ALL":CORESC_LIST,
         }},
 
 ##    "section":{"type":"annotated_boost", "index":"section_annotated", "parameters":[1], "runtime_parameters":
@@ -188,18 +185,18 @@ experiment={
     # use full-collection retrival? If False, it runs "citation resolution"
     "full_corpus":False,
     # "compute_once","train_weights"
-    "type":"compute_once",
+    "type":"train_weights",
     "numchunks":10,
     # name of CSV file to save results in
     "output_filename":"results.csv",
     "pivot_table":"",
     "max_results_recall":200,
     # should queries be classified based on some rhetorical class of the sentence: "az", "csc"
-    "queries_classification":None,
+    "queries_classification":"csc",
     # of all precomputed queries, which classes should be processed/evaluated?
     "queries_to_process":["ALL"],
     # what "zones" to try to train weights for
-    "train_weights_for":None,
+    "train_weights_for":CORESC_LIST,
     # add another doc_method showing the score based on analytical random chance?
     "add_random_control_result": False,
     "precomputed_queries_filename":"precomputed_queries.json",
@@ -224,7 +221,6 @@ def main():
     experiment["test_files"]=["456f8c80-9807-46a9-8455-cd4a7e346f9d"]
     exp=Experiment(experiment, options)
     exp.run()
-    pass
 
 if __name__ == '__main__':
     main()

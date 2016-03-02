@@ -279,6 +279,7 @@ class JATSXMLReader(BaseSciDocXMLReader):
         if not abstract:
 ##            debugAddMessage(newDocument,"error","CANNOT LOAD ABSTRACT! file: %s\n" % newDocument.metadata.get("filename","None"))
             logging.warning("CANNOT LOAD ABSTRACT! file: %s\n" % newDocument.metadata.get("filename","None"))
+            newDocument.metadata["missing_abstract"] = True
             # TODO: LOAD first paragraph as abstract if no abstract available
         else:
             newAbstract=newDocument.addSection("root","Abstract")

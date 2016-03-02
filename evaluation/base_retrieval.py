@@ -29,6 +29,9 @@ class BaseRetrieval(object):
             Modify a ready build LuceneQuery to add other field weights
 
         """
+        if "structured_query" in structured_query:
+            structured_query=structured_query["structured_query"]
+
         original_query=structured_query
         if not structured_query or len(structured_query) == 0:
             return None

@@ -34,7 +34,10 @@ class StoredFormula:
 
     def fromLuceneExplanation(self,explanation):
         """
-            Loads the formula from a Lucene explanation
+            Loads the formula from a Lucene explanation.
+
+            WARNING: deprecated. This function may not work well, update it to
+            do what .fromElasticExplanation does
         """
         original_value=explanation.getValue()
 
@@ -101,7 +104,7 @@ class StoredFormula:
         """
         def iterateDetail(detail):
             """
-                This
+                Recursive function that processes a detail
             """
             if detail["description"].startswith("coord"):
                 new_element={"type":"coord", "value":detail["value"]}
@@ -113,6 +116,10 @@ class StoredFormula:
                 new_element={"type":"*", "parts":[]}
                 for new_detail in detail["details"]:
                     new_element["parts"].append(iterateDetail(new_detail))
+            elif detail["description"].startswith("max of"):
+                new_element={"type":"max", "parts":[]}
+                for new_detail in detail["details"]:
+                    new_element["parts"].append(iterateDetail(new_detail))
             else:
                 field=re.match(r"weight\((.*?)\:",detail["description"],re.IGNORECASE)
                 if field:
@@ -120,12 +127,13 @@ class StoredFormula:
                     elem=detail["details"][0]
                     if elem["description"].startswith("fieldWeight"):
                         # if the queryWeight is 1, .explain() will not report it
-                        new_element={"type":"field", "field":field_name, "qw": 1.0, "fw":elem["value"]}
+##                        new_element={"type":"hit", "field":field_name, "qw": 1.0, "fw":elem["value"]}
+                        # (field_name,query_weight,field_weight)
+                        new_element=(field_name, 1.0, elem["value"])
                     else:
                         elements=elem["details"]
-                        new_element={"type":"field", "field":field_name, "qw": elements[0]["value"], "fw":elements[1]["value"]}
-##                        newMatch=[field_name,elements[0]["value"],elements[1]["value"]]
-##                    self.formula["matches"].append(newMatch)
+                        new_element=(field_name, elements[0]["value"], elements[1]["value"])
+##                        new_element={"type":"hit", "field":field_name, "qw": elements[0]["value"], "fw":elements[1]["value"]}
                 elif detail["description"].startswith("match on required clause, product of"):
                     new_element={"type":"const", "value":detail["value"]}
 
@@ -137,14 +145,12 @@ class StoredFormula:
             self.formula={"coord":0,"matches":[]}
             return
 
-##        self.formula["coord"]=1
         self.formula=iterateDetail(explanation["explanation"])
 
         # While not done checking that this works, this assert is in place
         original_value=self.truncate(original_value,self.round_to_decimal_places)
         computed_value=self.truncate(self.computeScore(self.formula,defaultdict(lambda:1)),self.round_to_decimal_places)
         assert(computed_value == original_value)
-
 
     def computeScore_old(self,parameters):
         """
@@ -162,19 +168,32 @@ class StoredFormula:
     def computeScore(self, part, parameters):
         """
             Recomputation of a Lucene explain formula using the values in
-            [parameters] as per-field query weights
-        """
-        if part["type"] == "*":
-            scores=[self.computeScore(part, parameters) for part in part["parts"]]
-            return reduce(lambda x, y: x*y, scores)
-        elif part["type"] == "+":
-            scores=[self.computeScore(part, parameters) for part in part["parts"]]
-            return sum(scores)
-        elif part["type"] in ["const", "coord"]:
-            return part["value"]
-        elif part["type"] == "field":
-            return part["qw"] * parameters[part["field"]] * part["fw"]
+            [parameters] as per-field query weights. Recursive. Call with
+            formula.formula first.
 
+            :param part: tuple, list or dict
+            :returns: floating-point score
+        """
+        if isinstance(part, tuple) or isinstance(part, list):
+            return part[1] * parameters[part[0]] * part[2] # qw * param * fw
+        elif isinstance(part, dict):
+            if part["type"] in ["*", "+", "max"]:
+                scores=[self.computeScore(sub_part, parameters) for sub_part in part["parts"]]
+                if part["type"] == "*":
+                    return reduce(lambda x, y: x*y, scores)
+                elif part["type"] == "+":
+                    return sum(scores)
+                elif part["type"] == "max":
+                    return max(scores)
+            elif part["type"] in ["const", "coord"]:
+                assert(part["value"] is not None)
+                return part["value"]
+##        elif part["type"] == "hit":
+##            return part["qw"] * parameters[part["field"]] * part["fw"]
+            else:
+                raise ValueError("Unexpected operation type: %s" % part["type"])
+        else:
+            raise ValueError("Unexpected type %s" % type(part))
 
 def main():
     pass

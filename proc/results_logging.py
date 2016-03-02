@@ -7,15 +7,15 @@
 
 from __future__ import print_function
 
-import codecs, math, datetime
+import os, sys, codecs, math, datetime
 
 from collections import defaultdict
-from pandas import DataFrame, Series
+from pandas import DataFrame
 
-from general_utils import *
+from general_utils import (reportTimeLeft, ensureDirExists, writeDictToCSV, getSafeFilename)
 import minerva.db.corpora as cp
 
-class ProgressIndicator:
+class ProgressIndicator(object):
     """
         Shows a basic progress indicator of items processed, left to process and
         estimated time until finishing
@@ -219,20 +219,6 @@ class ResultsLogger (ProgressIndicator):
         """
         pass
 
-    def formatReferences(self,retrieved_references,multi,position):
-        res="<ol>"
-        for index,reference in enumerate(retrieved_references):
-            if index < multi:
-                css_class="scoring_region"
-            elif position==index:
-                css_class="original"
-            else:
-                css_class="wrong"
-
-            text=formatReferenceAPA(reference)
-            res+="<li class="+css_class+">"+text+"</li>"
-        res+="</ol>"
-
     def measureScoreAndLog(self, retrieved_docs, citation_multi, result_dict):
         """
             file_guid, retrieved_docs, right_citation, doc_position, qmethod, method, query, az, cfc
@@ -352,24 +338,6 @@ class ResultsLogger (ProgressIndicator):
             all_overlaps.append(this_one)
 
         print("Overlap between", overlap_between,": %02.4f" % (sum(all_overlaps) / float(len(all_overlaps))))
-
-class ResultsLoggerCompare(ResultsLogger):
-    """
-        Same as ResultsLogger but compares the overlap between methods
-        TODO everything, add to class above
-    """
-    def __init__(self, results_file=True, to_compare=[]):
-        """
-            takes a to_compare parameter: list of methods to compare
-        """
-        ResultsLogger.__init__(self, results_file)
-
-        self.methods_overlap=0
-        self.total_overlap_points=0
-##        self.precision_per_method=defaultdict(lambda:[])
-
-    def addResolutionResultDict(self, result_dict):
-        pass
 
 def main():
     pass

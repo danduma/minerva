@@ -37,14 +37,18 @@ def addSciDocToDB(doc, import_id, collection_id):
     meta["collection_id"]=collection_id
     cp.Corpus.addPaper(meta)
 
-def convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, xml_string=None):
+def convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, xml_string=None, existing_guid=None):
     """
         Reads the input XML and saves a SciDoc
     """
-    if cp.Corpus.getMetadataByField("metadata.corpus_id", corpus_id):
-        print("Document %s is already in the collection" % corpus_id)
+    update_existing=False
+    if not existing_guid:
+        existing_guid=cp.Corpus.getMetadataByField("metadata.corpus_id", corpus_id)
+
+    if existing_guid:
+        print("Document %s is already in the collection, updating SciDoc only" % corpus_id)
         # Doc is already in collection
-        return
+        update_existing=True
 
     reader=AutoXMLReader()
 ##    try:
@@ -57,12 +61,20 @@ def convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id, xml
 ##        return
 
     doc.metadata["norm_title"]=normalizeTitle(doc.metadata["title"])
-    if doc.metadata.get("guid", "") == "":
+
+    if update_existing:
+        doc.metadata["guid"]=existing_guid
+    elif doc.metadata.get("guid", "") == "":
         doc.metadata["guid"]=cp.Corpus.generateGUID(doc.metadata)
+
     if doc.metadata.get("corpus_id", "") == "":
         doc.metadata["corpus_id"]=corpus_id
+
     cp.Corpus.saveSciDoc(doc)
-    addSciDocToDB(doc, import_id, collection_id)
+
+    if not update_existing:
+        addSciDocToDB(doc, import_id, collection_id, update_existing)
+
     return doc
 
 def updatePaperInCollectionReferences(doc_id, import_options):

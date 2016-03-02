@@ -32,8 +32,15 @@ class ElasticRetrieval(BaseRetrieval):
 
     def rewriteQueryAsDSL(self, structured_query, parameters):
         """
-            Creates a multi_match query for elasticsearch
+            Creates a multi_match DSL query for elasticsearch.
+
+            :param structured_query: a StructuredQuery dict, optionally under the
+                key "structured_query"
+            :param parameters: dict of [field]=weight to replace in the query
         """
+        if "structured_query" in structured_query:
+            structured_query=structured_query["structured_query"]
+
         original_query=structured_query
         if not structured_query or len(structured_query) == 0:
             return None
@@ -78,21 +85,22 @@ class ElasticRetrieval(BaseRetrieval):
             raise NotImplementedError
             return
 
-        original_query=structured_query
+##        original_query=dict(structured_query)
 
         if not structured_query or len(structured_query) == 0 :
             return []
 
-        self.last_query=structured_query
-        query_text=self.rewriteQuery(structured_query, ["text"])
+        self.last_query=dict(structured_query)
+        dsl_query=self.rewriteQueryAsDSL(structured_query["structured_query"], ["text"])
 
         res=self.es.search(
-            q=query_text,
+            body={"query":dsl_query},
             size=max_results,
             index=self.index_name,
             doc_type=ES_TYPE_DOC
             )
 
+        structured_query["dsl_query"]=dsl_query
         hits=res["hits"]["hits"]
 ##        print("Found %d document(s) that matched query '%s':" % (res['hits']['total'], query))
 
@@ -110,14 +118,14 @@ class ElasticRetrieval(BaseRetrieval):
             Runs .explain() for one query/doc pair, generates and returns a \
             StoredFormula instance from it
 
-            :param query: Elastic DSL Query
+            :param query: StructuredQuery dict, with a "dsl_query" key
             :param doc_id: id of document to run .explain() for
             :returns:
         """
         explanation=self.es.explain(
             index=self.index_name,
             doc_type=ES_TYPE_DOC,
-            body={"query":query},
+            body={"query":query["dsl_query"]},
             id=doc_id
             )
 
@@ -164,6 +172,7 @@ class ElasticRetrievalBoost(ElasticRetrieval):
                     )
 
                 hits=res["hits"]["hits"]
+                structured_query["dsl_query"]=dsl_query
 ##                if len(query_text) > 2800:
 ##                    print("Query > 2800 and no problems! Len: ",len(query_text))
             except ConnectionError as e:
@@ -213,10 +222,10 @@ def testExplanation():
     match_start=text.find("MATCH")
 
     queries=ext.extract({"parameters":[(5,5)],
-                        "match_start": match_start,
-                        "match_end": match_start+5,
-                        "doctext": text,
-                        "method_name": "test"
+                         "match_start": match_start,
+                         "match_end": match_start+5,
+                         "doctext": text,
+                         "method_name": "test"
                         })
 
     q=er.rewriteQueryAsDSL(queries[0]["structured_query"], {"metadata.title":1})

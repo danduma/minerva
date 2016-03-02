@@ -71,9 +71,18 @@ def fix_authors_full_corpus():
         cp.Corpus.updatePaper(doc_meta)
         progress.showProgressReport("Removing redundant author information")
 
+def fix_reload_scidocs():
+    """
+    """
+    cp.useElasticCorpus()
+    cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc")
+    importer=CorpusImporter("PMC_CSC","initial", use_celery=True)
+    importer.reloadSciDocsOnly("metadata.collection_id:\"PMC_CSC\" AND metadata.year:>2013",
+        "g:\\nlp\\phd\\pmc_coresc\\inputXML", "*.xml")
 
 def main():
-    import_sapienta_pmc_corpus()
+##    import_sapienta_pmc_corpus()
+    fix_reload_scidocs()
 
     pass
 

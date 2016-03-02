@@ -7,19 +7,16 @@
 
 from __future__ import print_function
 
-import json, sys, os, datetime, fnmatch
+import json, sys, os, datetime, fnmatch, random
 import logging
-from copy import deepcopy
 
 from minerva.proc.general_utils import (ensureTrailingBackslash, loadFileList,
 saveFileList, ensureDirExists)
 from minerva.proc.results_logging import ProgressIndicator
 
 import minerva.db.corpora as cp
-from minerva.scidoc.xmlformats.read_auto import AutoXMLReader
 
 from importing_functions import (convertXMLAndAddToCorpus, updatePaperInCollectionReferences)
-
 from minerva.squad.tasks import (t_convertXMLAndAddToCorpus, t_updatePaperInCollectionReferences)
 
 
@@ -34,7 +31,7 @@ class CorpusImporter(object):
         Allows the importing of a coherent corpus procedurally in one go
     """
 
-    def __init__(self, collection_id="", import_id="", reader=None):
+    def __init__(self, collection_id="", import_id="", reader=None, use_celery=False):
         """
         """
 
@@ -51,7 +48,7 @@ class CorpusImporter(object):
         self.collection_id=collection_id
         self.import_id=import_id
         self.generate_corpus_id=getDefault_corpus_id
-        self.num_processes=1
+        self.use_celery=use_celery
 
 ##    def convertDoc(self, filename, corpus_id):
 ##        """
@@ -85,40 +82,28 @@ class CorpusImporter(object):
         if self.use_celery:
             tasks=[]
             for fn in ALL_INPUT_FILES[FILES_TO_PROCESS_FROM:FILES_TO_PROCESS_TO]:
-                filename=cp.Corpus.paths.inputXML+fn
-    ##            print("Processing",filename)
                 corpus_id=self.generate_corpus_id(fn)
                 match=cp.Corpus.getMetadataByField("metadata.filename",os.path.basename(fn))
                 if not match:
-##                    tasks.append(t_convertXMLAndAddToCorpus.delay(
-##                            os.path.join(cp.Corpus.paths.inputXML,fn),
-##                            corpus_id,
-##                            self.import_id,
-##                            self.collection_id,
-##                            None,
-##                            None,
-##                            ))
                     tasks.append(t_convertXMLAndAddToCorpus.apply_async(args=[
-                            os.path.join(cp.Corpus.paths.inputXML,fn),
+                            os.path.join(inputdir,fn),
                             corpus_id,
                             self.import_id,
                             self.collection_id,
-                            None,
-                            None,],
+                            ],
                             queue="import_xml"
                             ))
         else:
             # main loop over all files
             for fn in ALL_INPUT_FILES[FILES_TO_PROCESS_FROM:FILES_TO_PROCESS_TO]:
                 filename=cp.Corpus.paths.inputXML+fn
-    ##            print("Processing",filename)
                 corpus_id=self.generate_corpus_id(fn)
 
                 match=cp.Corpus.getMetadataByField("metadata.filename",os.path.basename(fn))
                 if not match:
                     try:
                         doc=convertXMLAndAddToCorpus(
-                            os.path.join(cp.Corpus.paths.inputXML,fn),
+                            os.path.join(inputdir,fn),
                             corpus_id,
                             self.import_id,
                             self.collection_id,
@@ -172,6 +157,21 @@ class CorpusImporter(object):
         print("Total files:",len(ALL_FILES))
         return ALL_FILES
 
+    def loadListOrListAllFiles(self, inputdir, file_mask):
+        """
+            Either loads the existing file list or lists the contents of the
+            input directory.
+        """
+        all_input_files_fn=os.path.join(cp.Corpus.paths.fileDB,"all_input_files.txt")
+        ALL_INPUT_FILES=loadFileList(all_input_files_fn)
+        if not ALL_INPUT_FILES:
+            print("Listing all files...")
+            ALL_INPUT_FILES=self.listAllFiles(inputdir,file_mask)
+            ensureDirExists(cp.Corpus.paths.fileDB)
+            saveFileList(ALL_INPUT_FILES,all_input_files_fn)
+
+        return ALL_INPUT_FILES
+
     def selectRandomInputFiles(self, howmany, file_mask="*.xml"):
         """
             Of all input files, it picks number of random ones.
@@ -216,8 +216,6 @@ class CorpusImporter(object):
         """
         inputdir=ensureTrailingBackslash(root_input_dir)
 
-        global_missing_references=[]
-
         print("Starting ingestion of corpus...")
         print("Creating database...")
 
@@ -229,13 +227,7 @@ class CorpusImporter(object):
 
 
         self.start_time=datetime.datetime.now()
-        all_input_files_fn=os.path.join(cp.Corpus.paths.fileDB,"all_input_files.txt")
-        ALL_INPUT_FILES=loadFileList(all_input_files_fn)
-        if not ALL_INPUT_FILES:
-            print("Listing all files...")
-            ALL_INPUT_FILES=self.listAllFiles(inputdir,file_mask)
-            ensureDirExists(cp.Corpus.paths.fileDB)
-            saveFileList(ALL_INPUT_FILES,all_input_files_fn)
+        ALL_INPUT_FILES=self.loadListOrListAllFiles(inputdir,file_mask)
 
         self.num_files_to_process=min(len(ALL_INPUT_FILES),FILES_TO_PROCESS_TO-FILES_TO_PROCESS_FROM)
         print("Converting input files to SciDoc format and loading metadata...")
@@ -248,11 +240,65 @@ class CorpusImporter(object):
         self.end_time=datetime.datetime.now()
         print("All done. Processed %d files. Took %s" % (self.num_files_to_process, str(self.end_time-self.start_time)))
 
+    def reloadSciDocsOnly(self, conditions, inputdir, file_mask):
+        """
+            This reloads the SciDocs for a subset of all files in the corpus
+        """
+##        filenames=cp.Corpus.SQLQuery("SELECT guid,metadata.filename FROM papers where %s limit 10000" % conditions)
+        filenames=cp.Corpus.unlimitedQuery(
+            index="papers",
+            doc_type="paper",
+            _source=["metadata.filename","guid"],
+            q=conditions
+            )
+
+        ALL_INPUT_FILES=self.loadListOrListAllFiles(inputdir,file_mask)
+        files_to_process=[]
+        files_hash={}
+        for input_file in ALL_INPUT_FILES:
+            corpus_id=self.generate_corpus_id(input_file)
+            files_hash[corpus_id]=input_file
+
+        for file_name in filenames:
+            corpus_id=self.generate_corpus_id(file_name["_source"]["metadata"]["filename"])
+            assert(corpus_id in files_hash)
+            files_to_process.append([files_hash[corpus_id],file_name["_source"]["guid"]])
+
+        tasks=[]
+        progress=ProgressIndicator(True,len(files_to_process))
+
+        for fn in files_to_process:
+            corpus_id=self.generate_corpus_id(fn[0])
+            if self.use_celery:
+                tasks.append(t_convertXMLAndAddToCorpus.apply_async(args=[
+                        os.path.join(cp.Corpus.paths.inputXML,fn[0]),
+                        corpus_id,
+                        self.import_id,
+                        self.collection_id,
+                        ],
+                        kwargs={"existing_guid":fn[1]},
+                        queue="import_xml"
+                        ))
+            else:
+                try:
+                    doc=convertXMLAndAddToCorpus(
+                        os.path.join(cp.Corpus.paths.inputXML,fn[0]),
+                        corpus_id,
+                        self.import_id,
+                        self.collection_id,
+                        existing_guid=fn[1]
+                        )
+                except ValueError:
+                    logging.exception("ERROR: Couldn't convert %s" % fn)
+                    continue
+
+                progress.showProgressReport("Importing -- latest file %s" % fn)
+
 def simpleTest():
     """
     """
     cp.Corpus.globalDBconn.close()
-    f=open(os.join(cp.Corpus.paths.fileDB_db,"missing_references.json"),"w")
+    f=open(os.path.join(cp.Corpus.paths.fileDB_db,"missing_references.json"),"w")
     json.dump(global_missing_references,f)
     f.close()
 

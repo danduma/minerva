@@ -496,18 +496,22 @@ def annotateCitationsAFI(text):
         """
         elements=re.sub(r"[\[\]]","",match.group(0)).split(",")
 
+        nums=[]
         for num in elements:
             try:
                 int_num=int(num)
+                nums.append(int_num)
             except:
-                return match.group(0)
+                pass
+##                nums.append(match.group(0))
 
-            cit_dict={
-                "type":"AFI",
-                "text": match.group(0),
-                "num": int_num
-            }
-            extracted_citations.append(cit_dict)
+        cit_dict={
+            "type":"AFI",
+            "text": match.group(0),
+            "nums": nums
+        }
+        # each <CIT ID=%d /> token is one number more in ID
+        extracted_citations.append(cit_dict)
 
         return CITATION_FORM % unicode(len(extracted_citations))
 

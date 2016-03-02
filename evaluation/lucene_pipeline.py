@@ -15,9 +15,9 @@ import lucene
 from minerva.evaluation.lucene_retrieval import (LuceneRetrieval,
 LuceneRetrievalBoost,precomputedExplainRetrieval, MAX_RESULTS_RECALL)
 
-from base_pipeline import BasePipeline
+from base_pipeline import BaseTestingPipeline
 
-class LuceneTestingPipeline(BasePipeline):
+class LuceneTestingPipeline(BaseTestingPipeline):
     """
         Testing pipeline using local Lucene indexes
     """
