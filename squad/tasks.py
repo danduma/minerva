@@ -42,7 +42,7 @@ def checkCorpusConnection(local_corpus_dir="",
         cp.useElasticCorpus()
         cp.Corpus.connectCorpus(local_corpus_dir, corpus_endpoint)
 
-@app.task(ignore_result=True)
+@app.task(ignore_result=True, bind=True)
 def importXMLTask(file_path, corpus_id, import_id, collection_id,
     import_options, existing_guid=None):
     """
@@ -81,7 +81,7 @@ def importXMLTask(file_path, corpus_id, import_id, collection_id,
             logging.exception("Exception in importXMLTask")
             raise self.retry(countdown=60, max_retries=2)
 
-@app.task(ignore_result=True)
+@app.task(ignore_result=True, bind=True)
 def updateReferencesTask(doc_id, import_options):
     """
         Updates one paper's in-collection references, etc.
