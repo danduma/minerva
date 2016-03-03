@@ -12,7 +12,7 @@ from os.path import exists
 
 import minerva.db.corpora as cp
 
-from prebuild import prebuildBOWsForTests
+from base_prebuild import BasePrebuilder
 
 from minerva.evaluation.query_generation import QueryGenerator
 from minerva.evaluation.base_pipeline import BaseTestingPipeline
@@ -25,7 +25,7 @@ from minerva.proc.query_extraction import EXTRACTOR_LIST
 import minerva.proc.doc_representation as doc_representation
 import minerva.evaluation.athar_corpus as athar_corpus
 from minerva.proc.general_utils import ensureDirExists
-from weight_training import dynamicWeightValues, measureScores
+from weight_training import WeightTrainer
 
 class Experiment:
     """
@@ -106,33 +106,6 @@ class Experiment:
             raise ValueError("Unknown extractor: %s" % extractor_name)
         return extractor
 
-    def trainWeights(self):
-        """
-        """
-        gc.collect()
-        options=self.options
-
-##        if options["run_precompute_retrieval"] or not exists(self.exp["exp_dir"]+"prr_"+self.exp["queries_classification"]+"_"+self.exp["train_weights_for"][0]+".json"):
-##            self.query_generator.precomputeQueries(self.exp)
-        # Is this where I should be loading the pre-computed formulas?
-        # They're already being loaded insinde dynamicWeightValues()
-
-        best_weights={}
-        if options.get("override_folds",None):
-            self.exp["cross_validation_folds"]=options["override_folds"]
-
-        if options.get("override_metric",None):
-            self.exp["metric"]=options["override_metric"]
-
-        numfolds=self.exp.get("cross_validation_folds",2)
-
-        for split_fold in range(numfolds):
-            print("\nFold #"+str(split_fold))
-            best_weights[split_fold]=dynamicWeightValues(self.exp,split_fold)
-
-        print("Now applying and testing weights...\n")
-        measureScores(self.exp, best_weights)
-
     def run(self):
         """
             Loads a JSON describing an experiment and runs it all
@@ -154,36 +127,39 @@ class Experiment:
                 raise ValueError("No test_files specified or test_files_condition")
                 return
             cp.Corpus.TEST_FILES=cp.Corpus.listPapers(self.exp["test_files_condition"])
+            if self.exp.get("max_test_files",None):
+                cp.Corpus.TEST_FILES=cp.Corpus.TEST_FILES[:self.exp["max_test_files"]]
             self.exp["test_files"]=cp.Corpus.TEST_FILES
 
         # PREBUILD BOWS
         if self.exp["full_corpus"]:
-            prebuild_list=cp.Corpus.listPapers()
+            if self.exp.get("index_max_year",None):
+                prebuild_list=cp.Corpus.listPapers("metadata.year:<=%d" % self.exp["index_max_year"])
+            else:
+                prebuild_list=cp.Corpus.listPapers()
         else:
             prebuild_list=cp.Corpus.listIncollectionReferencesOfList(cp.Corpus.TEST_FILES)
             prebuild_list.extend(cp.Corpus.TEST_FILES)
 
         if self.options["run_prebuild_bows"] and len(self.exp["prebuild_bows"]) > 0:
-            prebuildBOWsForTests(
-                self.exp["prebuild_bows"],
-                FILE_LIST=prebuild_list,
-                force_prebuild=self.options["force_prebuild"],
-                rhetorical_annotations=self.exp.get("rhetorical_annotations",[]))
+            cp.Corpus.ALL_FILES=prebuild_list
+            prebuilder=BasePrebuilder()
+            prebuilder.prebuildBOWsForTests( self.exp, self.options)
 
         # BUILD INDEX
         if not self.exp["full_corpus"]:
             if self.options["rebuild_indexes"] and len(self.exp["prebuild_indexes"]) > 0:
-                self.indexer.buildIndexes(cp.Corpus.TEST_FILES, self.exp["prebuild_indexes"])
+                self.indexer.buildIndexes(cp.Corpus.TEST_FILES, self.exp["prebuild_indexes"], self.options)
         else:
             if self.options["rebuild_indexes"] and len(self.exp["prebuild_general_indexes"]) > 0:
-                self.indexer.buildGeneralIndex(cp.Corpus.TEST_FILES,self.exp["prebuild_general_indexes"])
+                self.indexer.buildGeneralIndex(cp.Corpus.TEST_FILES,self.exp["prebuild_general_indexes"], self.exp.get("index_max_year",None))
 
         gc.collect()
         # COMPUTE QUERIES
-        if self.exp.get("queries_classification", None) != None:
-            queries_file=os.path.join(self.exp["exp_dir"],"queries_by_"+self.exp["queries_classification"]+".json")
-        else:
-            queries_file=os.path.join(self.exp["exp_dir"],self.exp["precomputed_queries_filename"])
+##        if self.exp.get("queries_classification", None) != None:
+##            queries_file=os.path.join(self.exp["exp_dir"],"queries_by_"+self.exp["queries_classification"]+".json")
+##        else:
+        queries_file=os.path.join(self.exp["exp_dir"],self.exp["precomputed_queries_filename"])
 
         if self.options["recompute_queries"] or not exists(queries_file):
             self.query_generator.precomputeQueries(self.exp)
@@ -196,10 +172,11 @@ class Experiment:
             pipeline=BaseTestingPipeline(retrieval_class=self.retrieval_class)
             pipeline.runPipeline(self.exp)
         elif self.exp["type"] == "train_weights":
-            pipeline=PrecomputedPipeline(retrieval_class=self.retrieval_class)
-            pipeline.runPipeline(self.exp)
-            self.trainWeights()
-
+            if self.options.get("run_precompute_retrieval", False):
+                pipeline=PrecomputedPipeline(retrieval_class=self.retrieval_class)
+                pipeline.runPipeline(self.exp)
+            weight_trainer=WeightTrainer(self.exp, self.options)
+            weight_trainer.trainWeights()
 
 def main():
     pass

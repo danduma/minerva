@@ -51,7 +51,7 @@ prebuild_indexes={
 prebuild_general_indexes={
     "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "ilc_full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
-    "az_annotated":{"type":"standard_multi", "bow_methods":[("az_annotated",[1])], "parameters":[1]},
+    "az_annotated":{"type":"standard_multi", "bow_methods":[("az_annotated",[1])], "parameters":[1], "max_year":2013},
 }
 
 
@@ -174,25 +174,33 @@ experiment={
     # list of files in the test set
     "test_files":[],
     # SQL condition to automatically generate the list above
-    "test_files_condition":"num_in_collection_references >= 1",
+    "test_files_condition":"metadata.num_in_collection_references:>0 AND metadata.year:>2013",
+    # This lets us pick just the first N files
+    "max_test_files":100,
     # Use Lucene DefaultSimilarity? As opposed to FieldAgnosticSimilarity
     "use_default_similarity":True,
     # Annotate sentences with AZ/CoreSC/etc?
     "rhetorical_annotations":[],
+    # Separate queries by AZ/CSC, etc?
+    "use_rhetorical_annotation":True,
     "weight_values":[],
     # ?
     "split_set":None,
     # use full-collection retrival? If False, it runs "citation resolution"
-    "full_corpus":False,
+    "full_corpus":True,
     # "compute_once","train_weights"
     "type":"train_weights",
+    # If full_corpus, this is the cut-off year for including documents in the general index.
+    # In this way we can separate test files and retrieval files.
+    "index_max_year": 2013,
+    # how many chunks to split each file for statistics on where the citation occurs
     "numchunks":10,
     # name of CSV file to save results in
     "output_filename":"results.csv",
     "pivot_table":"",
     "max_results_recall":200,
-    # should queries be classified based on some rhetorical class of the sentence: "az", "csc"
-    "queries_classification":"csc",
+    # should queries be classified based on some rhetorical class of the sentence: "az", "csc_type"
+    "queries_classification":"csc_type",
     # of all precomputed queries, which classes should be processed/evaluated?
     "queries_to_process":["ALL"],
     # what "zones" to try to train weights for
@@ -205,11 +213,11 @@ experiment={
 
 
 options={
-    "run_prebuild_bows":True, # should the whole BOW building process run?
-    "force_prebuild":False,   # if a BOW exists already, should we overwrite it?
-    "rebuild_indexes":False,   # rebuild indices?
-    "recompute_queries":False, # force rebuilding of queries too?
-    "run_precompute_retrieval":True, # only applies if type == "train_weights"
+    "run_prebuild_bows":1, # should the whole BOW building process run?
+    "force_prebuild":0,   # if a BOW exists already, should we overwrite it?
+    "rebuild_indexes":1,   # rebuild indices?
+    "recompute_queries":0, # force rebuilding of queries too?
+    "run_precompute_retrieval":1, # only applies if type == "train_weights"
     "override_folds":4,
     "override_metric":"avg_mrr",
 }
@@ -218,7 +226,20 @@ def main():
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc")
 
-    experiment["test_files"]=["456f8c80-9807-46a9-8455-cd4a7e346f9d"]
+##    experiment["test_files"]=["456f8c80-9807-46a9-8455-cd4a7e346f9d"]
+
+    experiment["test_files"]=[
+                            "bdc9a118-cb76-4d26-9c4d-e886794428f5",
+                            "65a4319e-4324-4529-96fa-66c52e392da0",
+                            "0cc28fb0-b116-4990-b816-3dc066273c34",
+                            "ef3e4284-c527-4e83-9b59-f8996b09df76",
+                            "b3129460-d284-4f69-83a8-f87f588e7800",
+                            "d8548dab-ff28-4f93-b2ae-16887e59e8ad",
+                            "42efd8ec-4c06-4754-a527-3045eed87766",
+                            "f4374057-7ab2-4567-b73b-aa5b72328d3e",
+                            "cbf989c5-79f5-4317-8515-2192e2a3fe2a",
+                            "37d1cc24-68a5-4a36-b55d-94acdfad08c1",]
+
     exp=Experiment(experiment, options)
     exp.run()
 

@@ -14,22 +14,21 @@ from corpus_import import CorpusImporter
 import minerva.db.corpora as cp
 from minerva.scidoc.xmlformats.read_sapienta_jatsxml import SapientaJATSXMLReader
 
+def getPMC_CSC_corpus_id(filename):
+    """
+        Returns the ACL id for a file
+    """
+    fn=os.path.split(filename)[1]
+    match=re.search(r"(\d+)_(?:annotated|done)\.xml",fn.replace("-paper.xml","").lower(),flags=re.IGNORECASE)
+    if match:
+        return match.group(1)
+    else:
+        return fn
+
 def import_sapienta_pmc_corpus():
     """
         Do the importing of the Sapienta-annotated PMC corpus
     """
-
-    def getPMC_CSC_corpus_id(filename):
-        """
-            Returns the ACL id for a file
-        """
-        fn=os.path.split(filename)[1]
-        match=re.search(r"(\d+)_(?:annotated|done)\.xml",fn.replace("-paper.xml","").lower(),flags=re.IGNORECASE)
-        if match:
-            return match.group(1)
-        else:
-            return fn
-
     importer=CorpusImporter(reader=SapientaJATSXMLReader())
     importer.collection_id="PMC_CSC"
     importer.import_id="initial"
@@ -73,18 +72,22 @@ def fix_authors_full_corpus():
         cp.Corpus.updatePaper(doc_meta)
         progress.showProgressReport("Removing redundant author information")
 
-def fix_reload_scidocs():
+def fix_broken_scidocs():
     """
+        Iterates through the papers already in the collection. Tries to load
+        their scidoc. If KeyError occurs, it loads the XML again
     """
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc")
     importer=CorpusImporter("PMC_CSC","initial", use_celery=True)
-    importer.reloadSciDocsOnly("metadata.collection_id:\"PMC_CSC\" AND metadata.year:>2013",
+    importer.generate_corpus_id=getPMC_CSC_corpus_id
+    importer.reloadSciDocsOnly("metadata.collection_id:\"PMC_CSC\"",
         "g:\\nlp\\phd\\pmc_coresc\\inputXML", "*.xml")
 
+
 def main():
-    import_sapienta_pmc_corpus()
-##    fix_reload_scidocs()
+##    import_sapienta_pmc_corpus()
+    fix_broken_scidocs()
 
     pass
 

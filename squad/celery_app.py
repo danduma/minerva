@@ -42,11 +42,13 @@ app.conf.update(
         Queue('default', Exchange('default'), routing_key='default'),
         Queue('import_xml', Exchange('import_xml'), routing_key='import_xml'),
         Queue('update_references', Exchange('update_references'), routing_key='update_references'),
+        Queue('build_bows', Exchange('build_bows'), routing_key='build_bows'),
     ),
 
     CELERY_ROUTES = {
-        't_convertXMLAndAddToCorpus': {'queue': 'import_xml', 'routing_key': 'import_xml'},
-        't_updatePaperInCollectionReferences': {'queue': 'update_references', 'routing_key': 'update_references'},
+        'importXMLTask': {'queue': 'import_xml', 'routing_key': 'import_xml'},
+        'updateReferencesTask': {'queue': 'update_references', 'routing_key': 'update_references'},
+        'buildBOWTask': {'queue': 'build_bows', 'routing_key': 'build_bows'},
     }
 )
 

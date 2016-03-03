@@ -175,6 +175,7 @@ class BaseTestingPipeline(object):
         self.precomputed_queries=json.load(open(precomputed_queries_file_path,"r"))
         files_dict_filename=os.path.join(self.exp["exp_dir"],self.exp.get("files_dict_filename","files_dict.json"))
         self.files_dict=json.load(open(files_dict_filename,"r"))
+        self.files_dict["ALL_FILES"]={}
 
     def populateMethods(self):
         """

@@ -148,9 +148,9 @@ class StoredFormula:
         self.formula=iterateDetail(explanation["explanation"])
 
         # While not done checking that this works, this assert is in place
-        original_value=self.truncate(original_value,self.round_to_decimal_places)
-        computed_value=self.truncate(self.computeScore(self.formula,defaultdict(lambda:1)),self.round_to_decimal_places)
-        assert(computed_value == original_value)
+##        original_value=self.truncate(original_value,self.round_to_decimal_places)
+##        computed_value=self.truncate(self.computeScore(self.formula,defaultdict(lambda:1)),self.round_to_decimal_places)
+##        assert(computed_value == original_value)
 
     def computeScore_old(self,parameters):
         """

@@ -12,13 +12,14 @@ from collections import defaultdict, namedtuple, OrderedDict
 from sklearn import cross_validation
 
 import minerva.db.corpora as cp
-from minerva.proc.results_logging import ResultsLogger
+from minerva.proc.results_logging import ProgressIndicator
 from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
 from minerva.proc.doc_representation import findCitationInFullText
 from base_pipeline import getDictOfTestingMethods
 import minerva.proc.doc_representation as doc_representation
 
 GLOBAL_FILE_COUNTER=0
+
 
 class QueryGenerator(object):
     """
@@ -37,33 +38,32 @@ class QueryGenerator(object):
         """
         precomputed_queries=self.precomputed_queries
         json.dump(precomputed_queries,open(os.path.join(self.exp["exp_dir"],"precomputed_queries.json"),"w"))
-        queries_by_az={zone:[] for zone in AZ_ZONES_LIST}
-        queries_by_cfc=defaultdict(lambda:[])
-        queries_by_csc=defaultdict(lambda:[])
+        queries_by={}
+        annot_types=["az", "cfc", "csc_type", "csc_adv", "csc_nov"]
+        for annot_type in annot_types:
+            queries_by[annot_type]=defaultdict(lambda:[])
 
         if self.exp.get("random_zoning",False):
-            queries_by_rz7=defaultdict(lambda:[])
-            queries_by_rz11=defaultdict(lambda:[])
+            queries_by["rz7"]=defaultdict(lambda:[])
+            queries_by["rz11"]=defaultdict(lambda:[])
         if self.exp.get("use_rhetorical_annotation", False):
             for precomputed_query in precomputed_queries:
-                queries_by_az[precomputed_query["az"]].append(precomputed_query)
-                queries_by_cfc[precomputed_query["cfc"]].append(precomputed_query)
-                if "csc_type" in precomputed_query:
-                    queries_by_csc[precomputed_query["csc_type"]].append(precomputed_query)
+                for annot_type in annot_types:
+                    if precomputed_query.get(annot_type,"") != "":
+                        queries_by[annot_type][precomputed_query[annot_type]].append(precomputed_query)
 
                 if self.exp.get("random_zoning",False):
-                    queries_by_rz7[random.choice(RANDOM_ZONES_7)].append(precomputed_query)
-                    queries_by_rz11[random.choice(RANDOM_ZONES_11)].append(precomputed_query)
+                    queries_by["rz7"][random.choice(RANDOM_ZONES_7)].append(precomputed_query)
+                    queries_by["rz11"][random.choice(RANDOM_ZONES_11)].append(precomputed_query)
 
         json.dump(files_dict,open(self.exp["exp_dir"]+"files_dict.json","w"))
         if self.exp.get("use_rhetorical_annotation", False):
-            json.dump(queries_by_az,open(self.exp["exp_dir"]+"queries_by_AZ.json","w"))
-            json.dump(queries_by_cfc,open(self.exp["exp_dir"]+"queries_by_CFC.json","w"))
-            json.dump(queries_by_csc,open(self.exp["exp_dir"]+"queries_by_CSC.json","w"))
+            for annot_type in annot_types:
+                json.dump(queries_by[annot_type],open(os.path.join(self.exp["exp_dir"],"queries_by_%s.json" % annot_type),"w"))
 
         if self.exp.get("random_zoning",False):
-            json.dump(queries_by_rz7,open(self.exp["exp_dir"]+"queries_by_rz7.json","w"))
-            json.dump(queries_by_rz11,open(self.exp["exp_dir"]+"queries_by_rz11.json","w"))
+            json.dump(queries_by["rz7"],open(os.path.join(self.exp["exp_dir"],"queries_by_rz7.json"),"w"))
+            json.dump(queries_by["rz11"],open(os.path.join(self.exp["exp_dir"],"queries_by_rz11.json"),"w"))
 
     def loadDocAndResolvableCitations(self, guid):
         """
@@ -104,9 +104,7 @@ class QueryGenerator(object):
 
         match=findCitationInFullText(m["cit"],doctext)
         if not match:
-##            assert match
             print("Weird! can't find citation in text!", m["cit"])
-            assert False
             return generated_queries
 
         # this is where we are in the document
@@ -135,9 +133,12 @@ class QueryGenerator(object):
                 queries[query["query_method_id"]]=query
 
         parent_s=doc.element_by_id[m["cit"]["parent_s"]]
-        az=parent_s.get("az","")
-        cfc=doc.citation_by_id[m["cit"]["id"]].get("cfunc","")
-        csc_type=parent_s.get("csc_type","")
+        base_dict={"az":parent_s.get("az",""),
+                   "cfc":doc.citation_by_id[m["cit"]["id"]].get("cfunc",""),
+                   "csc_type":parent_s.get("csc_type",""),
+                   "csc_adv":parent_s.get("csc_adv",""),
+                   "csc_nov":parent_s.get("csc_nov",""),
+                  }
 
         # for every generated query for this context
         for qmethod in queries:
@@ -146,12 +147,9 @@ class QueryGenerator(object):
             this_query["query_text"]=queries[qmethod].get("text","")
             this_query["structured_query"]=queries[qmethod]["structured_query"]
             this_query["doc_position"]=doc_position
-            # TODO remove AZ/CSC classification if not necessary
-            this_query["az"]=az
-            this_query["cfc"]=cfc
-            this_query["csc_type"]=csc_type
+            for key in base_dict:
+                this_query[key]=base_dict[key]
 
-##            assert this_query["query_text"] != ""
             # for every method used for extracting BOWs
             generated_queries.append(this_query)
 
@@ -165,10 +163,8 @@ class QueryGenerator(object):
             :type exp: dict
         """
         self.exp=exp
-        logger=ResultsLogger(True, message_text="Precomputing queries") # init all the logging/counting
-        logger.startCounting() # for timing the process, start now
-
-        logger.setNumItems(len(exp["test_files"]))
+        print("Precomputing queries")
+        logger=ProgressIndicator(True, numitems=len(exp["test_files"])) # init all the logging/counting
         logger.numchunks=exp["numchunks"]
 
         cp.Corpus.loadAnnotators()
@@ -194,8 +190,6 @@ class QueryGenerator(object):
         # MAIN LOOP over all testing files
         #===================================
         for guid in exp["test_files"]:
-            logger.showProgressReport(guid) # prints out info on how it's going
-
             try:
                 doc,doctext,citations_data=self.loadDocAndResolvableCitations(guid)
             except ValueError:
@@ -234,8 +228,10 @@ class QueryGenerator(object):
                                    }
                 self.precomputed_queries.extend(self.generateQueries(m, doc, doctext, precomputed_query))
 
+            logger.showProgressReport(guid) # prints out info on how it's going
+
         self.saveAllQueries(files_dict)
-        print("Precomputed citations saved.")
+        print("Precomputed queries saved.")
 
 
 #===============================================================================

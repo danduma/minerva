@@ -9,6 +9,7 @@ from __future__ import print_function
 
 import sys, json, datetime, math
 from copy import deepcopy
+import logging
 ##from tqdm import tqdm
 from progressbar import ProgressBar, SimpleProgress, Bar, ETA
 
@@ -97,7 +98,7 @@ class BaseIndexer(object):
             for fwriter in fwriters:
                 fwriters[fwriter].close()
 
-    def buildGeneralIndex(self, testfiles, methods):
+    def buildGeneralIndex(self, testfiles, methods, index_max_year):
         """
             Creates one Lucene index for each method and parameter, adding all files to each
         """
@@ -113,7 +114,7 @@ class BaseIndexer(object):
 ##            cp.Corpus.paths.get("fullLuceneIndex","")+indexName
             fwriters[indexName]=self.createIndexWriter(actual_dir)
 
-        ALL_GUIDS=cp.Corpus.listPapers()
+        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year)
     ##    ALL_GUIDS=["j98-2002"]
 
         dot_every_xfiles=max(len(ALL_GUIDS) / 1000,1)
@@ -122,6 +123,7 @@ class BaseIndexer(object):
         now1=datetime.datetime.now()
         count=0
 ##        for guid in tqdm(ALL_GUIDS, desc="Adding file"):
+
         widgets = ['Adding file: ', SimpleProgress(), ' ', Bar(), ' ', ETA()]
         progress = ProgressBar(widgets=widgets, maxval=100).start()
         for guid in ALL_GUIDS:
@@ -132,47 +134,29 @@ class BaseIndexer(object):
 
             meta=cp.Corpus.getMetadataByGUID(guid)
             if not meta:
-                print("Error: can't load metadata for paper",guid)
+                logging.error("Error: can't load metadata for paper",guid)
                 continue
 
             for indexName in indexNames:
-                # get the maximum year to create inlink_context descriptions from
-                if indexNames[indexName]["options"].get("max_year",False) == True:
-                    max_year=cp.Corpus.getMetadataByGUID(test_guid)["year"]
-                else:
-                    max_year=None
-
                 method=indexNames[indexName]["method"]
                 parameter=indexNames[indexName]["parameter"]
                 ilc_parameter=indexNames[indexName].get("ilc_parameter","")
 
                 if indexNames[indexName]["type"] in ["standard_multi"]:
+                    if index_max_year:
+                        if meta["year"] > index_max_year:
+                            continue
                     self.addPrebuiltBOWtoIndex(fwriters[indexName], guid, method, parameter)
                 elif indexNames[indexName]["type"] in ["inlink_context"]:
-                    self.addPrebuiltBOWtoIndexExcludingCurrent(fwriters[indexName], guid,  testfiles, max_year, method, parameter)
+                    self.addPrebuiltBOWtoIndexExcludingCurrent(fwriters[indexName], guid,  testfiles, index_max_year, method, parameter)
                 elif methods[method]["type"]=="ilc_mashup":
-                    bows=doc_representation.mashupBOWinlinkMethods(match,[test_guid], max_year, indexNames[indexName], full_corpus=True)
+                    bows=doc_representation.mashupBOWinlinkMethods(match,[test_guid], index_max_year, indexNames[indexName], full_corpus=True)
                     if not bows:
                         print("ERROR: Couldn't load prebuilt BOWs for mashup with inlink_context and ", method, ", parameters:",parameter, ilc_parameter)
                         continue
 
                     self.addLoadedBOWsToIndex(fwriters[indexName], match["guid"], bows,
                     {"method":method,"parameter":parameter, "ilc_parameter":ilc_parameter})
-
-    ##        for indexName in indexNames:
-    ##            method=indexNames[indexName]["method"]
-    ##            parameter=indexNames[indexName]["parameter"]
-    ##            ilc_parameter=indexNames[indexName].get("ilc_parameter","")
-    ##
-    ##            if indexNames[indexName]["type"] in ["standard_multi","inlink_context"]:
-    ##                addPrebuiltBOWtoIndexExcludingCurrent(fwriters[indexName], guid, [], method, parameter)
-    ##            elif methods[method]["type"]=="ilc_mashup":
-    ##                bows=mashupBOWinlinkMethods(meta,["NONE"],indexNames[indexName]["mashup_method"], parameter,ilc_parameter)
-    ##                if not bows:
-    ##                    print "ERROR: Couldn't load prebuilt BOWs for mashup with inlink_context and ", method, ", parameters:",parameter, ilc_parameter
-    ##                    continue
-    ##                addLoadedBOWsToIndex(fwriters[indexName], guid, bows,
-    ##                {"method":method,"parameter":parameter, "ilc_parameter":ilc_parameter})
 
         for fwriter in fwriters:
             fwriters[fwriter].close()

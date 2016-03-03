@@ -323,11 +323,8 @@ class ElasticCorpus(BaseCorpus):
         """
             If a SciDocJSON file exists for guid, it returns it, otherwise None
         """
-        try:
-            data=json.loads(self.getRecordField(guid,"scidocs"))
-            return SciDoc(data)
-        except:
-            raise ValueError
+        data=json.loads(self.getRecordField(guid,"scidocs"))
+        return SciDoc(data)
 
     def saveSciDoc(self,doc):
         """
@@ -700,8 +697,16 @@ class ElasticCorpus(BaseCorpus):
         if self.es.indices.exists(index=es_table):
             print("Deleting ALL files in %s" % es_table)
             # ignore 404 and 400
-            self.es.indices.delete(index=es_table, ignore=[400, 404])
+            self.deleteIndex(es_table)
             self.createAndInitializeDatabase()
+
+    def deleteIndex(self, pattern):
+        """
+            Deletes all indexes matching the pattern.
+
+            Warning! Use only if you know exactly what you are doing!
+        """
+        self.es.indices.delete(index=pattern, ignore=[400, 404])
 
     def deleteByQuery(self, record_type, query):
         """

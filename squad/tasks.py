@@ -22,6 +22,7 @@ import minerva.db.corpora as cp
 from minerva.db.elastic_corpus import ElasticCorpus
 from minerva.importing.importing_functions import (convertXMLAndAddToCorpus,
     updatePaperInCollectionReferences)
+from minerva.evaluation.prebuild_functions import prebuildMulti
 
 import celery_app
 from celery_app import app
@@ -90,5 +91,17 @@ def updateReferencesTask(self, doc_id, import_options):
     except:
         logging.exception("Exception in updateReferencesTask")
         raise self.retry(countdown=120, max_retries=4)
+
+@app.task(ignore_result=True, bind=True)
+def buildBOWTask(self, method_name, parameters, function, guid, doc, doctext, force_prebuild, rhetorical_annotations):
+    """
+        Builds the BOW for a single paper
+    """
+    try:
+        prebuildMulti(method_name, parameters, function, guid, doc, doctext, force_prebuild, rhetorical_annotations)
+    except:
+        self.retry(countdown=120, max_retries=4)
+
+
 
 checkCorpusConnection()

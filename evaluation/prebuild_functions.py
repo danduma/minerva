@@ -12,6 +12,7 @@ import sys, json, datetime, math
 import minerva.db.corpora as cp
 import minerva.proc.doc_representation as doc_representation
 from minerva.proc.general_utils import loadFileText, writeFileText, ensureDirExists
+from minerva.proc.results_logging import ProgressIndicator
 
 ES_TYPE_DOC="doc"
 
@@ -39,7 +40,7 @@ def prebuildMulti(method_name, parameters, function, guid, doc, doctext, force_p
             doctext=doc.getFullDocumentText()
 
         all_bows=function(doc,parameters=params, doctext=doctext)
-        print("Saving prebuilt %s BOW for %s" % (method_name,doc["metadata"]["guid"]))
+##        print("Saving prebuilt %s BOW for %s" % (method_name,doc["metadata"]["guid"]))
 
         for param in params:
             param_dict={"method":method_name, "parameter":param,}
@@ -48,49 +49,6 @@ def prebuildMulti(method_name, parameters, function, guid, doc, doctext, force_p
                 param_dict,
                 all_bows[param])
     return [doc,doctext]
-
-def prebuildBOWsForTests(parameters, maxfiles=sys.maxint, FILE_LIST=None, force_prebuild=False, rhetorical_annotations=[]):
-    """
-        Generates BOWs for each document from its inlinks, stores them in a
-        corpus cached file
-
-        :param parameters: list of parameters
-        :param maxfiles: max. number of files to process. Simple parameter for debug
-        :param force_prebuild: should BOWs be rebuilt even if existing?
-
-    """
-    count=0
-    if FILE_LIST:
-        cp.Corpus.ALL_FILES=FILE_LIST
-    else:
-        cp.Corpus.ALL_FILES=cp.Corpus.listPapers()
-
-    if len(rhetorical_annotations) > 0:
-        print("Loading AZ/CFC classifiers")
-        cp.Corpus.loadAnnotators()
-
-    print("Prebuilding BOWs for", min(len(cp.Corpus.ALL_FILES),maxfiles), "files...")
-    numfiles=min(len(cp.Corpus.ALL_FILES),maxfiles)
-
-    for guid in cp.Corpus.ALL_FILES[:maxfiles]:
-        count+=1
-        print("Processing ", count, "/", numfiles, " - ", guid)
-
-        doctext=None
-        doc=None
-
-        # prebuild BOWs for all entries in the build_db
-        for entry in parameters:
-            doc,doctext=prebuildMulti(
-                entry,
-                parameters[entry]["parameters"],
-                parameters[entry]["function"],
-                guid,
-                doc,
-                doctext,
-                force_prebuild,
-                rhetorical_annotations
-            )
 
 
 def main():

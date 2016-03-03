@@ -458,7 +458,11 @@ class JATSXMLReader(BaseSciDocXMLReader):
             newref["publication-name"]=source.text
         else:
             newref["publication-name"]=""
-        newref["publication-type"]=element[citation_type_key]
+
+        try:
+            newref["publication-type"]=element[citation_type_key]
+        except:
+            newref["publication-type"]="unknown"
 
         if newref["publication-type"]=="book":
             if source:

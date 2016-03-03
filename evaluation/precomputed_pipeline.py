@@ -15,6 +15,9 @@ from stored_formula import StoredFormula
 from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
 from minerva.proc.results_logging import ResultsLogger
 
+from minerva.db.result_store import ElasticResultStorer
+import minerva.db.corpora as cp
+
 class PrecomputedPipeline(BaseTestingPipeline):
     """
         Pipeline for training weights. Queries are run once, the explanation of
@@ -23,6 +26,7 @@ class PrecomputedPipeline(BaseTestingPipeline):
 
     def __init__(self, retrieval_class=BaseRetrieval):
         super(self.__class__, self).__init__(retrieval_class)
+        self.writers={}
 
     def addResult(self, guid, precomputed_query, doc_method, retrieved):
         """
@@ -40,49 +44,22 @@ class PrecomputedPipeline(BaseTestingPipeline):
 
 ##        self.checkPrecomputedRetrievalWorks(retrieval_result, doc_method, precomputed_query, {}, guid)
 
-        # TODO make sure what is being saved is what should be
-        # TODO use better logging/saving, this writing JSON to file is ridiculous
         for remove_key in ["dsl_query", "lucene_query"]:
             if remove_key in retrieval_result:
                 del retrieval_result[remove_key]
 
         retrieval_result["experiment_id"]=self.exp["experiment_id"]
 
-        out_str=json.dumps(retrieval_result)+","
-        self.files["ALL"].write(out_str)
+        self.writers["ALL"].addResult(retrieval_result)
+
         if self.exp.get("random_zoning",False):
             pass
         else:
             if retrieval_result.get("az","") != "":
-                self.files["AZ_"+retrieval_result["az"]].write(out_str)
+                self.writers["az_"+retrieval_result["az"]].addResult(retrieval_result)
             if retrieval_result["csc_type"] == "":
                 retrieval_result["csc_type"] = "Bac"
-            self.files["CSC_"+retrieval_result["csc_type"]].write(out_str)
-
-    def saveResultsAndCleanUp(self):
-        """
-            Executes after the retrieval is done.
-        """
-        if self.exp.get("random_zoning",False):
-            for div in RANDOM_ZONES_7:
-                self.files["RZ7_"+div].seek(-1,os.SEEK_END)
-                self.files["RZ7_"+div].write("]")
-
-            for div in RANDOM_ZONES_11:
-                self.files["RZ11_"+div].seek(-1,os.SEEK_END)
-                self.files["RZ1_"+div].write("]")
-        else:
-            for div in AZ_ZONES_LIST:
-                self.files["AZ_"+div].seek(-1,os.SEEK_END)
-                self.files["AZ_"+div].write("]")
-
-            for div in CORESC_LIST:
-                self.files["CSC_"+div].seek(-1,os.SEEK_END)
-                self.files["CSC_"+div].write("]")
-
-        self.files["ALL"].seek(-1,os.SEEK_END)
-        self.files["ALL"].write("]")
-
+            self.writers["csc_type_"+retrieval_result["csc_type"]].addResult(retrieval_result)
 
     def loadQueriesAndFileList(self):
         """
@@ -97,33 +74,44 @@ class PrecomputedPipeline(BaseTestingPipeline):
 ##            precomputed_queries=json.load(open(self.exp["exp_dir"]+"precomputed_queries.json","r"))
         else:
             queries_filename="queries_by_"+self.exp["queries_classification"]+".json"
-            queries_by_az=json.load(open(self.exp["exp_dir"]+queries_filename,"r"))
-            self.precomputed_queries=queries_by_az[self.exp["queries_to_process"]]
+            queries_by_zone=json.load(open(self.exp["exp_dir"]+queries_filename,"r"))
+            self.precomputed_queries=[]
+            for zone in queries_by_zone[self.exp["queries_to_process"]]:
+                self.precomputed_queries.extend(queries_by_zone[zone])
+
+        print("Total precomputed queries: ",len(self.precomputed_queries))
 
         files_dict_filename=os.path.join(self.exp["exp_dir"],self.exp.get("files_dict_filename","files_dict.json"))
         self.files_dict=json.load(open(files_dict_filename,"r"))
+        self.files_dict["ALL_FILES"]={}
 
-        self.files={}
+        assert self.exp["name"] != "", "Experiment needs a name!"
 
+        self.writers={}
         if self.exp.get("random_zoning",False):
             for div in RANDOM_ZONES_7:
-                self.files["RZ7_"+div]=open(self.exp["exp_dir"]+"prr_RZ7_"+div+".json","w")
-                self.files["RZ7_"+div].write("[")
+                self.writers["RZ7_"+div]=ElasticResultStorer(self.exp["name"],"prr_az_rz11")
+                self.writers["RZ7_"+div].clearResults()
             for div in RANDOM_ZONES_11:
-                self.files["RZ11_"+div]=open(self.exp["exp_dir"]+"prr_RZ11_"+div+".json","w")
-                self.files["RZ11_"+div].write("[")
+                self.writers["RZ11_"+div]=ElasticResultStorer(self.exp["name"],"prr_rz11")
+                self.writers["RZ11_"+div].clearResults()
         else:
             for div in AZ_ZONES_LIST:
-                self.files["AZ_"+div]=open(self.exp["exp_dir"]+"prr_AZ_"+div+".json","w")
-                self.files["AZ_"+div].write("[")
-
+                self.writers["az_"+div]=ElasticResultStorer(self.exp["name"],"prr_az_"+div)
+                self.writers["az_"+div].clearResults()
             for div in CORESC_LIST:
-                self.files["CSC_"+div]=open(self.exp["exp_dir"]+"prr_CSC_"+div+".json","w")
-                self.files["CSC_"+div].write("[")
+                self.writers["csc_type_"+div]=ElasticResultStorer(self.exp["name"],"prr_csc_type_"+div)
+                self.writers["csc_type_"+div].clearResults()
 
-        self.files["ALL"]=open(self.exp["exp_dir"]+"prr_ALL.json","w")
-        self.files["ALL"].write("[")
+        self.writers["ALL"]=ElasticResultStorer(self.exp["name"],"prr_ALL")
+        self.writers["ALL"].clearResults()
 
+    def saveResultsAndCleanUp(self):
+        """
+            Executes after the retrieval is done.
+        """
+        for writer in self.writers:
+            self.writers[writer].saveAsJSON(os.path.join(self.exp["exp_dir"],self.writers[writer].table_name+".json"))
 
     def checkPrecomputedRetrievalWorks(self, retrieval_result, doc_method, query, parameters, guid):
         """
@@ -159,86 +147,6 @@ class PrecomputedPipeline(BaseTestingPipeline):
 ##            if formula.formula["coord"] != 0:
             # we assume that if a document was returned it must match
             results.append({"guid":doc_id,"formula":formula.formula})
-        return results
-
-    def runPrecomputedQuery(self, retrieval_result, parameters):
-        """
-            This takes a query that has already had the results added
-        """
-        scores=[]
-        for unique_result in retrieval_result:
-            formula=StoredFormula(unique_result["formula"])
-            score=formula.computeScore(formula.formula, parameters)
-            scores.append((score,{"guid":unique_result["guid"]}))
-
-        scores.sort(key=lambda x:x[0],reverse=True)
-        return scores
-
-
-    def measurePrecomputedResolution(retrieval_results,method,parameters, citation_az="*"):
-        """
-            This is kind of like measureCitationResolution:
-            it takes a list of precomputed retrieval_results, then applies the new
-            parameters to them. This is how we recompute what Lucene gives us,
-            avoiding having to call Lucene again.
-
-            All we need to do is adjust the weights on the already available
-            explanation formulas.
-        """
-        logger=ResultsLogger(False, dump_straight_to_disk=False) # init all the logging/counting
-        logger.startCounting() # for timing the process, start now
-
-        logger.setNumItems(len(retrieval_results),print_out=False)
-
-        # for each query-result: (results are packed inside each query for each method)
-        for result in retrieval_results:
-            # select only the method we're testing for
-            formulas=result["formulas"]
-            retrieved=self.runPrecomputedQuery(formulas,parameters)
-
-            result_dict={"file_guid":result["file_guid"],
-                         "citation_id":result["citation_id"],
-                         "doc_position":result["doc_position"],
-                         "query_method":result["query_method"],
-                         "doc_method":method,
-                         "az":result["az"],
-                         "cfc":result["cfc"],
-                         "match_guid":result["match_guid"]}
-
-            if not retrieved or len(retrieved)==0:    # the query was empty or something
-    ##                        print "Error: ", doc_method , qmethod,tfidfmodels[method].indexDir
-    ##                        logger.addResolutionResult(guid,m,doc_position,qmethod,doc_method ,0,0,0)
-                result_dict["mrr_score"]=0
-                result_dict["precision_score"]=0
-                result_dict["ndcg_score"]=0
-                result_dict["rank"]=0
-                result_dict["first_result"]=""
-
-                logger.addResolutionResultDict(result_dict)
-            else:
-                result=logger.measureScoreAndLog(retrieved, result["citation_multi"], result_dict)
-
-        logger.computeAverageScores()
-        results=[]
-        for query_method in logger.averages:
-            for doc_method in logger.averages[query_method]:
-    ##            weights=all_doc_methods[doc_method]["runtime_parameters"]
-                weights=parameters
-                data_line={"query_method":query_method,"doc_method":doc_method,"citation_az":citation_az}
-
-                for metric in logger.averages[query_method][doc_method]:
-                    data_line["avg_"+metric]=logger.averages[query_method][doc_method][metric]
-                data_line["precision_total"]=logger.scores["precision"][query_method][doc_method]
-
-##                signature=""
-##                for w in weights:
-##                    data_line[w]=weights[w]
-##                    signature+=str(w)
-    ##            data_line["weight_signature"]=signature
-                results.append(data_line)
-
-    ##    logger.writeDataToCSV(cp.cp.Corpus.dir_output+"testing_test_precision.csv")
-
         return results
 
 

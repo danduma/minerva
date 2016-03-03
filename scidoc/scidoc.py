@@ -144,12 +144,13 @@ class SciDoc(object):
             self.citation_by_id[cit["id"]]=cit
             # update citations link for the reference
             if cit["ref_id"]:
-                try:
+##                try:
                     ref_citations=self.reference_by_id[cit["ref_id"]]["citations"]
                     if cit["id"] not in ref_citations:
                         ref_citations.append(cit["id"])
-                except KeyError as e:
-                    print("Error:",e.__repr__())
+##                except KeyError as e:
+##                    print("Error:",e.__repr__())
+
 
     def isSentence(self, element):
         """

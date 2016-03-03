@@ -244,16 +244,20 @@ class CorpusImporter(object):
 
     def reloadSciDocsOnly(self, conditions, inputdir, file_mask):
         """
-            This reloads the SciDocs for a subset of all files in the corpus
+            Iterates through the papers already in the collection given the
+            condition. Tries to load their scidoc. If KeyError occurs, it loads
+            the XML again
         """
 ##        filenames=cp.Corpus.SQLQuery("SELECT guid,metadata.filename FROM papers where %s limit 10000" % conditions)
-        filenames=cp.Corpus.unlimitedQuery(
+        in_collection=[item["_source"] for item in cp.Corpus.unlimitedQuery(
             index="papers",
             doc_type="paper",
-            _source=["metadata.filename","guid"],
+            _source=["metadata.corpus_id","metadata.filename","guid"],
             q=conditions
-            )
+            )]
 
+        print("Fixing broken SciDocs")
+        print("Listing all loaded papers...")
         ALL_INPUT_FILES=self.loadListOrListAllFiles(inputdir,file_mask)
         files_to_process=[]
         files_hash={}
@@ -261,43 +265,55 @@ class CorpusImporter(object):
             corpus_id=self.generate_corpus_id(input_file)
             files_hash[corpus_id]=input_file
 
-        for file_name in filenames:
-            corpus_id=self.generate_corpus_id(file_name["_source"]["metadata"]["filename"])
-            assert(corpus_id in files_hash)
-            files_to_process.append([files_hash[corpus_id],file_name["_source"]["guid"]])
-
+        print("Iterating over all papers trying to load them...")
         tasks=[]
-        progress=ProgressIndicator(True,len(files_to_process))
         import_options={"reload_xml_if_doc_in_collection": True,}
+        progress=ProgressIndicator(True,len(in_collection))
+        for item in in_collection:
+            corpus_id=self.generate_corpus_id(item["metadata"]["filename"])
+            assert corpus_id==item["metadata"]["corpus_id"]
+            try:
+                doc=cp.Corpus.loadSciDoc(item["guid"])
+            except KeyError:
+                print("File %s is broken" % item["guid"])
+                if self.use_celery:
+                    tasks.append(importXMLTask.apply_async(args=[
+                            os.path.join(cp.Corpus.paths.inputXML,files_hash[corpus_id]),
+                            corpus_id,
+                            self.import_id,
+                            self.collection_id,
+                            import_options
+                            ],
+                            kwargs={"existing_guid":item["guid"]},
+                            queue="import_xml"
+                            ))
+                else:
+                    files_to_process.append([files_hash[corpus_id],item["guid"]])
+
+            progress.showProgressReport("Checking papers")
+
+        if self.use_celery:
+            return
+
+        print("Processing all %s broken files..." % len(files_to_process))
+        progress=ProgressIndicator(True,len(files_to_process))
 
         for fn in files_to_process:
             corpus_id=self.generate_corpus_id(fn[0])
-            if self.use_celery:
-                tasks.append(importXMLTask.apply_async(args=[
-                        os.path.join(cp.Corpus.paths.inputXML,fn[0]),
-                        corpus_id,
-                        self.import_id,
-                        self.collection_id,
-                        import_options
-                        ],
-                        kwargs={"existing_guid":fn[1]},
-                        queue="import_xml"
-                        ))
-            else:
-                try:
-                    doc=convertXMLAndAddToCorpus(
-                        os.path.join(cp.Corpus.paths.inputXML,fn[0]),
-                        corpus_id,
-                        self.import_id,
-                        self.collection_id,
-                        import_options,
-                        existing_guid=fn[1],
-                        )
-                except ValueError:
-                    logging.exception("ERROR: Couldn't convert %s" % fn)
-                    continue
+            try:
+                doc=convertXMLAndAddToCorpus(
+                    os.path.join(cp.Corpus.paths.inputXML,fn[0]),
+                    corpus_id,
+                    self.import_id,
+                    self.collection_id,
+                    import_options,
+                    existing_guid=fn[1],
+                    )
+            except ValueError:
+                logging.exception("ERROR: Couldn't convert %s" % fn)
+                continue
 
-                progress.showProgressReport("Importing -- latest file %s" % fn)
+            progress.showProgressReport("Importing -- latest file %s" % fn)
 
 # To inspect queues
 ##from celery.task.control import inspect

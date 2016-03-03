@@ -22,12 +22,16 @@ class ProgressIndicator(object):
     """
     def __init__(self,start_counting_now=False, numitems=None, print_out=True, dot_every_xitems=None):
         self.message_text="Processing"
+        self.report_every_xseconds=10
         if start_counting_now:
             self.startCounting()
         if numitems:
             self.setNumItems(numitems,print_out, dot_every_xitems)
 
     def startCounting(self):
+        """
+            Makes note of the current time.
+        """
         self.start_time=datetime.datetime.now()
         self.last_report=self.start_time
 
@@ -49,19 +53,27 @@ class ProgressIndicator(object):
         self.item_counter=0
 
     def showProgressReport(self, message, elapsed=1):
+        """
+            If a number of items or seconds has elapsed since the last report,
+            it prints a progress report.
+        """
         self.item_counter+=elapsed
-        if self.item_counter % self.dot_every_xitems ==0:
+        if self.item_counter % self.dot_every_xitems == 0 \
+         or (datetime.datetime.now()-self.last_report).total_seconds() >= self.report_every_xseconds:
             if datetime.datetime.now()-self.last_report >= datetime.timedelta(seconds=3):
                 self.last_report=datetime.datetime.now()
                 reportTimeLeft(self.item_counter,self.numitems, self.start_time, message)
 
     def progressReportSetNumItems(self, numitems):
+        """
+            Sets the number of items.
+        """
         self.numitems=numitems
         self.dot_every_xitems=max(numitems/ 1000,1)
         print(self.message_text," ", numitems, "papers...")
         self.item_counter=0
 
-class ResultsLogger (ProgressIndicator):
+class ResultsLogger(ProgressIndicator):
     """
         Stores the results of retrieval testing, on several metrics, and allows
         exporting results to a CSV file
