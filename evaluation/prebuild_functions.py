@@ -7,21 +7,23 @@
 
 from __future__ import print_function
 
-import sys, json, datetime, math
-
+import logging
 import minerva.db.corpora as cp
-import minerva.proc.doc_representation as doc_representation
-from minerva.proc.general_utils import loadFileText, writeFileText, ensureDirExists
-from minerva.proc.results_logging import ProgressIndicator
 
 ES_TYPE_DOC="doc"
 
 
-def prebuildMulti(method_name, parameters, function, guid, doc, doctext, force_prebuild, rhetorical_annotations):
+def prebuildMulti(method_name, parameters, function, doc, doctext, guid, force_prebuild, rhetorical_annotations):
     """
         Builds multiple BOWs for each document based on multiple parameters.
 
-        :param method_name:
+        :param method_name: string identifying the doc representation method
+        :param parameters: parameters to the doc method
+        :param function: pointer to the function to call to build these BOWs
+        :param doc: loaded SciDoc, or None to load it in this function
+        :param doctext: loaded SciDoc text, or None to load it in this function
+        :param guid: guid of the file being processed
+        :param force_prebuild: if False, only build BOWs that are not in the db already
     """
     if not force_prebuild:
         params=cp.Corpus.selectBOWParametersToPrebuild(guid,method_name,parameters)
@@ -31,8 +33,12 @@ def prebuildMulti(method_name, parameters, function, guid, doc, doctext, force_p
     if len(params) > 0:
         # changed this so doc only gets loaded if absolutely necessary
         if not doc:
-            doc=cp.Corpus.loadSciDoc(guid)
-            # TODO annotation should only happen if there's an option set to that effect
+            try:
+                doc=cp.Corpus.loadSciDoc(guid, ignore_errors=["error_match_citation_with_reference"])
+                if not doc:
+                    raise ValueError("No SciDoc for %s" % guid)
+            except:
+                logging.exception("Cannot load SciDoc")
 
             for annotation in rhetorical_annotations:
                 cp.Corpus.annotateDoc(doc, annotation.upper())

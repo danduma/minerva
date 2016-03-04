@@ -40,7 +40,10 @@ class SciDoc(object):
                 - bullet point lists & ordered lists: sentences, paragraphs?
 
     """
-    def __init__(self, data=None):
+    def __init__(self, data=None, ignore_errors=None):
+        """
+            :param ignore_errors: a list of errors to ignore.
+        """
         # the actual contents, as serialized to JSON
         self.data={
             "content":[], # all inline elements
@@ -58,6 +61,7 @@ class SciDoc(object):
 
         # global variables to keep track of importing/exporting
         self.glob={}
+        self.ignore_errors=ignore_errors if ignore_errors else []
 
         if data:
             if isinstance(data,basestring):
@@ -144,12 +148,16 @@ class SciDoc(object):
             self.citation_by_id[cit["id"]]=cit
             # update citations link for the reference
             if cit["ref_id"]:
-##                try:
+                try:
                     ref_citations=self.reference_by_id[cit["ref_id"]]["citations"]
                     if cit["id"] not in ref_citations:
                         ref_citations.append(cit["id"])
-##                except KeyError as e:
-##                    print("Error:",e.__repr__())
+                except KeyError as e:
+                    if "error_match_citation_with_reference" in self.ignore_errors:
+                        print("Cannot match citation %s with reference %s, ignoring." % (cit["id"], cit["ref_id"]))
+                        continue
+                    else:
+                        raise KeyError("Cannot match citation with reference")
 
 
     def isSentence(self, element):

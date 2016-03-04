@@ -114,7 +114,9 @@ class Experiment:
 
         # BIND EXTRACTORS
         for option in self.exp["prebuild_bows"]:
-            self.exp["prebuild_bows"][option]["function"]=self.bindFunction(self.exp["prebuild_bows"][option]["function"])
+            function_name=self.exp["prebuild_bows"][option]["function"]
+            self.exp["prebuild_bows"][option]["function_name"]=function_name
+            self.exp["prebuild_bows"][option]["function"]=self.bindFunction(function_name)
 
         for option in self.exp["qmethods"]:
             self.exp["qmethods"][option]["extractor"]=self.bindExtractor(self.exp["qmethods"][option]["method"])

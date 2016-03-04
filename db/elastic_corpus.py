@@ -319,12 +319,12 @@ class ElasticCorpus(BaseCorpus):
         """
         return json.loads(self.getRecordField(path,"cache"))
 
-    def loadSciDoc(self,guid):
+    def loadSciDoc(self,guid, ignore_errors=None):
         """
             If a SciDocJSON file exists for guid, it returns it, otherwise None
         """
         data=json.loads(self.getRecordField(guid,"scidocs"))
-        return SciDoc(data)
+        return SciDoc(data, ignore_errors=ignore_errors)
 
     def saveSciDoc(self,doc):
         """

@@ -181,6 +181,8 @@ experiment={
     "use_default_similarity":True,
     # Annotate sentences with AZ/CoreSC/etc?
     "rhetorical_annotations":[],
+    # Run annotators? If False, it is assumed the sentences are already annotated
+    "run_rhetorical_annotators":False,
     # Separate queries by AZ/CSC, etc?
     "use_rhetorical_annotation":True,
     "weight_values":[],

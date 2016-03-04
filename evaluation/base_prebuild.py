@@ -11,6 +11,9 @@ import sys
 from prebuild_functions import prebuildMulti
 from minerva.squad.tasks import prebuildBOWTask
 
+import minerva.db.corpora as cp
+from minerva.proc.results_logging import ProgressIndicator
+
 class BasePrebuilder(object):
     """
         Wrapper around the prebuilding functions.
@@ -19,8 +22,10 @@ class BasePrebuilder(object):
         """
         """
         self.use_celery=use_celery
+        self.exp={}
+        self.options={}
 
-    def prebuildBOWsForTests(self, prebuild_list, exp, options):
+    def prebuildBOWsForTests(self, exp, options):
         """
             Generates BOWs for each document from its inlinks, stores them in a
             corpus cached file
@@ -30,10 +35,12 @@ class BasePrebuilder(object):
             :param force_prebuild: should BOWs be rebuilt even if existing?
 
         """
+        self.exp=exp
+        self.options=options
 
         maxfiles=options.get("max_files_to_process",sys.maxint)
 
-        if len(self.exp.get("rhetorical_annotations",[]) > 0):
+        if len(self.exp.get("rhetorical_annotations",[])) > 0:
             print("Loading AZ/CFC classifiers")
             cp.Corpus.loadAnnotators()
 
@@ -44,32 +51,31 @@ class BasePrebuilder(object):
             print("Queueing tasks...")
             tasks=[]
             for guid in cp.Corpus.ALL_FILES[:maxfiles]:
-                for entry in self.exp["prebuild_bows"]:
+                for method_name in self.exp["prebuild_bows"]:
+                    run_annotators=self.exp.get("rhetorical_annotations",[]) if self.exp.get("run_rhetorical_annotators",False) else []
                     if self.use_celery:
                         tasks.append(prebuildBOWTask.apply_async(args=[
-                            entry,
-                            self.exp["prebuild_bows"][entry]["parameters"],
-                            self.exp["prebuild_bows"][entry]["function"],
+                            method_name,
+                            self.exp["prebuild_bows"][method_name]["parameters"],
+                            self.exp["prebuild_bows"][method_name]["function_name"],
                             guid,
-                            doc,
-                            doctext,
                             self.options["force_prebuild"],
-                            self.exp.get("rhetorical_annotations",[])],
-                            queue="build_bows"))
+                            run_annotators],
+                            queue="prebuild_bows"))
 
         else:
             progress=ProgressIndicator(True, numfiles, False)
             for guid in cp.Corpus.ALL_FILES[:maxfiles]:
-                for entry in self.exp["prebuild_bows"]:
+                for method_name in self.exp["prebuild_bows"]:
                     prebuildMulti(
-                                  entry,
-                                  self.exp["prebuild_bows"][entry]["parameters"],
-                                  self.exp["prebuild_bows"][entry]["function"],
+                                  method_name,
+                                  self.exp["prebuild_bows"][method_name]["parameters"],
+                                  self.exp["prebuild_bows"][method_name]["function"],
                                   guid,
-                                  doc,
-                                  doctext,
+                                  None,
+                                  None,
                                   self.options["force_prebuild"],
-                                  self.exp.get("rhetorical_annotations",[])
+                                  run_annotators
                                   )
                 progress.showProgressReport("Building BOWs")
 
