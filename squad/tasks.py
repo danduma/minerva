@@ -93,7 +93,7 @@ def updateReferencesTask(self, doc_id, import_options):
         raise self.retry(countdown=120, max_retries=4)
 
 @app.task(ignore_result=True, bind=True)
-def buildBOWTask(self, method_name, parameters, function, guid, doc, doctext, force_prebuild, rhetorical_annotations):
+def prebuildBOWTask(self, method_name, parameters, function, guid, doc, doctext, force_prebuild, rhetorical_annotations):
     """
         Builds the BOW for a single paper
     """

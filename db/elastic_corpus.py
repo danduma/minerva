@@ -68,7 +68,7 @@ class ElasticCorpus(BaseCorpus):
 
     def connectCorpus(self, base_directory, endpoint={"host":"localhost", "port":9200}, initializing_corpus=False,suppress_error=False):
         """
-            If DB has been created, connect to it. If not, initialize it first.
+            If DB has been created, connect to it. Icf not, initialize it first.
 
             Args:
                 base_directory: root dir of this corpus

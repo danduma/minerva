@@ -9,7 +9,7 @@ from __future__ import print_function
 import sys
 
 from prebuild_functions import prebuildMulti
-from minerva.squad.tasks import buildBOWTask
+from minerva.squad.tasks import prebuildBOWTask
 
 class BasePrebuilder(object):
     """
@@ -46,7 +46,7 @@ class BasePrebuilder(object):
             for guid in cp.Corpus.ALL_FILES[:maxfiles]:
                 for entry in self.exp["prebuild_bows"]:
                     if self.use_celery:
-                        tasks.append(buildBOWTask.apply_async(args=[
+                        tasks.append(prebuildBOWTask.apply_async(args=[
                             entry,
                             self.exp["prebuild_bows"][entry]["parameters"],
                             self.exp["prebuild_bows"][entry]["function"],

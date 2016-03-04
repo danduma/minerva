@@ -144,7 +144,7 @@ class Experiment:
         if self.options["run_prebuild_bows"] and len(self.exp["prebuild_bows"]) > 0:
             cp.Corpus.ALL_FILES=prebuild_list
             prebuilder=BasePrebuilder()
-            prebuilder.prebuildBOWsForTests( self.exp, self.options)
+            prebuilder.prebuildBOWsForTests(self.exp, self.options)
 
         # BUILD INDEX
         if not self.exp["full_corpus"]:

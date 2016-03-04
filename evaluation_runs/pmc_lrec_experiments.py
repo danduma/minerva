@@ -214,7 +214,7 @@ experiment={
 
 options={
     "run_prebuild_bows":1, # should the whole BOW building process run?
-    "force_prebuild":0,   # if a BOW exists already, should we overwrite it?
+    "force_prebuild":1,   # if a BOW exists already, should we overwrite it?
     "rebuild_indexes":1,   # rebuild indices?
     "recompute_queries":0, # force rebuilding of queries too?
     "run_precompute_retrieval":1, # only applies if type == "train_weights"
