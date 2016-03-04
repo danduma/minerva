@@ -78,7 +78,10 @@ def fix_broken_scidocs():
         their scidoc. If KeyError occurs, it loads the XML again
     """
     cp.useElasticCorpus()
-    cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc")
+    import minerva.squad.celery_app as celery_app
+    cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc",
+            endpoint={"host":celery_app.MINERVA_ELASTICSEARCH_SERVER_IP,
+            "port":celery_app.MINERVA_ELASTICSEARCH_SERVER_PORT})
     importer=CorpusImporter("PMC_CSC","initial", use_celery=True)
     importer.generate_corpus_id=getPMC_CSC_corpus_id
     importer.reloadSciDocsOnly("metadata.collection_id:\"PMC_CSC\"",
