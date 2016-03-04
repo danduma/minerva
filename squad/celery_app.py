@@ -1,4 +1,4 @@
-# Celery app module
+# Celery app module. A lot of config in here.
 #
 # Copyright:   (c) Daniel Duma 2015
 # Author: Daniel Duma <danielduma@gmail.com>
@@ -43,12 +43,14 @@ app.conf.update(
         Queue('import_xml', Exchange('import_xml'), routing_key='import_xml'),
         Queue('update_references', Exchange('update_references'), routing_key='update_references'),
         Queue('prebuild_bows', Exchange('prebuild_bows'), routing_key='prebuild_bows'),
+        Queue('add_to_index', Exchange('add_to_index'), routing_key='add_to_index'),
     ),
 
     CELERY_ROUTES = {
         'importXMLTask': {'queue': 'import_xml', 'routing_key': 'import_xml'},
         'updateReferencesTask': {'queue': 'update_references', 'routing_key': 'update_references'},
         'prebuildBOWTask': {'queue': 'prebuild_bows', 'routing_key': 'prebuild_bows'},
+        'addToIndexTask': {'queue': 'add_to_index', 'routing_key': 'add_to_index'},
     }
 )
 

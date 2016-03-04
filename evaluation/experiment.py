@@ -27,18 +27,18 @@ import minerva.evaluation.athar_corpus as athar_corpus
 from minerva.proc.general_utils import ensureDirExists
 from weight_training import WeightTrainer
 
-class Experiment:
+class Experiment(object):
     """
-        Encapsulates an experiment's parameters.
+        Encapsulates an experiment's parameters and global running pipeline.
 
     """
     def __init__(self, experiment, options={}, use_celery=False):
         """
-            Pass either a dict
+            :param experiment: either a dict or a file name to load
         """
+        self.use_celery=use_celery
         self.load(experiment, options)
         self.query_generator=QueryGenerator()
-        self.use_celery=use_celery
 
     def experimentExists(self, filename):
         """
@@ -80,7 +80,7 @@ class Experiment:
         if cp.Corpus.__class__.__name__ == "ElasticCorpus":
             from elastic_index import ElasticIndexer
             from elastic_retrieval import ElasticRetrievalBoost
-            self.indexer=ElasticIndexer()
+            self.indexer=ElasticIndexer(use_celery=self.use_celery)
             self.retrieval_class=ElasticRetrievalBoost
         elif cp.Corpus.__class__.__name__ == "LocalCorpus":
             from lucene_index import LuceneIndexer

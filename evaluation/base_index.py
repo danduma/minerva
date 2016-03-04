@@ -11,11 +11,19 @@ import sys, json, datetime, math
 from copy import deepcopy
 import logging
 ##from tqdm import tqdm
-from progressbar import ProgressBar, SimpleProgress, Bar, ETA
+##from progressbar import ProgressBar, SimpleProgress, Bar, ETA
+from minerva.proc.results_logging import ProgressIndicator
 
 import minerva.db.corpora as cp
-import minerva.proc.doc_representation as doc_representation
+import minerva.evaluation.base_pipeline as doc_representation
+from minerva.evaluation.base_pipeline import getDictOfTestingMethods
+from minerva.proc.doc_representation import getDictOfLuceneIndeces
 from minerva.proc.general_utils import loadFileText, writeFileText, ensureDirExists
+from index_functions import addBOWsToIndex
+
+from minerva.proc.nlp_functions import CORESC_LIST
+
+from minerva.squad.tasks import addToindexTask
 
 ES_TYPE_DOC="doc"
 
@@ -23,10 +31,10 @@ class BaseIndexer(object):
     """
         Prebuilds BOWs etc. for tests
     """
-    def __init__(self):
+    def __init__(self, use_celery=False):
         """
         """
-        pass
+        self.use_celery=use_celery
 
     def buildIndexes(self, testfiles, methods):
         """
@@ -37,23 +45,18 @@ class BaseIndexer(object):
         """
         self.initializeIndexer()
 
-##        print("Prebuilding Lucene indeces in ",baseFullIndexDir)
-
         count=0
         for guid in testfiles:
             count+=1
             print("Building index: paper ",count,"/",len(testfiles),":",guid)
 
             fwriters={}
-##            baseFileIndexDir=baseFullIndexDir+test_guid+os.sep
-##            ensureDirExists(baseFileIndexDir)
-
             doc=cp.Corpus.loadSciDoc(guid)
             if not doc:
                 print("Error loading SciDoc for", guid)
                 continue
 
-            indexNames=doc_representation.getDictOfLuceneIndeces(methods)
+            indexNames=getDictOfLuceneIndeces(methods)
 
             for indexName in indexNames:
                 actual_dir=cp.Corpus.getRetrievalIndexPath(guid, indexName, full_corpus=False)
@@ -69,172 +72,73 @@ class BaseIndexer(object):
             # even newer way: just use the precomputed metadata.outlinks
             outlinks=cp.Corpus.getMetadataByGUID(guid)["outlinks"]
             for ref_guid in outlinks:
-                match=cp.Corpus.getMetadataByGUID(ref_guid)
-                for indexName in indexNames:
-                    # get the maximum year to create inlink_context descriptions from
-                    if indexNames[indexName]["options"].get("max_year",False) == True:
-                        max_year=cp.Corpus.getMetadataByGUID(test_guid)["year"]
-                    else:
-                        max_year=None
-
-                    method=indexNames[indexName]["method"]
-                    parameter=indexNames[indexName]["parameter"]
-                    ilc_parameter=indexNames[indexName].get("ilc_parameter","")
-
-                    if indexNames[indexName]["type"] in ["standard_multi"]:
-                        self.addPrebuiltBOWtoIndex(fwriters[indexName], ref_guid, method, parameter)
-                    elif indexNames[indexName]["type"] in ["inlink_context"]:
-                        self.addPrebuiltBOWtoIndexExcludingCurrent(fwriters[indexName], ref_guid, [test_guid], max_year, method, parameter)
-                    elif methods[method]["type"]=="ilc_mashup":
-
-                        bows=doc_representation.mashupBOWinlinkMethods(match,[test_guid], max_year, indexNames[indexName])
-                        if not bows:
-                            print("ERROR: Couldn't load prebuilt BOWs for mashup with inlink_context and ", method, ", parameters:",parameter, ilc_parameter)
-                            continue
-
-                        self.addLoadedBOWsToIndex(fwriters[indexName], ref_guid, bows,
-                        {"method":method,"parameter":parameter, "ilc_parameter":ilc_parameter})
+                addBOWsToIndex(ref_guid,indexNames,9999,fwriters)
+                # TODO integrate this block below into addBOWsToIndex
+##                for indexName in indexNames:
+##                    # get the maximum year to create inlink_context descriptions from
+##                    if indexNames[indexName]["options"].get("max_year",False) == True:
+##                        max_year=cp.Corpus.getMetadataByGUID(test_guid)["year"]
+##                    else:
+##                        max_year=None
 
             for fwriter in fwriters:
                 fwriters[fwriter].close()
 
+    def listFieldsToIndex(self, index_data):
+        """
+            Returns a list of fields to NOT store, only index.
+        """
+        # TODO make classes for the extractors, so that each class reports its fields
+        # WARNING this function is super hackish for tests
+
+        if index_data["type"] in ["annotated_boost", "ilc_annotated_boost"]:
+            return index_data["runtime_parameters"]
+        elif index_data["type"] in ["inlink_context"]:
+            pass
+        elif index_data["type"] in ["ilc_mashup"]:
+            pass
+        elif index_data["type"] in ["standard_multi"]:
+            if index_data["method"] == "az_annotated":
+                return CORESC_LIST
+            pass
+
+
     def buildGeneralIndex(self, testfiles, methods, index_max_year):
         """
-            Creates one Lucene index for each method and parameter, adding all files to each
+            Creates one index for each method and parameter, adding all files to each
         """
-
-##        print ("Prebuilding Lucene indeces in ",baseFullIndexDir)
-
         print ("Building global index...")
         fwriters={}
 
-        indexNames=doc_representation.getDictOfLuceneIndeces(methods)
+        indexNames=getDictOfLuceneIndeces(methods)
+##        indexNames=getDictOfTestingMethods(methods)
+        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year)
         for indexName in indexNames:
             actual_dir=cp.Corpus.getRetrievalIndexPath("ALL_GUIDS", indexName, full_corpus=True)
-##            cp.Corpus.paths.get("fullLuceneIndex","")+indexName
+            fields=self.listFieldsToIndex(indexNames[indexName])
+            self.createIndex(actual_dir,fields)
             fwriters[indexName]=self.createIndexWriter(actual_dir)
 
-        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year)
-    ##    ALL_GUIDS=["j98-2002"]
-
-        dot_every_xfiles=max(len(ALL_GUIDS) / 1000,1)
         print("Adding",len(ALL_GUIDS),"files:")
 
-        now1=datetime.datetime.now()
-        count=0
-##        for guid in tqdm(ALL_GUIDS, desc="Adding file"):
-
-        widgets = ['Adding file: ', SimpleProgress(), ' ', Bar(), ' ', ETA()]
-        progress = ProgressBar(widgets=widgets, maxval=100).start()
-        for guid in ALL_GUIDS:
-            count+=1
-
-            progress.update(count)
-##            print("Adding file:",count,"/",len(ALL_GUIDS),":",guid)
-
-            meta=cp.Corpus.getMetadataByGUID(guid)
-            if not meta:
-                logging.error("Error: can't load metadata for paper",guid)
-                continue
-
-            for indexName in indexNames:
-                method=indexNames[indexName]["method"]
-                parameter=indexNames[indexName]["parameter"]
-                ilc_parameter=indexNames[indexName].get("ilc_parameter","")
-
-                if indexNames[indexName]["type"] in ["standard_multi"]:
-                    if index_max_year:
-                        if meta["year"] > index_max_year:
-                            continue
-                    self.addPrebuiltBOWtoIndex(fwriters[indexName], guid, method, parameter)
-                elif indexNames[indexName]["type"] in ["inlink_context"]:
-                    self.addPrebuiltBOWtoIndexExcludingCurrent(fwriters[indexName], guid,  testfiles, index_max_year, method, parameter)
-                elif methods[method]["type"]=="ilc_mashup":
-                    bows=doc_representation.mashupBOWinlinkMethods(match,[test_guid], index_max_year, indexNames[indexName], full_corpus=True)
-                    if not bows:
-                        print("ERROR: Couldn't load prebuilt BOWs for mashup with inlink_context and ", method, ", parameters:",parameter, ilc_parameter)
-                        continue
-
-                    self.addLoadedBOWsToIndex(fwriters[indexName], match["guid"], bows,
-                    {"method":method,"parameter":parameter, "ilc_parameter":ilc_parameter})
-
-        for fwriter in fwriters:
-            fwriters[fwriter].close()
-
-    def addPrebuiltBOWtoIndex(self, writer, guid, method, parameter, full_corpus=False):
-        """
-            Loads JSON file with BOW data to Lucene doc in index, NOT filtering for anything
-        """
-        method_dict={"method":method,"parameter":parameter}
-        bow_filename=cp.Corpus.cachedDataIDString("bow",guid,method_dict)
-        print("Adding %s" % bow_filename)
-        bows=cp.Corpus.loadCachedJson(bow_filename)
-
-        assert isinstance(bows,list)
-        self.addLoadedBOWsToIndex(writer, guid, bows, method_dict)
-
-    def addPrebuiltBOWtoIndexExcludingCurrent(self, writer, guid, exclude_list, max_year, method, parameter, full_corpus=False):
-        """
-            Loads JSON file with BOW data to Lucene index, filtering for
-            inlink_context, excluding what bits
-            came from the current exclude_list, posterior year, same author, etc.
-        """
-        method_dict={"method":method,"parameter":parameter}
-        bow_filename=cp.Corpus.cachedDataIDString("bow",guid,method_dict)
-        bows=cp.Corpus.loadCachedJson(bow_filename)
-
-        assert isinstance(bows,list)
-
-        # joinTogetherContext?
-        bows=doc_representation.filterInlinkContext(bows, exclude_list, max_year, full_corpus=full_corpus)
-
-        assert isinstance(bows,list)
-        self.addLoadedBOWsToIndex(writer, guid, bows)
-
-
-    def addLoadedBOWsToIndex(self, writer, guid, bows, bow_info):
-        """
-            Adds loaded bows as pointer to a file [fn]/guid [guid]
-
-            :param writer: writer instance
-            :param guid: ditto
-            :param bows: list of dicts [{"title":"","abstract":""},{},...]
-            :param bow_info: a dict with info about the bow being added, e.g. method that generated it and parameter
-        """
-        i=0
-        base_metadata=cp.Corpus.getMetadataByGUID(guid)
-        assert(base_metadata)
-
-        assert isinstance(bows,list)
-        for new_doc in bows: # takes care of passage
-            if len(new_doc) == 0: # if the doc dict contains no fields
-                continue
-
-            fields_to_process=[field for field in new_doc if field not in doc_representation.FIELDS_TO_IGNORE]
-
-            if len(fields_to_process) == 0: # if there is no overlap in fields to add
-                continue
-
-            numTerms={}
-            total_numTerms=0
-
-            metadata=deepcopy(base_metadata)
-
-            for field in fields_to_process:
-                field_len=len(new_doc[field].split())   # total number of terms
-    ##            unique_terms=len(set(new_doc[field].split()))  # unique terms
-                numTerms[field]=field_len
-                # ignore fields that start with _ for total word count
-                if field[0] != "_":
-                    total_numTerms+=field_len
-
-            bow_info["passage_num"]=i
-            bow_info["total_passages"]=len(bows)
-            bow_info["total_numterms"]=total_numTerms
-
-            self.addDocument(writer, new_doc, metadata, fields_to_process, bow_info)
-            i+=1
-
+        if not self.use_celery:
+##            widgets = ['Adding file: ', SimpleProgress(), ' ', Bar(), ' ', ETA()]
+##            progress = ProgressBar(widgets=widgets, maxval=100).start()
+            progress=ProgressIndicator(True, len(ALL_GUIDS), print_out=False)
+            for guid in ALL_GUIDS:
+                addBOWsToIndex(guid, indexNames, index_max_year, fwriters)
+                progress.showProgressReport("Adding papers to index")
+            for fwriter in fwriters:
+                fwriters[fwriter].close()
+        else:
+            print("Queueing up files for import...")
+            for guid in ALL_GUIDS:
+                addToindexTask.apply_async(args=[
+                                                guid,
+                                                indexNames,
+                                                index_max_year,
+                                                ],
+                                            queue="add_to_index")
 
 
 #-------------------------------------------------------------------------------
@@ -247,25 +151,32 @@ class BaseIndexer(object):
         """
         pass
 
+    def createIndex(self, index_name, fields):
+        """
+            Create the actual index. Elastic requires this in order to
+            specify the mapping, Lucene doesn't
+        """
+        raise NotImplementedError
+
     def createIndexWriter(self, actual_dir, max_field_length=20000000):
         """
             Returns an IndexWriter object created for the actual_dir specified
         """
         raise NotImplementedError
 
-    def addDocument(self, writer, new_doc, metadata, fields_to_process, bow_info):
-        """
-            Add a document to the index. To be overriden by descendant classes.
-
-            :param new_doc: dict of fields with values
-            :type new_doc:dict
-            :param metadata: ditto
-            :type metadata:dict
-            :param fields_to_process: only add these fields from the doc dict
-            :type fields_to_process:list
-            :param bow_info: a dict with info on the bow: how it was generated, etc.
-        """
-        raise NotImplementedError
+##    def addDocument(self, writer, new_doc, metadata, fields_to_process, bow_info):
+##        """
+##            Add a document to the index. To be overriden by descendant classes.
+##
+##            :param new_doc: dict of fields with values
+##            :type new_doc:dict
+##            :param metadata: ditto
+##            :type metadata:dict
+##            :param fields_to_process: only add these fields from the doc dict
+##            :type fields_to_process:list
+##            :param bow_info: a dict with info on the bow: how it was generated, etc.
+##        """
+##        raise NotImplementedError
 
 
 

@@ -49,9 +49,9 @@ prebuild_indexes={
 }
 
 prebuild_general_indexes={
-    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
+##    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "ilc_full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
-    "az_annotated":{"type":"standard_multi", "bow_methods":[("az_annotated",[1])], "parameters":[1], "max_year":2013},
+    "az_annotated":{"type":"standard_multi", "bow_methods":[("az_annotated",[1])], "parameters":["pmc_2013"], "max_year":2013},
 }
 
 
@@ -215,8 +215,8 @@ experiment={
 
 
 options={
-    "run_prebuild_bows":1, # should the whole BOW building process run?
-    "force_prebuild":1,   # if a BOW exists already, should we overwrite it?
+    "run_prebuild_bows":0, # should the whole BOW building process run?
+    "force_prebuild":0,   # if a BOW exists already, should we overwrite it?
     "rebuild_indexes":1,   # rebuild indices?
     "recompute_queries":0, # force rebuilding of queries too?
     "run_precompute_retrieval":1, # only applies if type == "train_weights"
@@ -242,7 +242,7 @@ def main():
                             "cbf989c5-79f5-4317-8515-2192e2a3fe2a",
                             "37d1cc24-68a5-4a36-b55d-94acdfad08c1",]
 
-    exp=Experiment(experiment, options, False)
+    exp=Experiment(experiment, options, True)
     exp.run()
 
 if __name__ == '__main__':

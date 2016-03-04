@@ -22,9 +22,10 @@ import minerva.db.corpora as cp
 from minerva.db.elastic_corpus import ElasticCorpus
 from minerva.importing.importing_functions import (convertXMLAndAddToCorpus,
     updatePaperInCollectionReferences)
-from minerva.evaluation.prebuild_functions import prebuildMulti
+from minerva.evaluation.prebuild_functions import prebuildMulti, prebuildFunction
 
 from minerva.proc import doc_representation
+from minerva.evaluation.index_functions import addBOWsToIndex
 
 import celery_app
 from celery_app import app
@@ -95,19 +96,27 @@ def updateReferencesTask(self, doc_id, import_options):
         raise self.retry(countdown=120, max_retries=4)
 
 @app.task(ignore_result=True, bind=True)
-def prebuildBOWTask(self, method_name, parameters, function_name, guid, force_prebuild, rhetorical_annotations):
+def prebuildBOWTask(self, method_name, parameters, function, guid, force_prebuild, rhetorical_annotations):
     """
         Builds the BOW for a single paper
     """
-    function=getattr(doc_representation, function_name, None)
-    if not function:
-        raise ValueError("Unknown function %s" % function_name)
-
     try:
         #prebuildMulti(method_name, parameters, function, doc, doctext, guid, force_prebuild, rhetorical_annotations)
         prebuildMulti(method_name, parameters, function, None, None, guid, force_prebuild, rhetorical_annotations)
     except Exception as e:
         logging.exception("Error running prebuildMulti")
+        self.retry(countdown=120, max_retries=4)
+
+@app.task(ignore_result=True, bind=True)
+def addToindexTask(self, guid, indexNames, index_max_year):
+    """
+        Builds the BOW for a single paper
+    """
+
+    try:
+        addBOWsToIndex(guid, indexNames, index_max_year, fwriters)
+    except Exception as e:
+        logging.exception("Error running addBOWsToIndex")
         self.retry(countdown=120, max_retries=4)
 
 

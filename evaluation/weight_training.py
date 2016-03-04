@@ -84,11 +84,12 @@ class WeightTrainer(object):
     """
         This class encapsulates all of the weight wrangling
     """
-    def __init__(self, exp, options):
+    def __init__(self, exp, options, use_celery=False):
         """
         """
         self.exp=exp
         self.options=options
+        self.use_celery=use_celery
         self.all_doc_methods={}
 
     def dynamicWeightValues(self, split_fold):
@@ -256,7 +257,7 @@ class WeightTrainer(object):
 
         results=[]
         fold_results=[]
-        metrics=["avg_mrr","avg_precision","precision_total"]
+        metrics=["avg_mrr","avg_ndcg", "avg_precision","precision_total"]
 
         print("Experiment:",self.exp["name"])
         print("Metric:",self.exp["metric"])

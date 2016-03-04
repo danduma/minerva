@@ -34,6 +34,9 @@ def getDictOfLuceneIndeces(prebuild_indices):
     """
         Make a simple dictionary of {method_10:{method details}}
 
+        For some reason this function is different from getDictOfTestingMethods().
+        I'm still not sure why, but apparently "az_annotated" is "standard_multi" when
+        building indices but "annotated_boost" as a doc_method. ???
     """
     res=OrderedDict()
     for method in prebuild_indices:

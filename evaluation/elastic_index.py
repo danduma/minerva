@@ -1,65 +1,47 @@
-# Prebuild bag-of-words representations
+# Indexer that uses Elasticsearch as a backend
 #
-# Copyright:   (c) Daniel Duma 2014
+# Copyright:   (c) Daniel Duma 2016
 # Author: Daniel Duma <danielduma@gmail.com>
 
 # For license information, see LICENSE.TXT
 
-import sys, json, datetime, math
-
-import minerva.db.corpora as cp
-import minerva.proc.doc_representation as doc_representation
-from minerva.proc.general_utils import loadFileText, writeFileText, ensureDirExists
+import json
 
 from elasticsearch import Elasticsearch
 from base_index import BaseIndexer
 from elastic_retrieval import ES_TYPE_DOC
-
-class ElasticWriter(object):
-    """
-        Identifies with a specific elastic index in a specific elasticsearch
-        instance to encapsulate writing to it. More or less emulates lucene
-        Writer class.
-    """
-    def __init__(self, index_name, es_instance):
-        """
-
-        """
-        self.es=es_instance
-        self.index_name=index_name
-
-    def addDocument(self,doc):
-        """
-            Emulate LuceneIndexWriter.addDocument for elastic
-
-            :param doc: dict of doc to index, with all fields as they will be \
-            stored. Metadata contains the GUID to index it by
-            :type doc:dict
-        """
-        id=doc["metadata"]["guid"]
-        self.es.index(
-            index=self.index_name,
-            doc_type=ES_TYPE_DOC,
-            op_type="index",
-            id=id,
-            body=doc
-            )
-
-    def close(self):
-        """
-            Do nothing, for there is nothing to do.
-        """
-        pass
+import index_functions
+from elastic_writer import ElasticWriter
 
 class ElasticIndexer(BaseIndexer):
     """
         Prebuilds BOWs etc. for tests
     """
-    def __init__(self, endpoint={"host":"localhost", "port":9200}):
+    def __init__(self, endpoint={"host":"localhost", "port":9200}, use_celery=False):
         """
         """
+        super(self.__class__, self).__init__(use_celery)
         self.es=Elasticsearch([endpoint])
         self.es.retry_on_timeout=True
+
+    def createIndex(self, index_name, fields):
+        """
+        """
+        settings={
+            "number_of_shards" : 2,
+            "number_of_replicas" : 0
+        }
+
+        properties={field: {"type":"string", "index":"analyzed", "store":False} for field in fields}
+        properties["metadata"] = {"type":"nested"}
+        properties["guid"] = {"type":"string", "index": "not_analyzed"}
+        properties["bow_info"] = {"type":"string", "index": "analyzed", "store":True}
+
+        if not self.es.indices.exists(index=index_name):
+            self.es.indices.create(
+                index=index_name,
+                body={"settings":settings,"mappings":{ES_TYPE_DOC:{"properties":properties}}})
+
 
     def createIndexWriter(self, actual_dir, max_field_length=20000000):
         """
@@ -68,31 +50,33 @@ class ElasticIndexer(BaseIndexer):
         res=ElasticWriter(actual_dir, self.es)
         return res
 
-    def addDocument(self, writer, new_doc, metadata, fields_to_process, bow_info):
-        """
-            Add a document to the index. Does this using direct Lucene access.
+def addDocument(writer, new_doc, metadata, fields_to_process, bow_info):
+    """
+        Add a document to the index. Does this using direct Elastic access.
 
-            :param new_doc: dict of fields with values
-            :type new_doc:dict
-            :param metadata: ditto
-            :type metadata:dict
-            :param fields_to_process: only add these fields from the doc dict
-            :type fields_to_process:list
-        """
+        :param new_doc: dict of fields with values
+        :type new_doc:dict
+        :param metadata: ditto
+        :type metadata:dict
+        :param fields_to_process: only add these fields from the doc dict
+        :type fields_to_process:list
+    """
 
-        body={"guid": metadata["guid"],
-              "metadata": metadata,
-              "bow_info": bow_info,
-              }
+    body={"guid": metadata["guid"],
+          "metadata": metadata,
+          "bow_info": json.dumps(bow_info),
+          }
 
-        for field in fields_to_process:
-            body[field]=new_doc[field]
-            # TODO figure out what to do with per-field boosting
+    for field in fields_to_process:
+        body[field]=new_doc[field]
+        # TODO figure out what to do with per-field boosting
 ##            boost=1 / float(math.sqrt(total_numTerms)) if total_numTerms > 0 else float(0)
 ##            field_object.setBoost(float(boost))
 ##            doc.add(field_object)
 
-        writer.addDocument(body)
+    writer.addDocument(body)
+
+index_functions.ADD_DOCUMENT_FUNCTION=addDocument
 
 def main():
 

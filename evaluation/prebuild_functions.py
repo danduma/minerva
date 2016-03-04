@@ -9,8 +9,18 @@ from __future__ import print_function
 
 import logging
 import minerva.db.corpora as cp
+from minerva.proc import doc_representation
 
 ES_TYPE_DOC="doc"
+
+
+def prebuildFunction(function_name):
+    """
+        Returns a pointer to the doc_representation prebuild function if found
+    """
+    function=getattr(doc_representation, function_name, None)
+    if not function:
+        raise ValueError("Unknown function %s" % function_name)
 
 
 def prebuildMulti(method_name, parameters, function, doc, doctext, guid, force_prebuild, rhetorical_annotations):
@@ -31,6 +41,9 @@ def prebuildMulti(method_name, parameters, function, doc, doctext, guid, force_p
         params=parameters
 
     if len(params) > 0:
+        if isinstance(function,basestring):
+            function=prebuildFunction(function)
+
         # changed this so doc only gets loaded if absolutely necessary
         if not doc:
             try:
@@ -54,7 +67,7 @@ def prebuildMulti(method_name, parameters, function, doc, doctext, guid, force_p
                 doc["metadata"]["guid"],
                 param_dict,
                 all_bows[param])
-    return [doc,doctext]
+    return all_bows
 
 
 def main():

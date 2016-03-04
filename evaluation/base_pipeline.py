@@ -35,15 +35,14 @@ def getDictOfTestingMethods(methods):
     res=OrderedDict()
     for method in methods:
         for parameter in methods[method]["parameters"]:
-            if methods[method]["type"] in ["standard_multi","inlink_context"]:
+            if methods[method]["type"] in ["standard_multi", "inlink_context"]:
                 addon="_"+str(parameter)
                 indexName=method+addon
                 res[indexName]=deepcopy(methods[method])
                 res[indexName]["method"]=method
                 res[indexName]["parameter"]=parameter
-                res[indexName]["index_filename"]= methods[method]["index"]+addon
+                res[indexName]["index_filename"]=methods[method].get("index",indexName)+addon
                 res[indexName]["runtime_parameters"]=methods[method]["runtime_parameters"]
-##                res[indexName]["index_field"]=str(parameter)
             elif methods[method]["type"] in ["ilc_mashup"]:
                 for ilc_parameter in methods[method]["ilc_parameters"]:
                     addon="_"+str(parameter)+"_"+str(ilc_parameter)
@@ -52,29 +51,28 @@ def getDictOfTestingMethods(methods):
                     res[indexName]["method"]=method
                     res[indexName]["parameter"]=parameter
                     res[indexName]["ilc_parameter"]=ilc_parameter
-                    res[indexName]["index_filename"]=methods[method]["index"]+addon
+                    res[indexName]["index_filename"]=methods[method].get("index",indexName)+addon
                     res[indexName]["runtime_parameters"]=methods[method]["runtime_parameters"]
-##                    res[indexName]["index_field"]=str(parameter)+"_"+str(ilc_parameter)
             elif methods[method]["type"] in ["annotated_boost"]:
-                for runtime_parameter in methods[method]["runtime_parameters"]:
-                    indexName=method+"_"+str(parameter)+"_"+runtime_parameter
+                for runtime_parameter_name in methods[method]["runtime_parameters"]:
+                    indexName=method+"_"+str(parameter)+"_"+runtime_parameter_name
                     res[indexName]=deepcopy(methods[method])
                     res[indexName]["method"]=method
                     res[indexName]["parameter"]=parameter
-                    res[indexName]["runtime_parameters"]= methods[method]["runtime_parameters"][runtime_parameter]
-##                    res[indexName]["index_filename"]=methods[method]["index"]+"_"+str(parameter)
-                    res[indexName]["index_filename"]=methods[method]["index"]+"_"+str(parameter)
+                    res[indexName]["runtime_parameter_name"]=runtime_parameter_name
+                    res[indexName]["runtime_parameters"]= methods[method]["runtime_parameters"][runtime_parameter_name]
+                    res[indexName]["index_filename"]=methods[method].get("index",indexName)+"_"+str(parameter)
             elif methods[method]["type"] in ["ilc_annotated_boost"]:
                 for ilc_parameter in methods[method]["ilc_parameters"]:
-                    for runtime_parameter in methods[method]["runtime_parameters"]:
-                        indexName=method+"_"+str(ilc_parameter)+"_"+runtime_parameter
+                    for runtime_parameter_name in methods[method]["runtime_parameters"]:
+                        indexName=method+"_"+str(ilc_parameter)+"_"+runtime_parameter_name
                         res[indexName]=deepcopy(methods[method])
                         res[indexName]["method"]=method
                         res[indexName]["parameter"]=parameter
-                        res[indexName]["runtime_parameters"]=methods[method]["runtime_parameters"][runtime_parameter]
+                        res[indexName]["runtime_parameter_name"]=runtime_parameter_name
+                        res[indexName]["runtime_parameters"]=methods[method]["runtime_parameters"][runtime_parameter_name]
                         res[indexName]["ilc_parameter"]=ilc_parameter
-                        res[indexName]["index_filename"]=methods[method]["index"]+"_"+str(parameter)+"_"+str(ilc_parameter)
-##                    res[indexName]["index_field"]=str(parameter)+"_"+str(ilc_parameter)
+                        res[indexName]["index_filename"]=methods[method].get("index",indexName)+"_"+str(parameter)+"_"+str(ilc_parameter)
     return res
 
 
