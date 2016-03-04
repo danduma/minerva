@@ -242,7 +242,7 @@ def main():
                             "cbf989c5-79f5-4317-8515-2192e2a3fe2a",
                             "37d1cc24-68a5-4a36-b55d-94acdfad08c1",]
 
-    exp=Experiment(experiment, options, True)
+    exp=Experiment(experiment, options, False)
     exp.run()
 
 if __name__ == '__main__':

@@ -333,7 +333,8 @@ class BaseTestingPipeline(object):
 
 class CompareExplainPipeline(BaseTestingPipeline):
     """
-        This compared the results of running the experiments with
+        This compared the results of the default similarity with those of the
+        explain pipeline. Deprecated and to be discontinued.
     """
     def __init__(self):
         pass

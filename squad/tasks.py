@@ -104,7 +104,8 @@ def prebuildBOWTask(self, method_name, parameters, function_name, guid, force_pr
         raise ValueError("Unknown function %s" % function_name)
 
     try:
-        prebuildMulti(method_name, parameters, function, guid, None, None, force_prebuild, rhetorical_annotations)
+        #prebuildMulti(method_name, parameters, function, doc, doctext, guid, force_prebuild, rhetorical_annotations)
+        prebuildMulti(method_name, parameters, function, None, None, guid, force_prebuild, rhetorical_annotations)
     except Exception as e:
         logging.exception("Error running prebuildMulti")
         self.retry(countdown=120, max_retries=4)

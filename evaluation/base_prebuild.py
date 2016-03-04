@@ -67,13 +67,14 @@ class BasePrebuilder(object):
             progress=ProgressIndicator(True, numfiles, False)
             for guid in cp.Corpus.ALL_FILES[:maxfiles]:
                 for method_name in self.exp["prebuild_bows"]:
+                    run_annotators=self.exp.get("rhetorical_annotations",[]) if self.exp.get("run_rhetorical_annotators",False) else []
                     prebuildMulti(
                                   method_name,
                                   self.exp["prebuild_bows"][method_name]["parameters"],
                                   self.exp["prebuild_bows"][method_name]["function"],
+                                  None,
+                                  None,
                                   guid,
-                                  None,
-                                  None,
                                   self.options["force_prebuild"],
                                   run_annotators
                                   )
