@@ -32,12 +32,13 @@ class Experiment:
         Encapsulates an experiment's parameters.
 
     """
-    def __init__(self, experiment, options={}):
+    def __init__(self, experiment, options={}, use_celery=False):
         """
             Pass either a dict
         """
         self.load(experiment, options)
         self.query_generator=QueryGenerator()
+        self.use_celery=use_celery
 
     def experimentExists(self, filename):
         """
@@ -145,7 +146,7 @@ class Experiment:
 
         if self.options["run_prebuild_bows"] and len(self.exp["prebuild_bows"]) > 0:
             cp.Corpus.ALL_FILES=prebuild_list
-            prebuilder=BasePrebuilder()
+            prebuilder=BasePrebuilder(self.use_celery)
             prebuilder.prebuildBOWsForTests(self.exp, self.options)
 
         # BUILD INDEX

@@ -333,6 +333,7 @@ class BaseTestingPipeline(object):
 
 class CompareExplainPipeline(BaseTestingPipeline):
     """
+        This compared the results of running the experiments with
     """
     def __init__(self):
         pass
