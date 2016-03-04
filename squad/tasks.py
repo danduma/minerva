@@ -114,7 +114,7 @@ def addToindexTask(self, guid, indexNames, index_max_year):
     """
 
     try:
-        addBOWsToIndex(guid, indexNames, index_max_year, fwriters)
+        addBOWsToIndex(guid, indexNames, index_max_year)
     except Exception as e:
         logging.exception("Error running addBOWsToIndex")
         self.retry(countdown=120, max_retries=4)
