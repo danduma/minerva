@@ -52,6 +52,7 @@ def addBOWsToIndex(guid, indexNames, index_max_year, fwriters=None, full_corpus=
         logging.error("Error: can't load metadata for paper %s" % guid)
         return
 
+
     if not fwriters:
         fwriters={}
         for indexName in indexNames:
@@ -89,6 +90,7 @@ def addOrBuildBOWToIndex(writer, guid, index_data, full_corpus=False):
         bows=None
 
     if not bows:
+        print("BOW not found, rebuilding")
         bows=prebuildMulti(index_data["method"],
                            index_data["parameters"],
                            index_data["function_name"],
@@ -97,11 +99,14 @@ def addOrBuildBOWToIndex(writer, guid, index_data, full_corpus=False):
                            guid,
                            False,
                            []) #!TODO rhetorical_annotations here?
+        # Note: prebuildMulti will return a dict[param]=list of bows
+        bows=bows[index_data["parameter"]]
 
-    if not isinstance(bows, list):
-        print("BOWS IS NOT A LIST")
-        print("Type:", type(bows))
-        print(bows)
+##    if not isinstance(bows, list):
+##        print("BOWS IS NOT A LIST")
+##        print("guid:", guid)
+##        print("index_data:", index_data)
+##        print("Type:", type(bows))
     assert isinstance(bows,list)
     addLoadedBOWsToIndex(writer, guid, bows, index_data)
 
@@ -182,6 +187,13 @@ def addLoadedBOWsToIndex(writer, guid, bows, bow_info):
 
 
 def main():
+    cp.useElasticCorpus()
+    cp.Corpus.connectCorpus(r"g:\nlp\phd\pmc_coresc")
+    guids=["07eb18ef-2e86-4955-882d-c63e472e51c6", "d8a17083-53cc-43be-baa1-b6d6e85e711a"]
+    index_data={u'bow_name': u'az_annotated', u'parameters': [1], u'type': u'standard_multi', u'max_year': 2013, u'index_filename': u'az_annotated_pmc_2013_1', u'options': {}, u'index_field': u'1', u'parameter': 1, u'method': u'az_annotated', u'function_name': u'getDocBOWannotated'}
+    indexNames={u'az_annotated_pmc_2013_1': {u'bow_name': u'az_annotated', u'parameters':[1], u'type': u'standard_multi', u'max_year': 2013, u'index_filename': u'az_annotated_pmc_2013_1', u'options': {}, u'index_field': u'1', u'parameter': 1, u'method': u'az_annotated', u'function_name': u'getDocBOWannotated'}}
+    for guid in guids:
+        addBOWsToIndex(guid, indexNames, 2013)
     pass
 
 if __name__ == '__main__':
