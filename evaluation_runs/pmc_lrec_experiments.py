@@ -224,7 +224,7 @@ experiment={
 options={
     "run_prebuild_bows":0, # should the whole BOW building process run?
     "force_prebuild":0,   # if a BOW exists already, should we overwrite it?
-    "rebuild_indexes":1,   # rebuild indices?
+    "rebuild_indexes":0,   # rebuild indices?
     "recompute_queries":0, # force rebuilding of queries too?
     "run_precompute_retrieval":1, # only applies if type == "train_weights"
     "override_folds":4,
@@ -249,7 +249,7 @@ def main():
                             "cbf989c5-79f5-4317-8515-2192e2a3fe2a",
                             "37d1cc24-68a5-4a36-b55d-94acdfad08c1",]
 
-    exp=Experiment(experiment, options, True)
+    exp=Experiment(experiment, options, False)
     exp.run()
 
 if __name__ == '__main__':

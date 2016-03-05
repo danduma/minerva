@@ -98,6 +98,10 @@ def addOrBuildBOWToIndex(writer, guid, index_data, full_corpus=False):
                            False,
                            []) #!TODO rhetorical_annotations here?
 
+    if not isinstance(bows, list):
+        print("BOWS IS NOT A LIST")
+        print("Type:", type(bows))
+        print(bows)
     assert isinstance(bows,list)
     addLoadedBOWsToIndex(writer, guid, bows, index_data)
 

@@ -122,15 +122,22 @@ class ElasticRetrieval(BaseRetrieval):
             :param doc_id: id of document to run .explain() for
             :returns:
         """
-        explanation=self.es.explain(
-            index=self.index_name,
-            doc_type=ES_TYPE_DOC,
-            body={"query":query["dsl_query"]},
-            id=doc_id
-            )
+        explanation=None
+        retries=0
+        while retries < 2:
+            try:
+                explanation=self.es.explain(
+                    index=self.index_name,
+                    doc_type=ES_TYPE_DOC,
+                    body={"query":query["dsl_query"]},
+                    id=doc_id
+                    )
+            except:
+                retries+=1
 
         formula=StoredFormula()
-        formula.fromElasticExplanation(explanation)
+        if explanation:
+            formula.fromElasticExplanation(explanation)
         return formula
 
 class ElasticRetrievalBoost(ElasticRetrieval):
@@ -176,6 +183,7 @@ class ElasticRetrievalBoost(ElasticRetrieval):
 ##                if len(query_text) > 2800:
 ##                    print("Query > 2800 and no problems! Len: ",len(query_text))
             except ConnectionError as e:
+                logging.exception()
                 cp.Corpus.global_counters["query_error"]=cp.Corpus.global_counters.get("query_error",0)+1
                 print("Query error. Query len: ",len(query_text))
                 hits=[]

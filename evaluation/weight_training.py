@@ -118,6 +118,7 @@ class WeightTrainer(object):
         for zone_type in self.exp["train_weights_for"]:
             best_weights[zone_type]={}
             results=[]
+            results_compare=[]
 
             retrieval_results=self.loadPrecomputedFormulas(zone_type)
             if len(retrieval_results) == 0:
@@ -133,7 +134,7 @@ class WeightTrainer(object):
             traincv, testcv=cv[split_fold]
             train_set=[retrieval_results[i] for i in traincv]
 
-            results_compare=[]
+
             print("Training for citations in ",zone_type,"zones:",len(train_set),"/",len(retrieval_results))
             for method in annotated_boost_methods:
                 res={}

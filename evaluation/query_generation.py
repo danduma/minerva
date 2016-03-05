@@ -163,7 +163,7 @@ class QueryGenerator(object):
             :type exp: dict
         """
         self.exp=exp
-        print("Precomputing queries")
+        print("Precomputing queries...")
         logger=ProgressIndicator(True, numitems=len(exp["test_files"])) # init all the logging/counting
         logger.numchunks=exp["numchunks"]
 

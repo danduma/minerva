@@ -284,6 +284,7 @@ class BaseTestingPipeline(object):
         # this is for counting overlaps only
         previous_guid=""
 
+        print("Precomputing retrieval results...")
         #=======================================
         # MAIN LOOP over all precomputed queries
         #=======================================
