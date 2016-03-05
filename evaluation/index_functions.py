@@ -39,7 +39,7 @@ def defaultAddDocument(writer, new_doc, metadata, fields_to_process, bow_info):
 
 ADD_DOCUMENT_FUNCTION=defaultAddDocument
 
-def addBOWsToIndex(guid, indexNames, index_max_year, fwriters=None):
+def addBOWsToIndex(guid, indexNames, index_max_year, fwriters=None, full_corpus=True):
     """
         For one guid, add all its BOWs to the given index
 
@@ -53,9 +53,9 @@ def addBOWsToIndex(guid, indexNames, index_max_year, fwriters=None):
         return
 
     if not fwriters:
-        fwriters=[]
+        fwriters={}
         for indexName in indexNames:
-            actual_dir=cp.Corpus.getRetrievalIndexPath(guid, indexName, full_corpus=False)
+            actual_dir=cp.Corpus.getRetrievalIndexPath(None, indexName, full_corpus=full_corpus)
             fwriters[indexName]=ElasticWriter(actual_dir,cp.Corpus.es)
 
     for indexName in indexNames:
@@ -83,10 +83,14 @@ def addOrBuildBOWToIndex(writer, guid, index_data, full_corpus=False):
         Loads JSON file with BOW data to doc in index, NOT filtering for anything
     """
     bow_filename=cp.Corpus.cachedDataIDString("bow",guid,index_data)
-    bows=cp.Corpus.loadCachedJson(bow_filename)
+    try:
+        bows=cp.Corpus.loadCachedJson(bow_filename)
+    except:
+        bows=None
+
     if not bows:
         bows=prebuildMulti(index_data["method"],
-                           index_data["parameter"],
+                           index_data["parameters"],
                            index_data["function_name"],
                            None,
                            None,
@@ -104,10 +108,14 @@ def addOrBuildBOWToIndexExcludingCurrent(writer, guid, exclude_list, max_year, i
         came from the current exclude_list, posterior year, same author, etc.
     """
     bow_filename=cp.Corpus.cachedDataIDString("bow",guid,index_data)
-    bows=cp.Corpus.loadCachedJson(bow_filename)
+    try:
+        bows=cp.Corpus.loadCachedJson(bow_filename)
+    except:
+        bows=None
+
     if not bows:
         bows=prebuildMulti(index_data["method"],
-                           index_data["parameter"],
+                           index_data["parameters"],
                            index_data["function_name"],
                            None,
                            None,
@@ -121,7 +129,8 @@ def addOrBuildBOWToIndexExcludingCurrent(writer, guid, exclude_list, max_year, i
     bows=doc_representation.filterInlinkContext(bows, exclude_list, max_year, full_corpus=full_corpus)
 
     assert isinstance(bows,list)
-    addLoadedBOWsToIndex(writer, guid, bows)
+    addLoadedBOWsToIndex(writer, guid, bows, {"method":index_data["method"],
+        "parameter":index_data["parameter"]})
 
 
 def addLoadedBOWsToIndex(writer, guid, bows, bow_info):

@@ -21,6 +21,7 @@ def prebuildFunction(function_name):
     function=getattr(doc_representation, function_name, None)
     if not function:
         raise ValueError("Unknown function %s" % function_name)
+    return function
 
 
 def prebuildMulti(method_name, parameters, function, doc, doctext, guid, force_prebuild, rhetorical_annotations):
@@ -35,6 +36,7 @@ def prebuildMulti(method_name, parameters, function, doc, doctext, guid, force_p
         :param guid: guid of the file being processed
         :param force_prebuild: if False, only build BOWs that are not in the db already
     """
+    assert isinstance(parameters, list)
     if not force_prebuild:
         params=cp.Corpus.selectBOWParametersToPrebuild(guid,method_name,parameters)
     else:

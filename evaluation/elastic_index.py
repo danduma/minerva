@@ -32,15 +32,19 @@ class ElasticIndexer(BaseIndexer):
             "number_of_replicas" : 0
         }
 
-        properties={field: {"type":"string", "index":"analyzed", "store":False} for field in fields}
+        fields.append("_full_text")
+        properties={field: {"type":"string", "index":"analyzed", "store":True} for field in fields}
         properties["metadata"] = {"type":"nested"}
         properties["guid"] = {"type":"string", "index": "not_analyzed"}
-        properties["bow_info"] = {"type":"string", "index": "analyzed", "store":True}
+##        properties["bow_info"] = {"type":"string", "index": "analyzed", "store":True}
 
         if not self.es.indices.exists(index=index_name):
+            print("Creating index %s " % index_name)
             self.es.indices.create(
                 index=index_name,
                 body={"settings":settings,"mappings":{ES_TYPE_DOC:{"properties":properties}}})
+        else:
+            print("Index %s already exists" % index_name)
 
 
     def createIndexWriter(self, actual_dir, max_field_length=20000000):
@@ -78,8 +82,14 @@ def addDocument(writer, new_doc, metadata, fields_to_process, bow_info):
 
 index_functions.ADD_DOCUMENT_FUNCTION=addDocument
 
-def main():
 
+def main():
+##    import minerva.db.corpora as cp
+##    cp.useElasticCorpus()
+##    cp.Corpus.connectCorpus()
+    ei=ElasticIndexer(use_celery=False)
+    writer=ei.createIndexWriter("idx_az_annotated_pmc_2013")
+    writer.addDocument({"metadata":{"guid":"test"},"test":"test"})
     pass
 
 if __name__ == '__main__':

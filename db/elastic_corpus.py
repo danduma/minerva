@@ -203,11 +203,11 @@ class ElasticCorpus(BaseCorpus):
             references at the bottom of a paper) it is the specific index for
             that file guid
         """
-        guid=guid.lower()
         if full_corpus:
             return "idx_"+index_filename
 ##            return index_filename
         else:
+            guid=guid.lower()
             return "idx_"+guid+"_"+index_filename
 
     def getRecord(self, id, table="papers", source=None):
@@ -231,6 +231,7 @@ class ElasticCorpus(BaseCorpus):
                 _source=source
                 )
         except:
+            print("Index:",index_equivalence[table]["index"])
             raise ValueError
 
         if not res:
@@ -812,6 +813,7 @@ class ElasticCorpus(BaseCorpus):
 
 ##ec=ElasticCorpus()
 ##ec.connectCorpus("",endpoint={"host":"localhost", "port":9200})
+##ec.deleteIndex("idx_*_az_annotated_*")
 ##print(ec.loadSciDoc("f9c08f84-1e5e-4d57-80bc-b576fefa109f"))
 ##print(ec.SQLQuery("SELECT guid,metadata.filename FROM papers where metadata.year >2013"))
 ##print(ec.getMetadataByGUID("df8c8824-1784-46f1-b621-cc6e5aca0dad"))

@@ -30,7 +30,10 @@ prebuild_indexes={
 ##    "passage":{"type":"standard_multi", "bow_name":"passage", "parameters":[150,175,200,250,300,350,400,450]},
 ##    "inlink_context":{"type":"standard_multi", "bow_name":"inlink_context", "parameters":[5, 10, 15, 20, 30, 40, 50]},
 ##    "inlink_context_year":{"type":"standard_multi", "bow_name":"inlink_context", "parameters":[5, 10, 15, 20, 30, 40, 50], "options":{"max_year":True}},
-    "az_annotated":{"type":"standard_multi", "bow_methods":[("az_annotated",[1])], "parameters":[1]},
+    "az_annotated_pmc_2013":{"type":"standard_multi",
+                             "bow_name":"az_annotated", # bow to load
+                             "parameters":[1], # parameter has to match a parameter of a prebuilt bow
+                             },
 ##    "section_annotated":{"type":"standard_multi", "bow_methods":[("section_annotated",[1])], "parameters":[1]},
 
 ##    # this is just ilc but split by AZ
@@ -51,7 +54,11 @@ prebuild_indexes={
 prebuild_general_indexes={
 ##    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "ilc_full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
-    "az_annotated":{"type":"standard_multi", "bow_methods":[("az_annotated",[1])], "parameters":["pmc_2013"], "max_year":2013},
+    "az_annotated_pmc_2013":{"type":"standard_multi",
+                             "bow_name":"az_annotated", # bow to load
+                             "parameters":[1], # parameter has to match a parameter of a prebuilt bow
+                             "max_year":2013 # cut-off point for adding files to index
+                             },
 }
 
 
@@ -69,7 +76,7 @@ doc_methods={
 ##    "ilc_passage":{"type":"ilc_mashup",  "index":"ilc_passage", "mashup_method":"passage","ilc_parameters":[10, 20, 30, 40, 50],
 ##        "parameters":[250,350], "runtime_parameters":{"text":"1","inlink_context":"1"}},
 
-    "az_annotated":{"type":"annotated_boost", "index":"az_annotated", "parameters":[1], "runtime_parameters":{
+    "az_annotated":{"type":"annotated_boost", "index":"az_annotated_pmc_2013", "parameters":[1], "runtime_parameters":{
 ##        "AZ_ALL":AZ_ZONES_LIST,
         "CSC_ALL":CORESC_LIST,
         }},
@@ -247,3 +254,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+##    from minerva.proc.doc_representation import getDictOfLuceneIndeces
+##    from minerva.evaluation.base_pipeline import getDictOfTestingMethods
+##    print(getDictOfLuceneIndeces(prebuild_general_indexes))
+##    print(getDictOfTestingMethods(doc_methods))

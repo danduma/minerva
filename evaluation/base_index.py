@@ -103,14 +103,20 @@ class BaseIndexer(object):
             pass
 
 
-    def buildGeneralIndex(self, testfiles, methods, index_max_year):
+    def buildGeneralIndex(self, exp):
         """
             Creates one index for each method and parameter, adding all files to each
         """
         print ("Building global index...")
         fwriters={}
 
-        indexNames=getDictOfLuceneIndeces(methods)
+
+        index_max_year=exp.get("index_max_year",None)
+
+        indexNames=getDictOfLuceneIndeces(exp["prebuild_general_indexes"])
+        for entry_name in indexNames:
+            entry=indexNames[entry_name]
+            entry["function_name"]=exp["prebuild_bows"][entry["bow_name"]]["function_name"]
 ##        indexNames=getDictOfTestingMethods(methods)
         ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year)
         for indexName in indexNames:

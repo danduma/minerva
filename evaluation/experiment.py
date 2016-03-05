@@ -155,7 +155,7 @@ class Experiment(object):
                 self.indexer.buildIndexes(cp.Corpus.TEST_FILES, self.exp["prebuild_indexes"], self.options)
         else:
             if self.options["rebuild_indexes"] and len(self.exp["prebuild_general_indexes"]) > 0:
-                self.indexer.buildGeneralIndex(cp.Corpus.TEST_FILES,self.exp["prebuild_general_indexes"], self.exp.get("index_max_year",None))
+                self.indexer.buildGeneralIndex(self.exp)
 
         gc.collect()
         # COMPUTE QUERIES
