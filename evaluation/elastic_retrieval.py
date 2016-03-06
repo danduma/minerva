@@ -6,7 +6,7 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
-import re,json,sys
+import json, logging
 from string import punctuation
 from collections import namedtuple
 
@@ -18,17 +18,23 @@ from base_retrieval import BaseRetrieval, SPECIAL_FIELDS_FOR_TESTS, MAX_RESULTS_
 from stored_formula import StoredFormula
 
 ES_TYPE_DOC="doc"
+QUERY_TIMEOUT=500 # this is in seconds!
 
 class ElasticRetrieval(BaseRetrieval):
     """
         Interfaces with the Elasticsearch API
     """
-    def __init__(self, index_name, method, logger=None, use_default_similarity=True):
+    def __init__(self, index_name, method, logger=None, use_default_similarity=True, max_results=None):
         self.index_name=index_name
         self.es=Elasticsearch()
+        if max_results:
+            self.max_results=max_results
+        else:
+            self.max_results=MAX_RESULTS_RECALL
 
         self.method=method # never used?
         self.logger=logger
+        self.last_query={}
 
     def rewriteQueryAsDSL(self, structured_query, parameters):
         """
@@ -41,7 +47,7 @@ class ElasticRetrieval(BaseRetrieval):
         if "structured_query" in structured_query:
             structured_query=structured_query["structured_query"]
 
-        original_query=structured_query
+##        original_query=structured_query
         if not structured_query or len(structured_query) == 0:
             return None
 
@@ -49,18 +55,18 @@ class ElasticRetrieval(BaseRetrieval):
 
         lucene_query=""
 
-        for qindex, token in enumerate(structured_query):
+        for  token in structured_query:
             # TODO proper computing of the boost formula. Different methods?
             boost=token["boost"]*token["count"]
-            bool=token.get("bool", None) or ""
+            bool_val=token.get("bool", None) or ""
 
-            lucene_query+="%s%s" % (bool,token["token"])
+            lucene_query+="%s%s" % (bool_val,token["token"])
             if boost != 1:
                 lucene_query+="^%s" %str(boost)
             lucene_query+=" "
 
         fields=[]
-        for index, param in enumerate(parameters):
+        for param in parameters:
             fields.append(param+"^"+str(parameters[param]))
 
         dsl_query={
@@ -76,19 +82,15 @@ class ElasticRetrieval(BaseRetrieval):
         return dsl_query
 
 
-    def runQuery(self, structured_query, max_results=MAX_RESULTS_RECALL):
+    def runQuery(self, structured_query, max_results=None):
         """
             Interfaces with the elasticsearch query API
         """
-        if self.useExplainQuery:
-            # this is a leftover from the old retrieval. It's unworkable with Elastic.
-            raise NotImplementedError
-            return
-
-##        original_query=dict(structured_query)
-
         if not structured_query or len(structured_query) == 0 :
             return []
+
+        if not max_results:
+            max_results=self.max_results
 
         self.last_query=dict(structured_query)
         dsl_query=self.rewriteQueryAsDSL(structured_query["structured_query"], ["text"])
@@ -97,7 +99,8 @@ class ElasticRetrieval(BaseRetrieval):
             body={"query":dsl_query},
             size=max_results,
             index=self.index_name,
-            doc_type=ES_TYPE_DOC
+            doc_type=ES_TYPE_DOC,
+            request_timeout=QUERY_TIMEOUT,
             )
 
         structured_query["dsl_query"]=dsl_query
@@ -130,9 +133,12 @@ class ElasticRetrieval(BaseRetrieval):
                     index=self.index_name,
                     doc_type=ES_TYPE_DOC,
                     body={"query":query["dsl_query"]},
-                    id=doc_id
+                    id=doc_id,
+                    request_timeout=QUERY_TIMEOUT,
                     )
-            except:
+                break
+            except Exception as e:
+                logging.exception("Exception, retrying...")
                 retries+=1
 
         formula=StoredFormula()
@@ -145,20 +151,18 @@ class ElasticRetrievalBoost(ElasticRetrieval):
         Use ElasticSearch for retrieval boosting different (AZ) fields differently
     """
 
-    def __init__(self, index_path, method, logger=None, use_default_similarity=False):
-        ElasticRetrieval.__init__(self, index_path, method, logger, use_default_similarity)
+    def __init__(self, index_path, method, logger=None, use_default_similarity=False, max_results=None):
+        ElasticRetrieval.__init__(self, index_path, method, logger, use_default_similarity, max_results)
 
-    def runQuery(self, structured_query, parameters, test_guid, max_results=MAX_RESULTS_RECALL):
+    def runQuery(self, structured_query, parameters, test_guid, max_results=None):
         """
             Run the query, return a list of tuples (score,metadata) of top docs
         """
-##        if self.useExplainQuery:
-##            # this is a leftover from the old retrieval. It's unworkable with Elastic.
-##            raise NotImplementedError
-##            return
-
         if not structured_query or len(structured_query) == 0 :
             return []
+
+        if not max_results:
+            max_results=self.max_results
 
         self.last_query=structured_query
 
@@ -175,19 +179,17 @@ class ElasticRetrievalBoost(ElasticRetrieval):
                     size=max_results,
                     index=self.index_name,
                     doc_type=ES_TYPE_DOC,
-                    _source=["guid","metadata"]
+                    _source=["guid"],
+                    request_timeout=QUERY_TIMEOUT,
                     )
 
                 hits=res["hits"]["hits"]
                 structured_query["dsl_query"]=dsl_query
-##                if len(query_text) > 2800:
-##                    print("Query > 2800 and no problems! Len: ",len(query_text))
             except ConnectionError as e:
-                logging.exception()
+                logging.exception("Error connecting to ES. Timeout?")
                 cp.Corpus.global_counters["query_error"]=cp.Corpus.global_counters.get("query_error",0)+1
                 print("Query error. Query len: ",len(query_text))
                 hits=[]
-##                assert False
 
         # explain the query
         if self.logger:
@@ -209,8 +211,8 @@ class ElasticRetrievalBoost(ElasticRetrieval):
 
         result=[]
         for hit in hits:
-            metadata= hit["_source"]["metadata"]
-            result.append((hit["_score"],metadata))
+##            metadata= hit["_source"]["metadata"]
+            result.append((hit["_score"],{"guid":hit["_source"]["guid"]}))
 
         if self.logger and self.logger.full_citation_id in self.logger.citations_extra_info:
             print(query_text,"\n", hits, "\n", result, "\n")
@@ -224,7 +226,8 @@ def testExplanation():
 
     ext=WindowQueryExtractor()
 
-    er=ElasticRetrieval("papers","",None)
+##    er=ElasticRetrieval("papers","",None)
+    er=ElasticRetrieval("idx_az_annotated_pmc_2013_1","",None)
 
     text="method method MATCH method method sdfakjesf"
     match_start=text.find("MATCH")
@@ -236,14 +239,32 @@ def testExplanation():
                          "method_name": "test"
                         })
 
-    q=er.rewriteQueryAsDSL(queries[0]["structured_query"], {"metadata.title":1})
-    print(q)
+##    q=er.rewriteQueryAsDSL(queries[0]["structured_query"], {"metadata.title":1})
+##    print(q)
 
-    hits=er.es.search(index="papers", doc_type="paper", body={"query":q}, _source="guid")
-    doc_ids=[hit["_id"] for hit in hits["hits"]["hits"]]
-    print(doc_ids)
-    global ES_TYPE_DOC
-    ES_TYPE_DOC="paper"
+    q={"dsl_query":{'multi_match': {'fields': ['Obj^1',
+                            'Res^1',
+                            'Goa^1',
+                            'Mot^1',
+                            'Hyp^1',
+                            'Met^1',
+                            'Bac^1',
+                            'Exp^1',
+                            'Con^1',
+                            'Obs^1',
+                            'Mod^1'],
+                 'operator': 'or',
+                 'query': u'strongly imaginative via^2 associated coupled communication^2 is^4 repetitive influence mutations one stereotypies as show are point in^3 accounting debate around novo developmental^3 evidence dimensions for centres much separate linked delay genetic^2 difficulties genetically over parental interests activities play loci risk on some genes contribute early independent mediated although^2 asd^5 regression^2 heritable considerable susceptibility^2 processes interaction de third language older whether many age children deficits prior range determined evident social^2 usually narrow whole characterized effects ',
+                 'type': 'best_fields'}}}
+
+    doc_ids=['559005ea-9288-4459-a8ef-8ae72ed1dc0f']
+
+##    hits=er.es.search(index="papers", doc_type="paper", body={"query":q}, _source="guid", request_timeout=QUERY_TIMEOUT,)
+##    doc_ids=[hit["_id"] for hit in hits["hits"]["hits"]]
+##    print(doc_ids)
+##    global ES_TYPE_DOC
+##    ES_TYPE_DOC="paper"
+
     formula=er.formulaFromExplanation(q, doc_ids[0])
     print(formula.formula)
 

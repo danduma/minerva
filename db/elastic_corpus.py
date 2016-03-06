@@ -231,8 +231,7 @@ class ElasticCorpus(BaseCorpus):
                 _source=source
                 )
         except:
-            print("Index:",index_equivalence[table]["index"])
-            raise ValueError
+            raise ValueError("Not found: %s in index %s" % (id,index_equivalence[table]["index"]))
 
         if not res:
             raise IndexError("Can't find record with id %s" % id)
@@ -334,9 +333,7 @@ class ElasticCorpus(BaseCorpus):
         self.checkConnectedToDB()
 
         attempts=0
-        success=False
-
-        while attempts < 3 and not success:
+        while attempts < 3:
             try:
                 timestamp=datetime.datetime.now()
                 self.es.index(
@@ -350,7 +347,7 @@ class ElasticCorpus(BaseCorpus):
                         "time_modified": timestamp,
                         }
                     )
-                success=True
+                break
             except ConnectionTimeout:
                 attempts+=1
 

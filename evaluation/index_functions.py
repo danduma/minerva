@@ -12,7 +12,7 @@ from copy import deepcopy
 
 import minerva.db.corpora as cp
 import minerva.proc.doc_representation as doc_representation
-from elastic_writer import ElasticWriter
+from elastic_writer import ElasticWriter, ES_TYPE_DOC
 from minerva.evaluation.prebuild_functions import prebuildMulti
 
 def defaultAddDocument(writer, new_doc, metadata, fields_to_process, bow_info):
@@ -39,6 +39,13 @@ def defaultAddDocument(writer, new_doc, metadata, fields_to_process, bow_info):
 
 ADD_DOCUMENT_FUNCTION=defaultAddDocument
 
+
+def docIsAlreadyInIndex(guid, index_name):
+    """
+        Returns True if document was already added to index
+    """
+    return cp.Corpus.es.exists(id=guid, index=index_name, doc_type=ES_TYPE_DOC)
+
 def addBOWsToIndex(guid, indexNames, index_max_year, fwriters=None, full_corpus=True):
     """
         For one guid, add all its BOWs to the given index
@@ -47,11 +54,12 @@ def addBOWsToIndex(guid, indexNames, index_max_year, fwriters=None, full_corpus=
         :param indexNames: a fully expanded dict of doc_methods
         :param index_max_year: the max year to accept to add a file to the index
     """
+    force_add=False
+
     meta=cp.Corpus.getMetadataByGUID(guid)
     if not meta:
         logging.error("Error: can't load metadata for paper %s" % guid)
         return
-
 
     if not fwriters:
         fwriters={}
@@ -60,6 +68,9 @@ def addBOWsToIndex(guid, indexNames, index_max_year, fwriters=None, full_corpus=
             fwriters[indexName]=ElasticWriter(actual_dir,cp.Corpus.es)
 
     for indexName in indexNames:
+        if docIsAlreadyInIndex(guid, indexName) and not force_add:
+            continue
+
         index_data=indexNames[indexName]
         method=index_data["method"]
         parameter=index_data["parameter"]
@@ -187,13 +198,13 @@ def addLoadedBOWsToIndex(writer, guid, bows, bow_info):
 
 
 def main():
-    cp.useElasticCorpus()
-    cp.Corpus.connectCorpus(r"g:\nlp\phd\pmc_coresc")
-    guids=["07eb18ef-2e86-4955-882d-c63e472e51c6", "d8a17083-53cc-43be-baa1-b6d6e85e711a"]
-    index_data={u'bow_name': u'az_annotated', u'parameters': [1], u'type': u'standard_multi', u'max_year': 2013, u'index_filename': u'az_annotated_pmc_2013_1', u'options': {}, u'index_field': u'1', u'parameter': 1, u'method': u'az_annotated', u'function_name': u'getDocBOWannotated'}
-    indexNames={u'az_annotated_pmc_2013_1': {u'bow_name': u'az_annotated', u'parameters':[1], u'type': u'standard_multi', u'max_year': 2013, u'index_filename': u'az_annotated_pmc_2013_1', u'options': {}, u'index_field': u'1', u'parameter': 1, u'method': u'az_annotated', u'function_name': u'getDocBOWannotated'}}
-    for guid in guids:
-        addBOWsToIndex(guid, indexNames, 2013)
+##    cp.useElasticCorpus()
+##    cp.Corpus.connectCorpus(r"g:\nlp\phd\pmc_coresc")
+##    guids=["07eb18ef-2e86-4955-882d-c63e472e51c6", "d8a17083-53cc-43be-baa1-b6d6e85e711a"]
+##    index_data={u'bow_name': u'az_annotated', u'parameters': [1], u'type': u'standard_multi', u'max_year': 2013, u'index_filename': u'az_annotated_pmc_2013_1', u'options': {}, u'index_field': u'1', u'parameter': 1, u'method': u'az_annotated', u'function_name': u'getDocBOWannotated'}
+##    indexNames={u'az_annotated_pmc_2013_1': {u'bow_name': u'az_annotated', u'parameters':[1], u'type': u'standard_multi', u'max_year': 2013, u'index_filename': u'az_annotated_pmc_2013_1', u'options': {}, u'index_field': u'1', u'parameter': 1, u'method': u'az_annotated', u'function_name': u'getDocBOWannotated'}}
+##    for guid in guids:
+##        addBOWsToIndex(guid, indexNames, 2013)
     pass
 
 if __name__ == '__main__':

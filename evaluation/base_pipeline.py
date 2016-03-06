@@ -14,7 +14,7 @@ from collections import OrderedDict
 from base_retrieval import BaseRetrieval, MAX_RESULTS_RECALL
 
 import minerva.db.corpora as cp
-from minerva.proc.results_logging import ResultsLogger
+from minerva.proc.results_logging import ResultsLogger, ProgressIndicator
 
 def analyticalRandomChanceMRR(numinlinks):
     """
@@ -80,10 +80,13 @@ class BaseTestingPipeline(object):
     """
         Base class for testing pipelines
     """
-    def __init__(self, retrieval_class=BaseRetrieval):
+    def __init__(self, retrieval_class=BaseRetrieval, use_celery=False):
         # This points to the the class of retrieval we are using
         self.retrieval_class=retrieval_class
+        self.use_celery=use_celery
+        self.tasks=[]
         self.exp={}
+        self.options={}
         self.precomputed_queries=[]
         self.tfidfmodels={}
         self.files_dict={}
@@ -160,7 +163,9 @@ class BaseTestingPipeline(object):
         output_filename=os.path.join(self.exp["exp_dir"],self.exp.get("output_filename","results.csv"))
         self.logger=ResultsLogger(False,
                                   dump_filename=output_filename,
-                                  message_text="Running precomputed queries") # init all the logging/counting
+                                  message_text="Running precomputed queries",
+                                  dot_every_xitems=1,
+                                  ) # init all the logging/counting
         self.logger.startCounting() # for timing the process, start now
 
     def loadQueriesAndFileList(self):
@@ -198,8 +203,13 @@ class BaseTestingPipeline(object):
 
         if self.exp["full_corpus"]:
             for model in self.files_dict["ALL_FILES"]["tfidf_models"]:
-                # create a Lucene search instance for each method
-                self.tfidfmodels[model["method"]]=self.retrieval_class(model["actual_dir"],model["method"],logger=None, use_default_similarity=self.exp["use_default_similarity"])
+                # create a search instance for each method
+                self.tfidfmodels[model["method"]]=self.retrieval_class(
+                        model["actual_dir"],
+                        model["method"],
+                        logger=None,
+                        use_default_similarity=self.exp["use_default_similarity"],
+                        max_results=self.exp["max_results_recall"])
 
         self.main_all_doc_methods=all_doc_methods
 
@@ -232,12 +242,12 @@ class BaseTestingPipeline(object):
         result_dict["first_result"]=""
         self.logger.addResolutionResultDict(result_dict)
 
-    def addResult(self, guid, precomputed_query, doc_method, retrieved):
+    def addResult(self, guid, precomputed_query, doc_method, retrieved_results):
         """
             Adds a normal (successful) result to the result log.
         """
         result_dict=self.newResultDict(guid, precomputed_query, doc_method)
-        self.logger.measureScoreAndLog(retrieved, precomputed_query["citation_multi"], result_dict)
+        self.logger.measureScoreAndLog(retrieved_results, precomputed_query["citation_multi"], result_dict)
 ##        rank_per_method[result["doc_method"]].append(result["rank"])
 ##        precision_per_method[result["doc_method"]].append(result["precision_score"])
 
@@ -284,7 +294,6 @@ class BaseTestingPipeline(object):
         # this is for counting overlaps only
         previous_guid=""
 
-        print("Precomputing retrieval results...")
         #=======================================
         # MAIN LOOP over all precomputed queries
         #=======================================

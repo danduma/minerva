@@ -78,8 +78,8 @@ class ResultsLogger(ProgressIndicator):
         Stores the results of retrieval testing, on several metrics, and allows
         exporting results to a CSV file
     """
-    def __init__(self, results_file=True, dump_straight_to_disk=True,dump_filename="results.csv", message_text=None):
-        ProgressIndicator.__init__(self, False)
+    def __init__(self, results_file=True, dump_straight_to_disk=True,dump_filename="results.csv", message_text=None, start_counting_now=False, dot_every_xitems=None):
+        ProgressIndicator.__init__(self, False, dot_every_xitems=dot_every_xitems)
         if message_text:
             self.message_text=message_text
 ##        self.mrr=defaultdict(lambda:{}) # dict for Mean Reciprocal Rank scores

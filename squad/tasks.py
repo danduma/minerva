@@ -20,11 +20,12 @@ import requests
 
 import minerva.db.corpora as cp
 from minerva.db.elastic_corpus import ElasticCorpus
+from minerva.evaluation.elastic_retrieval import ElasticRetrieval
+
 from minerva.importing.importing_functions import (convertXMLAndAddToCorpus,
     updatePaperInCollectionReferences)
-from minerva.evaluation.prebuild_functions import prebuildMulti, prebuildFunction
-
-from minerva.proc import doc_representation
+from minerva.evaluation.prebuild_functions import prebuildMulti
+from minerva.evaluation.precompute_functions import (addPrecomputeExplainFormulas, createWriters)
 from minerva.evaluation.index_functions import addBOWsToIndex
 
 import celery_app
@@ -110,14 +111,23 @@ def prebuildBOWTask(self, method_name, parameters, function, guid, force_prebuil
 @app.task(ignore_result=True, bind=True)
 def addToindexTask(self, guid, indexNames, index_max_year):
     """
-        Builds the BOW for a single paper
+        Adds one paper to the index for all indexes. If its BOW has not already
+        been built, it builds it too.
     """
-
     try:
         addBOWsToIndex(guid, indexNames, index_max_year)
     except Exception as e:
         logging.exception("Error running addBOWsToIndex")
         self.retry(countdown=120, max_retries=4)
 
+@app.task(ignore_result=True, bind=True)
+def precomputeFormulasTask(self, precomputed_query, doc_method, doc_list, index_name, exp_name, experiment_id, max_results):
+    """
+        Runs one precomputed query, and the explain formulas and adds them to
+        the DB.
+    """
+    model=ElasticRetrieval(index_name, doc_method, max_results=max_results)
+    writers=createWriters(exp_name)
+    addPrecomputeExplainFormulas(precomputed_query, doc_method, doc_list, model, writers, experiment_id)
 
 checkCorpusConnection()

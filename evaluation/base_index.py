@@ -110,7 +110,6 @@ class BaseIndexer(object):
         print ("Building global index...")
         fwriters={}
 
-
         index_max_year=exp.get("index_max_year",None)
 
         indexNames=getDictOfLuceneIndeces(exp["prebuild_general_indexes"])

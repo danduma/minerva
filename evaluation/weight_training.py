@@ -99,7 +99,6 @@ class WeightTrainer(object):
         """
         filename_add=""
         all_doc_methods=getDictOfTestingMethods(self.exp["doc_methods"])
-
         annotated_boost_methods=[x for x in all_doc_methods if all_doc_methods[x]["type"] in ["annotated_boost"]]
 
         initialization_methods=[1]
@@ -200,7 +199,8 @@ class WeightTrainer(object):
     ##                    split_set_str=""
 
     ##                print "Weight inialization:",weight_initalization
-                    print ("   Weights found, with score: {:.5f}".format(this_score)," Improvement: {:.2f}%".format( 100*((this_score-first_baseline)/float(first_baseline))))
+                    improvement=100*((this_score-first_baseline)/float(first_baseline)) if first_baseline > 0 else 0
+                    print ("   Weights found, with score: {:.5f}".format(this_score)," Improvement: {:.2f}%".format(improvement))
                     best_weights[zone_type][method]=deepcopy(weights)
                     print ("   ",weights.values())
 
@@ -230,8 +230,12 @@ class WeightTrainer(object):
 
     ##    print "Random inialization better than dynamic setting",better,"times"
     ##    print "Avg difference between methods:",diff/float(len(results_compare))
-        for method in initialization_methods:
-            print("Avg for",method,":",sum([res[method] for res in results_compare])/float(len(results_compare)))
+        for init_method in initialization_methods:
+            if len(results_compare) > 0:
+                avg=sum([res[init_method] for res in results_compare])/float(len(results_compare))
+            else:
+                avg=0
+            print("Avg for ",init_method,":",avg)
     ##        if split_set is not None:
     ##            split_set_str="_s"+str(split_set)
     ##        else:
@@ -354,12 +358,12 @@ class WeightTrainer(object):
         data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_improvements.csv")
 
         fold_data=pd.DataFrame(fold_results)
-        data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_folds.csv")
+        fold_data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_folds.csv")
 
-        print("Avg % improvement per zone:")
-        means=data[["zone_type","pct_improvement"]].groupby("zone_type").mean().sort(columns=["pct_improvement"],ascending=False)
-        means=means.join(data[["zone_type","pct_improvement"]].groupby("zone_type").std())
-        print(means)
+##        print("Avg % improvement per zone:")
+##        means=data[["zone_type","pct_improvement"]].groupby("zone_type").mean().sort(columns=["pct_improvement"],ascending=False)
+##        means=means.join(data[["zone_type","pct_improvement"]].groupby("zone_type").std())
+##        print(means)
 
     def measureCitationResolution(self, files_dict, precomputed_queries, all_doc_methods,
     citation_az, testing_methods, retrieval_class=None, full_corpus=False):
