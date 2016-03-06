@@ -7,6 +7,7 @@
 
 from copy import deepcopy
 
+import minerva.db.corpora as cp
 from minerva.db.result_store import ElasticResultStorer
 from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
 
@@ -17,24 +18,24 @@ def createWriters(exp_name, exp_random_zoning=False, clear_existing_prr_results=
     writers={}
     if exp_random_zoning:
         for div in RANDOM_ZONES_7:
-            writers["RZ7_"+div]=ElasticResultStorer(exp_name,"prr_az_rz11")
+            writers["RZ7_"+div]=ElasticResultStorer(exp_name,"prr_az_rz11", endpoint=cp.Corpus.endpoint)
             if clear_existing_prr_results:
                 writers["RZ7_"+div].clearResults()
         for div in RANDOM_ZONES_11:
-            writers["RZ11_"+div]=ElasticResultStorer(exp_name,"prr_rz11")
+            writers["RZ11_"+div]=ElasticResultStorer(exp_name,"prr_rz11", endpoint=cp.Corpus.endpoint)
             if clear_existing_prr_results:
                 writers["RZ11_"+div].clearResults()
     else:
         for div in AZ_ZONES_LIST:
-            writers["az_"+div]=ElasticResultStorer(exp_name,"prr_az_"+div)
+            writers["az_"+div]=ElasticResultStorer(exp_name,"prr_az_"+div, endpoint=cp.Corpus.endpoint)
             if clear_existing_prr_results:
                 writers["az_"+div].clearResults()
         for div in CORESC_LIST:
-            writers["csc_type_"+div]=ElasticResultStorer(exp_name,"prr_csc_type_"+div)
+            writers["csc_type_"+div]=ElasticResultStorer(exp_name,"prr_csc_type_"+div, endpoint=cp.Corpus.endpoint)
             if clear_existing_prr_results:
                 writers["csc_type_"+div].clearResults()
 
-    writers["ALL"]=ElasticResultStorer(exp_name,"prr_ALL")
+    writers["ALL"]=ElasticResultStorer(exp_name,"prr_ALL", endpoint=cp.Corpus.endpoint)
     if clear_existing_prr_results:
         writers["ALL"].clearResults()
 
