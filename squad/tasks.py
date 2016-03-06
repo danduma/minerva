@@ -126,8 +126,12 @@ def precomputeFormulasTask(self, precomputed_query, doc_method, doc_list, index_
         Runs one precomputed query, and the explain formulas and adds them to
         the DB.
     """
-    model=ElasticRetrieval(index_name, doc_method, max_results=max_results)
-    writers=createWriters(exp_name)
-    addPrecomputeExplainFormulas(precomputed_query, doc_method, doc_list, model, writers, experiment_id)
+    try:
+        model=ElasticRetrieval(index_name, doc_method, max_results=max_results, es_instance=cp.Corpus.es)
+        writers=createWriters(exp_name)
+        addPrecomputeExplainFormulas(precomputed_query, doc_method, doc_list, model, writers, experiment_id)
+    except:
+        logging.exception("Error running addPrecomputeExplainFormulas")
+        self.retry(countdown=120, max_retries=4)
 
 checkCorpusConnection()

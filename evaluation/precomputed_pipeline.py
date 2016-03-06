@@ -13,7 +13,8 @@ from base_pipeline import BaseTestingPipeline
 from base_retrieval import BaseRetrieval
 
 ##from celery.task import TaskSet
-from celery import group
+##from celery import group
+from celery.result import ResultSet
 
 ##from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
 ##from minerva.proc.results_logging import ResultsLogger, ProgressIndicator
@@ -42,16 +43,8 @@ class PrecomputedPipeline(BaseTestingPipeline):
         doc_list=[hit[1]["guid"] for hit in retrieved_results]
 
         if self.use_celery:
-##            self.tasks.append(precomputeFormulasTask.apply_async(args=[
-##                                                 precomputed_query,
-##                                                 doc_method,
-##                                                 doc_list,
-##                                                 self.tfidfmodels[doc_method].index_name,
-##                                                 self.exp["name"],
-##                                                 self.exp["experiment_id"],
-##                                                 self.exp["max_results_recall"]]))
             print("Adding subtask to queue...")
-            self.tasks.append(precomputeFormulasTask.subtask(args=[
+            self.tasks.append(precomputeFormulasTask.apply_async(args=[
                                                  precomputed_query,
                                                  doc_method,
                                                  doc_list,
@@ -60,6 +53,15 @@ class PrecomputedPipeline(BaseTestingPipeline):
                                                  self.exp["experiment_id"],
                                                  self.exp["max_results_recall"]],
                                                  queue="precompute_formulas"))
+##            self.tasks.append(precomputeFormulasTask.subtask(args=[
+##                                                 precomputed_query,
+##                                                 doc_method,
+##                                                 doc_list,
+##                                                 self.tfidfmodels[doc_method].index_name,
+##                                                 self.exp["name"],
+##                                                 self.exp["experiment_id"],
+##                                                 self.exp["max_results_recall"]],
+##                                                 queue="precompute_formulas"))
 
         else:
             addPrecomputeExplainFormulas(precomputed_query,
@@ -111,12 +113,13 @@ class PrecomputedPipeline(BaseTestingPipeline):
 ##        task_set.apply_async()
 
         if self.use_celery:
-            print("Running all tasks, waiting for them to complete...")
-            task_group=group(self.tasks)
-            res=task_group()
+            print("Waiting for tasks to complete...")
+##            task_group=group(self.tasks)
+##            res=task_group()
+            res=ResultSet(self.tasks)
             while not res.ready():
                 try:
-                    time.sleep(5)
+                    time.sleep(7)
                 except KeyboardInterrupt:
                     print("Cancelled waiting")
             print("All tasks finished.")

@@ -24,9 +24,12 @@ class ElasticRetrieval(BaseRetrieval):
     """
         Interfaces with the Elasticsearch API
     """
-    def __init__(self, index_name, method, logger=None, use_default_similarity=True, max_results=None):
+    def __init__(self, index_name, method, logger=None, use_default_similarity=True, max_results=None, es_instance=None):
         self.index_name=index_name
-        self.es=Elasticsearch()
+        if es_instance:
+            self.es=es_instance
+        else:
+            self.es=Elasticsearch()
         if max_results:
             self.max_results=max_results
         else:
