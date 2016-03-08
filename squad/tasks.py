@@ -25,7 +25,8 @@ from minerva.evaluation.elastic_retrieval import ElasticRetrieval
 from minerva.importing.importing_functions import (convertXMLAndAddToCorpus,
     updatePaperInCollectionReferences)
 from minerva.evaluation.prebuild_functions import prebuildMulti
-from minerva.evaluation.precompute_functions import (addPrecomputeExplainFormulas, createWriters)
+from minerva.evaluation.precompute_functions import addPrecomputeExplainFormulas
+from minerva.db.result_store import createResultStorers
 from minerva.evaluation.index_functions import addBOWsToIndex
 
 import celery_app
@@ -128,7 +129,7 @@ def precomputeFormulasTask(self, precomputed_query, doc_method, doc_list, index_
     """
     try:
         model=ElasticRetrieval(index_name, doc_method, max_results=max_results, es_instance=cp.Corpus.es)
-        writers=createWriters(exp_name)
+        writers=createResultStorers(exp_name)
         addPrecomputeExplainFormulas(precomputed_query, doc_method, doc_list, model, writers, experiment_id)
     except:
         logging.exception("Error running addPrecomputeExplainFormulas")

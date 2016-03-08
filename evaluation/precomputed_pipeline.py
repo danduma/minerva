@@ -19,9 +19,9 @@ from celery.result import ResultSet
 ##from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
 ##from minerva.proc.results_logging import ResultsLogger, ProgressIndicator
 
-##from minerva.db.result_store import ElasticResultStorer
 ##import minerva.db.corpora as cp
-from precompute_functions import addPrecomputeExplainFormulas, createWriters
+from minerva.db.result_store import createResultStorers
+from precompute_functions import addPrecomputeExplainFormulas
 from minerva.squad.tasks import precomputeFormulasTask
 
 class PrecomputedPipeline(BaseTestingPipeline):
@@ -99,9 +99,9 @@ class PrecomputedPipeline(BaseTestingPipeline):
 
         assert self.exp["name"] != "", "Experiment needs a name!"
 
-        self.writers=createWriters(self.exp["name"],
+        self.writers=createResultStorers(self.exp["name"],
                                    self.exp.get("random_zoning", False),
-                                   self.options.get("clear_existing_prr_results"))
+                                   self.options.get("clear_existing_prr_results", False))
 
 
     def saveResultsAndCleanUp(self):
@@ -122,6 +122,7 @@ class PrecomputedPipeline(BaseTestingPipeline):
                     time.sleep(7)
                 except KeyboardInterrupt:
                     print("Cancelled waiting")
+                    break
             print("All tasks finished.")
 
         for writer in self.writers:
@@ -136,7 +137,7 @@ class PrecomputedPipeline(BaseTestingPipeline):
 ##        test_logger=ResultsLogger(False,False)
 ##        result_dict1={"match_guid":retrieval_result["match_guid"],"query_method":retrieval_result["query_method"],"doc_method":doc_method}
 ##        result_dict2={"match_guid":retrieval_result["match_guid"],"query_method":retrieval_result["query_method"],"doc_method":doc_method}
-##        result_dict1=test_logger.measureScoreAndLog(self.runPrecomputedQuery(retrieval_result,parameters),retrieval_result["citation_multi"],result_dict1)
+##        result_dict1=test_logger.measureScoreAndLog(runPrecomputedQuery(retrieval_result,parameters),retrieval_result["citation_multi"],result_dict1)
 ##        retrieved=actual_tfidfmodels[doc_method].runQuery(query["query_text"],parameters,guid)
 ##        result_dict2=test_logger.measureScoreAndLog(retrieved,retrieval_result["citation_multi"],result_dict2)
 ##        assert(result_dict1["precision_score"]==result_dict2["precision_score"])
@@ -144,7 +145,7 @@ class PrecomputedPipeline(BaseTestingPipeline):
 ##        parameters={x:y for y,x in enumerate(all_doc_methods[doc_method]["runtime_parameters"])}
 ##        result_dict1={"match_guid":retrieval_result["match_guid"],"query_method":retrieval_result["query_method"],"doc_method":doc_method}
 ##        result_dict2={"match_guid":retrieval_result["match_guid"],"query_method":retrieval_result["query_method"],"doc_method":doc_method}
-##        result_dict1=test_logger.measureScoreAndLog(self.runPrecomputedQuery(retrieval_result,parameters),retrieval_result["citation_multi"],result_dict1)
+##        result_dict1=test_logger.measureScoreAndLog(runPrecomputedQuery(retrieval_result,parameters),retrieval_result["citation_multi"],result_dict1)
 ##        retrieved=actual_tfidfmodels[doc_method].runQuery(query["query_text"],parameters,guid)
 ##        result_dict2=test_logger.measureScoreAndLog(retrieved,retrieval_result["citation_multi"],result_dict2)
 ##        assert(result_dict1["precision_score"]==result_dict2["precision_score"])

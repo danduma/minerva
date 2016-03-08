@@ -810,7 +810,8 @@ class ElasticCorpus(BaseCorpus):
 
 ##ec=ElasticCorpus()
 ##ec.connectCorpus("",endpoint={"host":"localhost", "port":9200})
-##ec.deleteIndex("idx_*_az_annotated_*")
+##ec.deleteIndex("pmc_lrec_experiments_prr_az_*")
+
 ##print(ec.loadSciDoc("f9c08f84-1e5e-4d57-80bc-b576fefa109f"))
 ##print(ec.SQLQuery("SELECT guid,metadata.filename FROM papers where metadata.year >2013"))
 ##print(ec.getMetadataByGUID("df8c8824-1784-46f1-b621-cc6e5aca0dad"))

@@ -1,14 +1,49 @@
-# <purpose>
+# ResultStorer and ResultIncrementalReader: storing and reading results in Elastic
 #
 # Copyright:   (c) Daniel Duma 2015
 # Author: Daniel Duma <danielduma@gmail.com>
 
 # For license information, see LICENSE.TXT
 
-import json
+from __future__ import print_function
+
+import json, sys, time
 
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionTimeout, ConnectionError
+from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
+
+import minerva.db.corpora as cp
+
+def createResultStorers(exp_name, exp_random_zoning=False, clear_existing_prr_results=False):
+    """
+        Returns a dict with instances of ElasticResultStorer
+    """
+    writers={}
+    if exp_random_zoning:
+        for div in RANDOM_ZONES_7:
+            writers["RZ7_"+div]=ElasticResultStorer(exp_name,"prr_az_rz11", endpoint=cp.Corpus.endpoint)
+            if clear_existing_prr_results:
+                writers["RZ7_"+div].clearResults()
+        for div in RANDOM_ZONES_11:
+            writers["RZ11_"+div]=ElasticResultStorer(exp_name,"prr_rz11", endpoint=cp.Corpus.endpoint)
+            if clear_existing_prr_results:
+                writers["RZ11_"+div].clearResults()
+    else:
+        for div in AZ_ZONES_LIST:
+            writers["az_"+div]=ElasticResultStorer(exp_name,"prr_az_"+div, endpoint=cp.Corpus.endpoint)
+            if clear_existing_prr_results:
+                writers["az_"+div].clearResults()
+        for div in CORESC_LIST:
+            writers["csc_type_"+div]=ElasticResultStorer(exp_name,"prr_csc_type_"+div, endpoint=cp.Corpus.endpoint)
+            if clear_existing_prr_results:
+                writers["csc_type_"+div].clearResults()
+
+    writers["ALL"]=ElasticResultStorer(exp_name,"prr_ALL", endpoint=cp.Corpus.endpoint)
+    if clear_existing_prr_results:
+        writers["ALL"].clearResults()
+
+    return writers
 
 class ElasticResultStorer(object):
     def __init__(self, namespace, table_name, endpoint={"host":"localhost", "port":9200}):
@@ -54,7 +89,7 @@ class ElasticResultStorer(object):
         """
             Deletes the result table and recreates it
         """
-        self.deleteTable()
+##        self.deleteTable()
         self.createTable()
 
     def addResult(self, result):
@@ -82,7 +117,29 @@ class ElasticResultStorer(object):
         """
         return {key:json.loads(result[key]) for key in result}
 
-    def readResults(self):
+    def getResult(self, res_id):
+        """
+        """
+        attempts=0
+        source={}
+        while attempts < 2:
+            try:
+                source=self.es.get(id=res_id,
+                                   index=self.index_name,
+                                   doc_type="result",
+                                   ignore=[404])["_source"]
+                break
+            except ConnectionError:
+                attempts+=1
+                time.sleep(attempts+1)
+                continue
+            except Exception as e:
+                print("Exception in ElasticResultStorer.getResult(): ",sys.exc_info()[1])
+                break
+
+        return self.resultPreLoad(source)
+
+    def getResultList(self, max_results=sys.maxint):
         """
             Returns a list of all results in the table.
         """
@@ -91,23 +148,33 @@ class ElasticResultStorer(object):
         res=self.es.search(
             index=self.index_name,
             doc_type="result",
-##            size=10000,
+            size=10000,
             search_type="scan",
             scroll=scroll_time,
-            body={"query":{"match_all": {}}}
+            _source=False,
+            body={"query":{"match_all": {}}},
+            ignore=[404],
             )
 
-        results = [self.resultPreLoad(r["_source"]) for r in  res['hits']['hits']]
+        res_ids = [r["_id"] for r in  res['hits']['hits']]
         scroll_size = res['hits']['total']
-        while (scroll_size > 0):
+        while (scroll_size > 0) and len(res_ids) < max_results:
             try:
                 scroll_id = res['_scroll_id']
                 rs = self.es.scroll(scroll_id=scroll_id, scroll=scroll_time)
-                results.extend([self.resultPreLoad(r["_source"]) for r in rs['hits']['hits']])
+                res_ids.extend([r["_id"] for r in rs['hits']['hits']])
                 scroll_size = len(rs['hits']['hits'])
-            except:
+            except Exception as e:
+                print("Exception in getResultList():",sys.exc_info()[1])
                 break
 
+        return res_ids[:max_results]
+
+    def readResults(self, max_results=None):
+        """
+        """
+        res_ids=self.getResultList(max_results=max_results)
+        results=[self.getResult(res_id) for res_id in res_ids]
         return results
 
     def saveAsCSV(self, filename):
@@ -146,7 +213,8 @@ class ElasticResultStorer(object):
             size=100,
             search_type="scan",
             scroll=scroll_time,
-            body={"query":{"match_all": {}}}
+            body={"query":{"match_all": {}}},
+            ignore=[404]
             )
 
         writeResults(res['hits']['hits'])
@@ -155,7 +223,7 @@ class ElasticResultStorer(object):
         while (scroll_size > 0):
             try:
                 scroll_id = res['_scroll_id']
-                rs = self.es.scroll(scroll_id=scroll_id, scroll=scroll_time)
+                rs = self.es.scroll(scroll_id=scroll_id, scroll=scroll_time, ignore=[404])
                 writeResults(rs['hits']['hits'])
                 scroll_size = len(rs['hits']['hits'])
             except:
@@ -169,8 +237,73 @@ class ElasticResultStorer(object):
 
             WARNING! Very large numbers results may incur in MemoryError
         """
-        results=self.readResults()
-        json.dump(results,file(filename, "w"))
+        result_ids=self.getResultList()
+
+        f=file(filename, "w")
+        f.write("[")
+        for index, res_id in enumerate(result_ids):
+            res=self.getResult(res_id)
+            json_str=json.dumps(res)
+            f.write(json_str)
+            if index < len(result_ids) -1:
+                f.write(",")
+        f.write("]")
+
+
+class ResultIncrementalReader(object):
+    """
+    """
+    def __init__(self, result_storer, res_ids=None, max_results=sys.maxint):
+        """
+        """
+        self.result_storer=result_storer
+        if res_ids:
+            self.res_ids=res_ids
+        else:
+            self.res_ids=result_storer.getResultList(max_results=max_results)
+        self.bufsize=15
+        self.held_from=None
+        self.held_to=None
+        self.ids_held={}
+
+
+    def fillBuffer(self, key):
+        """
+        """
+##        print("fillBuffer", key)
+        self.ids_held={}
+        if int(key) < len(self.res_ids):
+            for cnt in range(min(len(self.res_ids)-int(key),self.bufsize)):
+                self.ids_held[key+cnt]=self.result_storer.getResult(self.res_ids[key+cnt])
+
+    def __getitem__(self, key):
+        """
+        """
+##        print("getitem",key)
+        if key not in self.ids_held:
+            self.fillBuffer(key)
+            return self.ids_held[key]
+        else:
+            return self.ids_held[key]
+
+    def __iter__(self):
+        """
+        """
+##        print("iter")
+        for key in self.res_ids:
+            yield self.result_storer.getResult(key)
+
+    def __len__(self):
+##        print("len")
+        return len(self.res_ids)
+
+    def subset(self, items):
+        """
+            Selects a subset of the items it holds, returns a new instance with
+            those
+        """
+        new=ResultIncrementalReader(self.result_storer, [self.res_ids[i] for i in items])
+        return new
 
 def basicTest():
     """
@@ -183,8 +316,16 @@ def basicTest():
     rs.saveAsCSV(r"G:\NLP\PhD\pmc_coresc\experiments\pmc_lrec_experiments\test.csv")
     rs.deleteTable()
 
+def dumpResultsToDisk():
+    from minerva.proc.nlp_functions import CORESC_LIST
+    for zone in CORESC_LIST:
+        rs=ElasticResultStorer("pmc_lrec_experiments","prr_csc_type_"+zone)
+        rs.saveAsJSON(r"g:\NLP\PhD\pmc_coresc\experiments"+"\\" + "prr_csc_type_"+zone+".json")
+
 def main():
-    basicTest()
+##    basicTest()
+
+
     pass
 
 if __name__ == '__main__':

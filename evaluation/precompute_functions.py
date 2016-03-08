@@ -8,44 +8,17 @@
 from copy import deepcopy
 
 import minerva.db.corpora as cp
-from minerva.db.result_store import ElasticResultStorer
-from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
-
-def createWriters(exp_name, exp_random_zoning=False, clear_existing_prr_results=False):
-    """
-        Returns a dict with instances of ElasticResultStorer
-    """
-    writers={}
-    if exp_random_zoning:
-        for div in RANDOM_ZONES_7:
-            writers["RZ7_"+div]=ElasticResultStorer(exp_name,"prr_az_rz11", endpoint=cp.Corpus.endpoint)
-            if clear_existing_prr_results:
-                writers["RZ7_"+div].clearResults()
-        for div in RANDOM_ZONES_11:
-            writers["RZ11_"+div]=ElasticResultStorer(exp_name,"prr_rz11", endpoint=cp.Corpus.endpoint)
-            if clear_existing_prr_results:
-                writers["RZ11_"+div].clearResults()
-    else:
-        for div in AZ_ZONES_LIST:
-            writers["az_"+div]=ElasticResultStorer(exp_name,"prr_az_"+div, endpoint=cp.Corpus.endpoint)
-            if clear_existing_prr_results:
-                writers["az_"+div].clearResults()
-        for div in CORESC_LIST:
-            writers["csc_type_"+div]=ElasticResultStorer(exp_name,"prr_csc_type_"+div, endpoint=cp.Corpus.endpoint)
-            if clear_existing_prr_results:
-                writers["csc_type_"+div].clearResults()
-
-    writers["ALL"]=ElasticResultStorer(exp_name,"prr_ALL", endpoint=cp.Corpus.endpoint)
-    if clear_existing_prr_results:
-        writers["ALL"].clearResults()
-
-    return writers
 
 def addPrecomputeExplainFormulas(precomputed_query, doc_method, doc_list, retrieval_model, writers, experiment_id, exp_random_zoning=False):
     """
         Runs a precomputed query using the retrieval_model, computes the formula
         for each result
     """
+    # !TODO remove this, it's a temporary fix
+    if precomputed_query.get("csc_type","Bac") in ["Bac"]:
+        print("Ignoring query of type %s" % precomputed_query.get("csc_type",""))
+        return
+
     retrieval_result=deepcopy(precomputed_query)
     retrieval_result["doc_method"]=doc_method
 

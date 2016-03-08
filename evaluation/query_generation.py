@@ -75,7 +75,7 @@ class QueryGenerator(object):
             :returns (doc, doctext, precomputed_file)
             :rtype: tuple
         """
-        doc=cp.Corpus.loadSciDoc(guid) # load the SciDoc JSON from the cp.Corpus
+        doc=cp.Corpus.loadSciDoc(guid, ignore_errors=["error_match_citation_with_reference"]) # load the SciDoc JSON from the cp.Corpus
         if not doc:
             raise ValueError("ERROR: Couldn't load pickled doc: %s" % guid)
             return None
