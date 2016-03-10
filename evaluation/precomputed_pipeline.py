@@ -33,6 +33,7 @@ class PrecomputedPipeline(BaseTestingPipeline):
     def __init__(self, retrieval_class=BaseRetrieval, use_celery=False):
         super(self.__class__, self).__init__(retrieval_class=retrieval_class, use_celery=use_celery)
         self.writers={}
+        self.max_per_class_results=700
 
     def addResult(self, guid, precomputed_query, doc_method, retrieved_results):
         """
@@ -41,6 +42,15 @@ class PrecomputedPipeline(BaseTestingPipeline):
             formula.
         """
         doc_list=[hit[1]["guid"] for hit in retrieved_results]
+
+        must_process=False
+        for zone_type in ["csc_type", "az"]:
+            if precomputed_query.get(zone_type,"") != "" and self.writers[zone_type+"_"+precomputed_query[zone_type]].getResultCount() < self.max_per_class_results:
+                must_process=True
+
+        if not must_process:
+            print("Too many queries of type %s already", "csc_type")
+            return
 
         if self.use_celery:
             print("Adding subtask to queue...")
@@ -102,7 +112,6 @@ class PrecomputedPipeline(BaseTestingPipeline):
         self.writers=createResultStorers(self.exp["name"],
                                    self.exp.get("random_zoning", False),
                                    self.options.get("clear_existing_prr_results", False))
-
 
     def saveResultsAndCleanUp(self):
         """

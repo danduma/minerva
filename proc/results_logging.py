@@ -150,7 +150,6 @@ class ResultsLogger(ProgressIndicator):
             combination to later choose the highest one
         """
         self.averages=defaultdict(lambda:defaultdict(lambda:{}))
-        self.mrr_averages=defaultdict(lambda:{})
 
         for metric in self.scores:
             for qmethod in self.scores[metric]:
@@ -299,7 +298,7 @@ class ResultsLogger(ProgressIndicator):
         if self.dump_straight_to_disk:
             self.dumpResultRow(result_dict)
         else:
-            # !TODO Proper do something about the results logging. Pandas maybe?
+            # !TODO Proper do something about the results logging. Use ResultStorer?
             try:
                 self.overall_results.append(result_dict)
             except:

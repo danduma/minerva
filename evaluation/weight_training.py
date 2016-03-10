@@ -6,8 +6,9 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
-import json, gc, random
+import json, gc, random, os
 from copy import deepcopy
+from collections import defaultdict
 from sklearn import cross_validation
 import pandas as pd
 
@@ -18,10 +19,9 @@ from minerva.proc.general_utils import getSafeFilename
 from base_pipeline import getDictOfTestingMethods
 from stored_formula import StoredFormula
 from weight_functions import runPrecomputedQuery
-from minerva.db.result_store import ElasticResultStorer, ResultIncrementalReader
+from minerva.db.result_store import ElasticResultStorer, ResultIncrementalReader, ResultDiskReader
 
 GLOBAL_FILE_COUNTER=0
-
 
 class weightCounterList(object):
     """
@@ -121,6 +121,7 @@ class WeightTrainer(object):
 
             retrieval_results=self.loadPrecomputedFormulas(zone_type)
             if len(retrieval_results) == 0:
+                print("No precomputed formulas for ", zone_type)
                 continue
 
             if len(retrieval_results) < numfolds:
@@ -131,8 +132,17 @@ class WeightTrainer(object):
             cv=[k for k in cv]
 
             traincv, testcv=cv[split_fold]
-            train_set=retrieval_results.subset(traincv)
+            if isinstance(retrieval_results, ResultIncrementalReader):
+                train_set=retrieval_results.subset(traincv)
+            elif isinstance(retrieval_results, list):
+                train_set=[retrieval_results[i] for i in traincv]
+            else:
+                raise ValueError("Unkown class of results")
+##            train_set=retrieval_results.subset(traincv)
 ##            train_set=[retrieval_results[i] for i in traincv]
+            if len(train_set) == 0:
+                print("Training set len is 0!")
+                return defaultdict(lambda:1)
 
             print("Training for citations in ",zone_type,"zones:",len(train_set),"/",len(retrieval_results))
             for method in annotated_boost_methods:
@@ -167,7 +177,7 @@ class WeightTrainer(object):
                     print("Finding best weights...")
                     while passes < 3 or overall_improvement > 0:
                         for direction in self.exp["movements"]: # [-1,4,-2]
-##                            print("Direction: ", direction)
+                            print("Direction: ", direction)
                             for index in range(len(weights)):
 ##                                print("Weight: ", index)
                                 weight_name=weights.keys()[index]
@@ -194,7 +204,7 @@ class WeightTrainer(object):
 
                         passes+=1
 
-                    scores=self.measurePrecomputedResolution(train_set,method,weights, zone_type)
+                    scores=self.measurePrecomputedResolution(train_set, method, weights, zone_type)
                     this_score=scores[0][self.exp["metric"]]
 
     ##                if split_fold is not None:
@@ -255,7 +265,10 @@ class WeightTrainer(object):
             Loads the previously computed retrieval results, including query, etc.
         """
         prr=ElasticResultStorer(self.exp["name"],"prr_"+self.exp["queries_classification"]+"_"+zone_type, cp.Corpus.endpoint)
-        return ResultIncrementalReader(prr, max_results=600)
+        reader=ResultDiskReader(prr, cache_dir=os.path.join(self.exp["exp_dir"], "cache"), max_results=700)
+        reader.bufsize=30
+        return reader
+
 ##        return prr.readResults(250)
 ##        return json.load(open(self.exp["exp_dir"]+"prr_"+self.exp["queries_classification"]+"_"+zone_type+".json","r"))
 
@@ -293,8 +306,12 @@ class WeightTrainer(object):
                 cv = cross_validation.KFold(len(retrieval_results), n_folds=numfolds, indices=True, shuffle=False, random_state=None, k=None)
                 cv=[k for k in cv] # run the generator
                 traincv, testcv=cv[split_fold]
-                test_set=retrieval_results.subset(testcv)
-##                test_set=[retrieval_results[i] for i in testcv]
+                if isinstance(retrieval_results, ResultIncrementalReader):
+                    test_set=retrieval_results.subset(testcv)
+                elif isinstance(retrieval_results, list):
+                    test_set=[retrieval_results[i] for i in testcv]
+                else:
+                    raise ValueError("Unkown class of results")
 
                 for method in weights[zone_type]:
                     weights_baseline={x:1 for x in self.all_doc_methods[method]["runtime_parameters"]}
@@ -351,130 +368,132 @@ class WeightTrainer(object):
             print("For fold",split_fold)
             print("Average improvement:",fold_result["avg_improvement"])
             print("Weights better than default in",fold_result["num_improved_zones"],"/",fold_result["num_zones"])
-            print("Better zones:",better_zones)
+##            print("Better zones:",better_zones)
+            print("Better zones, pct improvement:",better_zones_details)
 
+        xtra="_".join(self.exp["train_weights_for"])
         data=pd.DataFrame(results)
-        data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_improvements.csv")
+        data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_improvements"+xtra+".csv")
 
         fold_data=pd.DataFrame(fold_results)
-        fold_data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_folds.csv")
+        fold_data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_folds"+xtra+".csv")
 
 ##        print("Avg % improvement per zone:")
 ##        means=data[["zone_type","pct_improvement"]].groupby("zone_type").mean().sort(columns=["pct_improvement"],ascending=False)
 ##        means=means.join(data[["zone_type","pct_improvement"]].groupby("zone_type").std())
 ##        print(means)
 
-    def measureCitationResolution(self, files_dict, precomputed_queries, all_doc_methods,
-    citation_az, testing_methods, retrieval_class=None, full_corpus=False):
-        """
-            Use Citation Resolution to measure the impact of different runtime parameters.
-
-            files_dict is a dict where each key is a guid:
-                "j97-3003": {"tfidf_models": [{"actual_dir": "C:\\NLP\\PhD\\bob\\fileDB\\LuceneIndeces\\j97-3003\\ilc_az_annotated_1_20",
-    			"method": "az_annotated_1_ALL"}],
-    		"resolvable_citations": 16,
-    		"doc_methods": {"az_annotated_1_ALL": {
-    				"index": "ilc_az_annotated_1_20",
-    				"runtime_parameters": ["AIM",
-    				"BAS",
-    				"BKG",
-    				"CTR",
-    				"OTH",
-    				"OWN",
-    				"TXT"],
-    				"parameters": [1],
-    				"type": "annotated_boost",
-    				"index_filename": "ilc_az_annotated_1_20",
-    				"parameter": 1,
-    				"method": "az_annotated"
-    			}
-    		},
-    		"guid": "j97-3003",
-    		"in_collection_references": 10}
-        """
-        logger=ResultsLogger(False) # init all the logging/counting
-        logger.startCounting() # for timing the process, start now
-
-        logger.setNumItems(len(files_dict),print_out=False)
-
-        tfidfmodels={}
-
-        # if we're running over the full cp.Corpus, we should only load the indices once
-        # at the beginning, as they're going to be the same
-        if full_corpus:
-            for model in files_dict["ALL_FILES"]["tfidf_models"]:
-                # create a Lucene search instance for each method
-                tfidfmodels[model["method"]]=retrieval_class(model["actual_dir"],model["method"],logger=None)
-
-        previous_guid=""
-        logger.total_citations=len(precomputed_queries)
-
-        #===================================
-        # MAIN LOOP over all testing files
-        #===================================
-        for query in precomputed_queries:
-            # for every generated query for this context
-            guid=query["file_guid"]
-
-            # if this is not a full_corpus run and we've moved on to the next test file
-            # then we should load the indices for this new file
-            if not full_corpus and guid != previous_guid:
-    ##            logger.showProgressReport(guid) # prints out info on how it's going
-                previous_guid=guid
-                for model in files_dict[guid]["tfidf_models"]:
-                    # create a Lucene search instance for each method
-                    tfidfmodels[model["method"]]=retrieval_class(model["actual_dir"],model["method"],logger=None)
-
-            # for every method used for extracting BOWs
-            for doc_method in all_doc_methods:
-                # ACTUAL RETRIEVAL HAPPENING - run query
-                retrieved=tfidfmodels[doc_method].runQuery(query["query_text"],all_doc_methods[doc_method]["runtime_parameters"], guid)
-
-                result_dict={"file_guid":guid,
-                             "citation_id":query["citation_id"],
-                             "doc_position":query["doc_position"],
-                             "query_method":query["query_method"],
-                             "doc_method":doc_method ,
-                             "az":query["az"],
-                             "cfc":query["cfc"],
-                             "match_guid":query["match_guid"]}
-
-                if not retrieved:    # the query was empty or something
-    ##                        print "Error: ", doc_method , qmethod,tfidfmodels[method].indexDir
-    ##                        logger.addResolutionResult(guid,m,doc_position,qmethod,doc_method ,0,0,0)
-                    result_dict["mrr_score"]=0
-                    result_dict["precision_score"]=0
-                    result_dict["ndcg_score"]=0
-                    result_dict["rank"]=0
-                    result_dict["first_result"]=""
-
-                    logger.addResolutionResultDict(result_dict)
-                else:
-                    logger.measureScoreAndLog(retrieved, query["citation_multi"], result_dict)
-
-
-        logger.computeAverageScores()
-        results=[]
-        for query_method in logger.averages:
-            for doc_method in logger.averages[query_method]:
-                weights=all_doc_methods[doc_method]["runtime_parameters"]
-                data_line={"query_method":query_method,"doc_method":doc_method,"citation_az":citation_az}
-
-                for metric in logger.averages[query_method][doc_method]:
-                    data_line["avg_"+metric]=logger.averages[query_method][doc_method][metric]
-                data_line["precision_total"]=logger.scores["precision"][query_method][doc_method]
-
-                signature=""
-                for w in weights:
-                    data_line[w]=weights[w]
-                    signature+=str(w)
-
-                data_line["weight_signature"]=signature
-                results.append(data_line)
-
-    ##    logger.writeDataToCSV(cp.Corpus.dir_output+"testing_test_precision.csv")
-
-        return results
+##    def measureCitationResolution(self, files_dict, precomputed_queries, all_doc_methods,
+##    citation_az, testing_methods, retrieval_class=None, full_corpus=False):
+##        """
+##            Use Citation Resolution to measure the impact of different runtime parameters.
+##
+##            files_dict is a dict where each key is a guid:
+##                "j97-3003": {"tfidf_models": [{"actual_dir": "C:\\NLP\\PhD\\bob\\fileDB\\LuceneIndeces\\j97-3003\\ilc_az_annotated_1_20",
+##    			"method": "az_annotated_1_ALL"}],
+##    		"resolvable_citations": 16,
+##    		"doc_methods": {"az_annotated_1_ALL": {
+##    				"index": "ilc_az_annotated_1_20",
+##    				"runtime_parameters": ["AIM",
+##    				"BAS",
+##    				"BKG",
+##    				"CTR",
+##    				"OTH",
+##    				"OWN",
+##    				"TXT"],
+##    				"parameters": [1],
+##    				"type": "annotated_boost",
+##    				"index_filename": "ilc_az_annotated_1_20",
+##    				"parameter": 1,
+##    				"method": "az_annotated"
+##    			}
+##    		},
+##    		"guid": "j97-3003",
+##    		"in_collection_references": 10}
+##        """
+##        logger=ResultsLogger(False) # init all the logging/counting
+##        logger.startCounting() # for timing the process, start now
+##
+##        logger.setNumItems(len(files_dict),print_out=False)
+##
+##        tfidfmodels={}
+##
+##        # if we're running over the full cp.Corpus, we should only load the indices once
+##        # at the beginning, as they're going to be the same
+##        if full_corpus:
+##            for model in files_dict["ALL_FILES"]["tfidf_models"]:
+##                # create a Lucene search instance for each method
+##                tfidfmodels[model["method"]]=retrieval_class(model["actual_dir"],model["method"],logger=None)
+##
+##        previous_guid=""
+##        logger.total_citations=len(precomputed_queries)
+##
+##        #===================================
+##        # MAIN LOOP over all testing files
+##        #===================================
+##        for query in precomputed_queries:
+##            # for every generated query for this context
+##            guid=query["file_guid"]
+##
+##            # if this is not a full_corpus run and we've moved on to the next test file
+##            # then we should load the indices for this new file
+##            if not full_corpus and guid != previous_guid:
+##    ##            logger.showProgressReport(guid) # prints out info on how it's going
+##                previous_guid=guid
+##                for model in files_dict[guid]["tfidf_models"]:
+##                    # create a Lucene search instance for each method
+##                    tfidfmodels[model["method"]]=retrieval_class(model["actual_dir"],model["method"],logger=None)
+##
+##            # for every method used for extracting BOWs
+##            for doc_method in all_doc_methods:
+##                # ACTUAL RETRIEVAL HAPPENING - run query
+##                retrieved=tfidfmodels[doc_method].runQuery(query["query_text"],all_doc_methods[doc_method]["runtime_parameters"], guid)
+##
+##                result_dict={"file_guid":guid,
+##                             "citation_id":query["citation_id"],
+##                             "doc_position":query["doc_position"],
+##                             "query_method":query["query_method"],
+##                             "doc_method":doc_method ,
+##                             "az":query["az"],
+##                             "cfc":query["cfc"],
+##                             "match_guid":query["match_guid"]}
+##
+##                if not retrieved:    # the query was empty or something
+##    ##                        print "Error: ", doc_method , qmethod,tfidfmodels[method].indexDir
+##    ##                        logger.addResolutionResult(guid,m,doc_position,qmethod,doc_method ,0,0,0)
+##                    result_dict["mrr_score"]=0
+##                    result_dict["precision_score"]=0
+##                    result_dict["ndcg_score"]=0
+##                    result_dict["rank"]=0
+##                    result_dict["first_result"]=""
+##
+##                    logger.addResolutionResultDict(result_dict)
+##                else:
+##                    logger.measureScoreAndLog(retrieved, query["citation_multi"], result_dict)
+##
+##
+##        logger.computeAverageScores()
+##        results=[]
+##        for query_method in logger.averages:
+##            for doc_method in logger.averages[query_method]:
+##                weights=all_doc_methods[doc_method]["runtime_parameters"]
+##                data_line={"query_method":query_method,"doc_method":doc_method,"citation_az":citation_az}
+##
+##                for metric in logger.averages[query_method][doc_method]:
+##                    data_line["avg_"+metric]=logger.averages[query_method][doc_method][metric]
+##                data_line["precision_total"]=logger.scores["precision"][query_method][doc_method]
+##
+##                signature=""
+##                for w in weights:
+##                    data_line[w]=weights[w]
+##                    signature+=str(w)
+##
+##                data_line["weight_signature"]=signature
+##                results.append(data_line)
+##
+##    ##    logger.writeDataToCSV(cp.Corpus.dir_output+"testing_test_precision.csv")
+##
+##        return results
 
     def measurePrecomputedResolution(self, retrieval_results,method,parameters, citation_az="*"):
         """
@@ -570,137 +589,15 @@ class WeightTrainer(object):
         for split_fold in range(numfolds):
             print("\nFold #"+str(split_fold))
             best_weights[split_fold]=self.dynamicWeightValues(split_fold)
+            gc.collect()
 
         # Then we actually test them against the
         print("Now applying and testing weights...\n")
         self.measureScoresOfWeights(best_weights)
 
-
-def autoTrainWeightValues(zones_to_process=[], files_dict_filename="files_dict.json", testing_methods=None, filename_add=""):
-    """
-        Tries different values for different zones given the zone of the
-        sentence where the citation occurs.
-    """
-    files_dict=json.load(open(cp.Corpus.paths.prebuiltBOWs+files_dict_filename,"r"))
-    queries_by_az=json.load(open(cp.Corpus.paths.prebuiltBOWs+"queries_by_az.json","r"))
-    queries_by_cfc=json.load(open(cp.Corpus.paths.prebuiltBOWs+"queries_by_cfc.json","r"))
-
-    print("AZs:")
-    for key in queries_by_az:
-        print(key, len(queries_by_az[key]))
-
-    print ("\nCFCs:")
-    for key in queries_by_cfc:
-        print(key, len(queries_by_cfc[key]))
-    print ("\n")
-
-    results=[]
-
-    all_doc_methods=getDictOfTestingMethods(testing_methods)
-
-    annotated_boost_methods=[x for x in all_doc_methods if all_doc_methods[x]["type"]=="annotated_boost"]
-
-    counter=weightCounterList([1,3,5])
-    print(counter.getPossibleValues())
-    # this is to run it "in polynomial time"
-    # most citations are either OTH (1307) or OWN (3876)
-    MAX_QUERIES_EVALUATED=650
-
-    print("Processing zones ",zones_to_process)
-
-    for az_type in zones_to_process:
-        print("Number of queries in ",az_type,"zones:",len(queries_by_az[az_type]))
-        if len(queries_by_az[az_type]) > MAX_QUERIES_EVALUATED:
-            print("Evaluating a maximum of", MAX_QUERIES_EVALUATED)
-        for method in annotated_boost_methods:
-
-            progress=ProgressIndicator(True) # create a progress indicator, keeps track of what's been done and how long is left
-            counter.initWeights(all_doc_methods[method]["runtime_parameters"])
-            all_doc_methods[method]["runtime_parameters"]=counter.weights
-
-            # total number of combinations that'll be processed
-            progress.setNumItems(counter.numCombinations())
-
-            while not counter.allCombinationsProcessed():#  and progress.item_counter < 2:
-
-                weight_parameter={method:{"runtime_parameters":counter.weights}}
-##                print counters
-                # !TODO set :MAX_QUERIES_EVALUATED and MAX_QUERIES_EVALUATED:MAX_QUERIES_EVALUATED*2
-##                citations_set=queries_by_az[az_type][MAX_QUERIES_EVALUATED:MAX_QUERIES_EVALUATED*2]
-                citations_set=queries_by_az[az_type][:MAX_QUERIES_EVALUATED]
-                scores=measureCitationResolution(files_dict,citations_set, weight_parameter, az_type, all_doc_methods)
-                results.extend(scores)
-                progress.showProgressReport("",1)
-                counter.nextCombination()
-
-        # prints results per each AZ/CFC zone
-        data=pd.DataFrame(results)
-        metric="avg_mrr"
-        data=data.sort(metric, ascending=False)
-        filename=getSafeFilename(cp.Corpus.paths.output+"weights_"+az_type+"_"+str(counter.getPossibleValues())+filename_add+".csv")
-        data.to_csv(filename)
-##        statsOnResults(data, metric)
-
-##        print data.to_string()
-
-def autoTrainWeightValues_optimized(exp, split_set=None):
-    """
-        Tries different values for
-    """
-    filename_add=""
-    all_doc_methods=getDictOfTestingMethods(exp["doc_methods"])
-
-    annotated_boost_methods=[x for x in all_doc_methods if all_doc_methods[x]["type"]=="annotated_boost"]
-
-    counter=weightCounterList(exp["weight_values"])
-    print(counter.getPossibleValues())
-
-    print("Processing zones ",exp["train_weights_for"])
-
-    for zone_type in exp["train_weights_for"]:
-        results=[]
-        retrieval_results=json.load(open(exp["exp_dir"]+"prr_"+exp["queries_classification"]+"_"+zone_type+".json","r"))
-        print("Number of precomputed results in ",zone_type,"zones:",len(retrieval_results))
-        for method in annotated_boost_methods:
-            counter.initWeights(all_doc_methods[method]["runtime_parameters"])
-
-            progress=ProgressIndicator(True) # create a progress indicator, keeps track of what's been done and how long is left
-            all_doc_methods[method]["runtime_parameters"]=counter.weights
-
-            # total number of combinations that'll be processed
-            progress.setNumItems(counter.numCombinations(),dot_every_xitems=max(10,80-(len(retrieval_results)/40)))
-
-            print("Testing weight value combinations with precomputed formula")
-            while not counter.allCombinationsProcessed():#  and progress.item_counter < 2:
-                if split_set==1:
-                    test_set=retrieval_results[:len(retrieval_results)/2]
-                elif split_set==2:
-                    test_set=retrieval_results[len(retrieval_results)/2:]
-                elif not split_set:
-                    test_set=retrieval_results
-                else:
-                    assert(split_set in [None,1,2])
-
-                scores=measurePrecomputedResolution(test_set,method,counter.weights, zone_type)
-
-                results.extend(scores)
-                progress.showProgressReport("",1)
-                counter.nextCombination()
-
-        # prints results per each AZ/CFC zone
-        data=pd.DataFrame(results)
-        metric="avg_mrr"
-        data=data.sort(metric, ascending=False)
-
-        if split_set is not None:
-            split_set_str="_s"+str(split_set)
-        else:
-            split_set_str=""
-        filename=getSafeFilename(exp["exp_dir"]+"weights_"+zone_type+"_"+str(counter.getPossibleValues())+split_set_str+filename_add+".csv")
-        data.to_csv(filename)
-
-
 def main():
+    logger=ResultsLogger(False,False)
+    logger.addResolutionResultDict
     pass
 
 if __name__ == '__main__':
