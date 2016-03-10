@@ -176,13 +176,13 @@ class WeightTrainer(object):
 
                     print("Finding best weights...")
                     while passes < 3 or overall_improvement > 0:
-                        for direction in self.exp["movements"]: # [-1,4,-2]
+                        for direction in self.exp["movements"]: # [-1,6,-2]
                             print("Direction: ", direction)
                             for index in range(len(weights)):
 ##                                print("Weight: ", index)
                                 weight_name=weights.keys()[index]
                                 prev_weight=weights[weight_name]
-                                # hard limit of 0 for weights
+                                # hard lower limit of 0 for weights
                                 weights[weight_name]=max(MIN_WEIGHT,weights[weight_name]+direction)
 
                                 scores=self.measurePrecomputedResolution(train_set,method,weights, zone_type)

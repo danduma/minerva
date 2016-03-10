@@ -225,7 +225,6 @@ class CorpusImporter(object):
         cp.Corpus.metadata_index=self.metadata_index
         cp.Corpus.FILES_TO_IGNORE=self.files_to_ignore
 
-
         self.start_time=datetime.datetime.now()
         ALL_INPUT_FILES=self.loadListOrListAllFiles(inputdir,file_mask)
 

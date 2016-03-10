@@ -186,7 +186,7 @@ class JATSXMLReader(BaseSciDocXMLReader):
             if xref.text.strip() != "":
                 xref_id=xref.text
             else:
-                xref_id=xref["rid"]
+                xref_id=xref.get("rid", None)
 
             aff_id=""
             for aff in affs:

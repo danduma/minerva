@@ -29,6 +29,7 @@ def import_sapienta_pmc_corpus():
     """
         Do the importing of the Sapienta-annotated PMC corpus
     """
+    from minerva.squad.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
     importer=CorpusImporter(reader=SapientaJATSXMLReader())
     importer.collection_id="PMC_CSC"
     importer.import_id="initial"
@@ -36,13 +37,13 @@ def import_sapienta_pmc_corpus():
 
 ##    cp.useLocalCorpus()
     cp.useElasticCorpus()
-    cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc")
+    cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 
     options={
-        "reload_xml_if_doc_in_collection": True,
+##        "reload_xml_if_doc_in_collection": True, # default: False
 ##        "list_missing_references":True, # default: False
 ##        "convert_and_import_docs":False, # default: True
-        "update_doc_references":False, # default: True
+##        "update_doc_references":False, # default: True
     }
 
 ##    corpus_import.FILES_TO_PROCESS_FROM=4500
@@ -89,8 +90,8 @@ def fix_broken_scidocs():
 
 
 def main():
-##    import_sapienta_pmc_corpus()
-    fix_broken_scidocs()
+    import_sapienta_pmc_corpus()
+##    fix_broken_scidocs()
 
     pass
 
