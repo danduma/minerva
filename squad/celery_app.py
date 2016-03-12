@@ -9,16 +9,18 @@ from __future__ import absolute_import
 
 from celery import Celery
 from kombu import Queue, Exchange
+from celery.bin import Option
 ##import minerva.squad.celeryconfig
 
 # celery worker --app=squad.celery_app:app
 
-SERVER_IP="129.215.197.73"
+WORKSTATION_IP="129.215.197.73"
+SERVER_IP="129.215.90.202"
 ##SERVER_IP="localhost"
 
-MINERVA_FILE_SERVER_URL="http://%s:5599" % SERVER_IP
+MINERVA_FILE_SERVER_URL="http://%s:5599" % WORKSTATION_IP
 MINERVA_AMQP_SERVER_URL="amqp://minerva:minerva@%s:5672//" % SERVER_IP
-MINERVA_ELASTICSEARCH_SERVER_IP="129.215.90.202"
+MINERVA_ELASTICSEARCH_SERVER_IP=SERVER_IP
 MINERVA_ELASTICSEARCH_SERVER_PORT=9200
 MINERVA_ELASTICSEARCH_ENDPOINT={"host":MINERVA_ELASTICSEARCH_SERVER_IP, "port":MINERVA_ELASTICSEARCH_SERVER_PORT}
 
@@ -57,6 +59,12 @@ app.conf.update(
         'precomputeFormulasTask': {'queue': 'precompute_formulas', 'routing_key': 'precompute_formulas'},
     }
 )
+
+##app.user_options['preload'].add(
+##    Option('-LOC', '--run_locally', default=False,
+##           help='Configuration template to use.'),
+##)
+##
 
 if __name__ == '__main__':
     app.start()

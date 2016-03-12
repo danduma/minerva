@@ -165,18 +165,17 @@ class AANReferenceMatcher(BaseReferenceMatcher):
         else:
             return None
 
+def getACL_corpus_id(filename):
+    """
+        Returns the ACL id for a file
+    """
+    return os.path.split(filename)[1].replace("-paper.xml","").lower()
+
 
 def import_aac_corpus():
     """
         Do the importing of the AAC corpus
     """
-
-    def getACL_corpus_id(filename):
-        """
-            Returns the ACL id for a file
-        """
-        return os.path.split(filename)[1].replace("-paper.xml","").lower()
-
     importer=CorpusImporter(reader=PaperXMLReader())
     importer.collection_id="AAC"
     importer.import_id="initial"

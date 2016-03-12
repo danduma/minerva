@@ -35,7 +35,7 @@ from celery.utils.log import get_task_logger
 
 logger = get_task_logger(__name__)
 
-RUN_LOCALLY=False
+RUN_LOCALLY=True
 
 def checkCorpusConnection(local_corpus_dir="",
     corpus_endpoint={"host":celery_app.MINERVA_ELASTICSEARCH_SERVER_IP,

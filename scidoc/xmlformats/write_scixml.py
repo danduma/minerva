@@ -9,19 +9,21 @@
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from scidoc import *
 import re, codecs
 
-from general_utils import safe_unicode
-from base_classes import BaseSciDocXMLreader,BaseSciDocXMLwriter
+from minerva.proc.general_utils import safe_unicode
+from base_classes import BaseSciDocXMLReader,BaseSciDocXMLWriter
 
-class SciXMLWriter(BaseSciDocXMLwriter):
+class SciXMLWriter(BaseSciDocXMLWriter):
+    """
+
+    """
     def __init__(self):
         """
         """
         self.header_depth=0
 
-    def dumpMetadata(self, doc):
+    def writeMetadata(self, doc):
         """
         """
         lines=[]
@@ -60,7 +62,7 @@ class SciXMLWriter(BaseSciDocXMLwriter):
         lines.append(u"</METADATA>")
         return lines
 
-    def dumpAbstract(self, doc):
+    def writeAbstract(self, doc):
         """
         """
         lines=[]
@@ -69,14 +71,14 @@ class SciXMLWriter(BaseSciDocXMLwriter):
             for element_id in doc.abstract["content"]:
                 s=doc.element_by_id[element_id]
                 if s["type"]=="s":
-                    lines.append(self.dumpSentence(doc,s, True))
+                    lines.append(self.writeSentence(doc,s, True))
                 if s["type"]=="p":
-                    lines.extend(self.dumpParagraph(doc,s, True))
+                    lines.extend(self.writeParagraph(doc,s, True))
         lines.append(u"</ABSTRACT>")
         return lines
 
 
-    def dumpSentence(self, doc,s,in_abstract=False):
+    def writeSentence(self, doc,s,in_abstract=False):
         """
             Fixes all the contents of the sentence, returns a string of proper XML
         """
@@ -105,7 +107,7 @@ class SciXMLWriter(BaseSciDocXMLwriter):
 
         return res
 
-    def dumpParagraph(self, doc,paragraph, in_abstract=False):
+    def writeParagraph(self, doc,paragraph, in_abstract=False):
         """
         """
         lines=[]
@@ -119,13 +121,13 @@ class SciXMLWriter(BaseSciDocXMLwriter):
         for element in paragraph["content"]:
             element=doc.element_by_id[element]
             if element["type"]=="s":
-                lines.append(self.dumpSentence(doc,element, in_abstract))
+                lines.append(self.writeSentence(doc,element, in_abstract))
 
         if not in_abstract:
             lines.append(u"</P>")
         return lines
 
-    def dumpSection(self, doc,section, header_depth):
+    def writeSection(self, doc,section, header_depth):
         """
         """
         self.header_depth+=1
@@ -135,26 +137,26 @@ class SciXMLWriter(BaseSciDocXMLwriter):
         for element in section["content"]:
             element=doc.element_by_id[element]
             if element["type"]=="section":
-                lines.extend(self.dumpSection(doc,element, header_depth))
+                lines.extend(self.writeSection(doc,element, header_depth))
             elif element["type"]=="p":
-                lines.extend(self.dumpParagraph(doc,element))
+                lines.extend(self.writeParagraph(doc,element))
 
         lines.append(u"</DIV>")
         self.header_depth-=1
         return lines
 
-    def dumpBody(self, doc):
+    def writeBody(self, doc):
         """
         """
         lines=[]
         lines.append(u"<BODY>")
         for section in doc.allsections:
             if section != doc.abstract:
-                lines.extend(self.dumpSection(doc,section,0))
+                lines.extend(self.writeSection(doc,section,0))
         lines.append(u"</BODY>")
         return lines
 
-    def dumpRefAuthor(self, doc,author):
+    def writeRefAuthor(self, doc,author):
         """
         """
         lines=[]
@@ -167,17 +169,17 @@ class SciXMLWriter(BaseSciDocXMLwriter):
         lines.append(u"</AUTHOR>")
         return lines
 
-    def dumpRefAuthors(self, doc, ref):
+    def writeRefAuthors(self, doc, ref):
         """
         """
         lines=[]
         lines.append("<AUTHORLIST>")
         for author in ref["authors"]:
-            lines.extend(self.dumpRefAuthor(doc,author))
+            lines.extend(self.writeRefAuthor(doc,author))
         lines.append("</AUTHORLIST>")
         return lines
 
-    def dumpReference(self, doc, ref):
+    def writeReference(self, doc, ref):
         """
         <REFERENCE ID="cit1">
         <AUTHORLIST>
@@ -189,7 +191,7 @@ class SciXMLWriter(BaseSciDocXMLwriter):
         """
         lines=[]
         lines.append('<REFERENCE ID="%s">' % ref["id"])
-        lines.extend(self.dumpRefAuthors(doc,ref))
+        lines.extend(self.writeRefAuthors(doc,ref))
         lines.append("<TITLE>%s</TITLE>" % ref["title"])
         lines.append("<YEAR>%s</YEAR>" % ref["year"])
         if "journal" in ref:
@@ -197,13 +199,13 @@ class SciXMLWriter(BaseSciDocXMLwriter):
         lines.append("</REFERENCE>")
         return lines
 
-    def dumpReferences(self, doc):
+    def writeReferences(self, doc):
         """
         """
         lines=[]
         lines.append("<REFERENCELIST>")
         for ref in doc.data["references"]:
-            lines.extend(self.dumpReference(doc, ref))
+            lines.extend(self.writeReference(doc, ref))
         lines.append("</REFERENCELIST>")
         return lines
 
@@ -215,10 +217,10 @@ class SciXMLWriter(BaseSciDocXMLwriter):
         lines.append('<!DOCTYPE PAPER SYSTEM "paper-structure-annotation.dtd">')
 
         lines.append("<PAPER>")
-        lines.extend(self.dumpMetadata(doc))
-        lines.extend(self.dumpAbstract(doc))
-        lines.extend(self.dumpBody(doc))
-        lines.extend(self.dumpReferences(doc))
+        lines.extend(self.writeMetadata(doc))
+        lines.extend(self.writeAbstract(doc))
+        lines.extend(self.writeBody(doc))
+        lines.extend(self.writeReferences(doc))
         lines.append("</PAPER>")
 
         lines2=[]
@@ -240,13 +242,21 @@ def saveSciXML(doc,filename):
     writer=SciXMLWriter()
     writer.write(doc, filename)
 
-def main():
+def basicTest():
+    """
+    """
     from azscixml import loadAZSciXML
-    from scidoc import SciDoc
+    from minerva.scidoc import SciDoc
     doc=SciDoc(r"C:\NLP\PhD\bob\fileDB\jsonDocs\a00-1001.json")
 ##    doc=loadAZSciXML(r"C:\NLP\PhD\bob\fileDB\jsonDocs\a00-1001.json")
     saveSciXML(doc,r"C:\NLP\PhD\bob\output\\"+doc["metadata"]["filename"]+".xml")
     pass
+
+def main():
+##    import minerva.db.corpora as cp
+##    cp.useElasticCorpus()
+    pass
+
 
 if __name__ == '__main__':
     main()

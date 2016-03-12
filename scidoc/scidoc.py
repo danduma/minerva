@@ -116,11 +116,6 @@ class SciDoc(object):
         for element in self.data["content"]:
             self.processSingleElement(element)
 
-        self.metadata=self.data["metadata"]
-        self.content=self.data["content"]
-        self.citations=self.data["citations"]
-        self.references=self.data["references"]
-
         # try to find abstract section
         for section in self.allsections:
             if section["header"].lower()=="abstract":
@@ -131,6 +126,22 @@ class SciDoc(object):
             self.abstract=self.allsections[0]
 
         self.updateReferences()
+
+    @property
+    def metadata(self):
+        return self.data["metadata"]
+
+    @property
+    def references(self):
+        return self.data["references"]
+
+    @property
+    def citations(self):
+        return self.data["citations"]
+
+    @property
+    def content(self):
+        return self.data["content"]
 
     def updateReferences(self):
         """
