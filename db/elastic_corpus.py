@@ -7,13 +7,13 @@
 
 from __future__ import print_function
 
-import os, sys, json, glob, uuid, unicodedata, datetime, re, copy
+import sys, json, datetime, re, copy
 
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionTimeout, ConnectionError
 import requests
 
-from minerva.proc.general_utils import AttributeDict, ensureTrailingBackslash, ensureDirExists
+from minerva.proc.general_utils import ensureTrailingBackslash
 from minerva.scidoc.scidoc import SciDoc
 from base_corpus import BaseCorpus
 
@@ -88,7 +88,7 @@ class ElasticCorpus(BaseCorpus):
             the SQLite database and tables
         """
 
-        def createTable(name, options, properties):
+        def createTable(name, settings, properties):
             """
             """
             if not self.es.indices.exists(index=index_equivalence[name]["index"]):
@@ -210,12 +210,12 @@ class ElasticCorpus(BaseCorpus):
             guid=guid.lower()
             return "idx_"+guid+"_"+index_filename
 
-    def getRecord(self, id, table="papers", source=None):
+    def getRecord(self, rec_id, table="papers", source=None):
         """
             Abstracts over getting data from a row in the db. Returns all the
             fields of the record for one type of table.
 
-            :param id: id of the record
+            :param rec_id: id of the record
             :param table: table alias, e.g. ["papers", "scidocs"]
         """
         self.checkConnectedToDB()
@@ -227,17 +227,17 @@ class ElasticCorpus(BaseCorpus):
             res=self.es.get(
                 index=index_equivalence[table]["index"],
                 doc_type=index_equivalence[table]["type"],
-                id=id,
+                id=rec_id,
                 _source=source
                 )
         except:
-            raise ValueError("Not found: %s in index %s" % (id,index_equivalence[table]["index"]))
+            raise ValueError("Not found: %s in index %s" % (rec_id,index_equivalence[table]["index"]))
 
         if not res:
-            raise IndexError("Can't find record with id %s" % id)
+            raise IndexError("Can't find record with id %s" % rec_id)
         return res["_source"]
 
-    def getRecordField(self, id, table="papers"):
+    def getRecordField(self, rec_id, table="papers"):
         """
             Abstracts over getting data from a row in the db. Returns one field
             for one type of table.
@@ -245,9 +245,9 @@ class ElasticCorpus(BaseCorpus):
             All other "getter" functions like getMetadataByGUID and loadSciDoc
             are aliases for this function
         """
-        return self.getRecord(id, table,source=index_equivalence[table]["source"])[index_equivalence[table]["source"]]
+        return self.getRecord(rec_id, table,source=index_equivalence[table]["source"])[index_equivalence[table]["source"]]
 
-    def recordExists(self, id, table="papers"):
+    def recordExists(self, rec_id, table="papers"):
         """
             Returns True if the specified record exists in the given table, False
             otherwise.
@@ -255,7 +255,7 @@ class ElasticCorpus(BaseCorpus):
         self.checkConnectedToDB()
 
         return self.es.exists(
-            id=id,
+            id=rec_id,
             index=index_equivalence[table]["index"],
             doc_type=index_equivalence[table]["type"],
             )
@@ -690,7 +690,6 @@ class ElasticCorpus(BaseCorpus):
             raise ValueError("Unknown record type")
 
         es_table=index_equivalence[record_type]["index"]
-        es_type=index_equivalence[record_type]["type"]
 
         if self.es.indices.exists(index=es_table):
             print("Deleting ALL files in %s" % es_table)
@@ -808,8 +807,10 @@ class ElasticCorpus(BaseCorpus):
 
         self.query_filter=" AND ".join(query_items)+" AND "
 
+
 ##ec=ElasticCorpus()
-##ec.connectCorpus("",endpoint={"host":"localhost", "port":9200})
+##ec.connectCorpus("",endpoint={"host":"129.215.90.202", "port":9200})
+##ec.deleteByQuery("cache", "_id:resolvable_*")
 ##ec.deleteIndex("pmc_lrec_experiments_prr_az_*")
 
 ##print(ec.loadSciDoc("f9c08f84-1e5e-4d57-80bc-b576fefa109f"))

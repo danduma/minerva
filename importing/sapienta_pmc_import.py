@@ -44,6 +44,7 @@ def import_sapienta_pmc_corpus():
 ##        "list_missing_references":True, # default: False
         "convert_and_import_docs":False, # default: True
 ##        "update_doc_references":False, # default: True
+        "force_generate_resolvable_citations":True, # default: False
     }
 
 ##    corpus_import.FILES_TO_PROCESS_FROM=4500

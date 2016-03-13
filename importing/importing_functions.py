@@ -5,13 +5,16 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import print_function
+
 import logging
 from copy import deepcopy
 
-from minerva.proc.general_utils import (normalizeTitle, ensureDirExists)
+from minerva.proc.general_utils import normalizeTitle, copyDictExceptKeys
 
 import minerva.db.corpora as cp
 from minerva.scidoc.xmlformats.read_auto import AutoXMLReader
+
 
 def addSciDocToDB(doc, import_id, collection_id):
     """
@@ -92,7 +95,10 @@ def updatePaperInCollectionReferences(doc_id, import_options):
         print("Cannot load",doc_meta["filename"])
         return None
 
-    citations_data=cp.Corpus.loadOrGenerateResolvableCitations(doc_file)
+    if import_options.get("force_generate_resolvable_citations",False):
+        citations_data=cp.Corpus.generateResolvableCitations(doc_file, True)
+    else:
+        citations_data=cp.Corpus.loadOrGenerateResolvableCitations(doc_file)
 
     resolvable=citations_data["resolvable"]
     in_collection_references=citations_data["outlinks"]
@@ -112,7 +118,6 @@ def updatePaperInCollectionReferences(doc_id, import_options):
                 cp.Corpus.updatePaper(match_meta)
         else:
             logging.warning("Bizarre: record for GUID %s is missing after matching first" % ref)
-            pass
 
 ##    assert len(resolvable) == 0
 

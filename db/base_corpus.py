@@ -359,6 +359,16 @@ class BaseCorpus(object):
         guid=guid.lower()
         return self.loadCachedJson(self.cachedDataIDString("resolvable",guid))
 
+    def generateResolvableCitations(self, doc_file, save_cache=True, year=None):
+        """
+            Generate and optionally save the resolvable citations for a document.
+        """
+        resolvable, outlinks, missing_references=self.selectDocResolvableCitations(doc_file, year)
+        citations_data={"resolvable":resolvable,"outlinks":outlinks,"missing_references":missing_references}
+        if save_cache:
+            self.saveResolvableCitations(doc_file["metadata"]["guid"],citations_data)
+        return citations_data
+
     def loadOrGenerateResolvableCitations(self, doc_file, year=None):
         """
             Tries to open pre-computed resolvable citations and outlinks,
@@ -369,9 +379,7 @@ class BaseCorpus(object):
         """
         missing_references=[]
         if not self.cachedJsonExists("resolvable",doc_file["metadata"]["guid"]):
-            resolvable, outlinks, missing_references=self.selectDocResolvableCitations(doc_file, year)
-            citations_data={"resolvable":resolvable,"outlinks":outlinks,"missing_references":missing_references}
-            self.saveResolvableCitations(doc_file["metadata"]["guid"],citations_data)
+            citations_data=self.generateResolvableCitations(doc_file, save_cache=True, year=year)
         else:
             citations_data=self.loadResolvableCitations(doc_file["metadata"]["guid"])
             if not citations_data:
