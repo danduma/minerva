@@ -42,7 +42,7 @@ def import_sapienta_pmc_corpus():
     options={
 ##        "reload_xml_if_doc_in_collection": True, # default: False
 ##        "list_missing_references":True, # default: False
-##        "convert_and_import_docs":False, # default: True
+        "convert_and_import_docs":False, # default: True
 ##        "update_doc_references":False, # default: True
     }
 

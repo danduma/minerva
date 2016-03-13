@@ -245,9 +245,9 @@ def saveSciXML(doc,filename):
 def basicTest():
     """
     """
-    from azscixml import loadAZSciXML
+##    from azscixml import loadAZSciXML
     from minerva.scidoc import SciDoc
-    doc=SciDoc(r"C:\NLP\PhD\bob\fileDB\jsonDocs\a00-1001.json")
+
 ##    doc=loadAZSciXML(r"C:\NLP\PhD\bob\fileDB\jsonDocs\a00-1001.json")
     saveSciXML(doc,r"C:\NLP\PhD\bob\output\\"+doc["metadata"]["filename"]+".xml")
     pass

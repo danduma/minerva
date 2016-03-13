@@ -87,7 +87,7 @@ def updatePaperInCollectionReferences(doc_id, import_options):
     doc_meta=cp.Corpus.getMetadataByGUID(doc_id)
 ##        print "Processing in-collection references for ", doc_meta["filename"]
 
-    doc_file=cp.Corpus.loadSciDoc(doc_id)
+    doc_file=cp.Corpus.loadSciDoc(doc_id, ignore_errors=["error_match_citation_with_reference"])
     if not doc_file:
         print("Cannot load",doc_meta["filename"])
         return None
