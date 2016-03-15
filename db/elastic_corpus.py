@@ -65,6 +65,7 @@ class ElasticCorpus(BaseCorpus):
         self.FILES_TO_IGNORE=[]
         self.metadata_index=None
         self.paths.fullLuceneIndex="index_"
+        self.max_results=sys.maxint
 
     def connectCorpus(self, base_directory, endpoint={"host":"localhost", "port":9200}, initializing_corpus=False,suppress_error=False):
         """
@@ -394,7 +395,10 @@ class ElasticCorpus(BaseCorpus):
         if table !="papers":
             raise NotImplementedError
 
-        return self.query_filter+" "+query
+        if self.query_filter != "":
+            return self.query_filter+" ("+query+")"
+        else:
+            return query
 
 
     def listFieldByField(self,field1,field2,value,table="papers",max_results=100):
@@ -446,7 +450,7 @@ class ElasticCorpus(BaseCorpus):
             else:
                 return [r["_source"] for r in hits]
 
-    def listPapers(self,conditions=None,field="guid"):
+    def listPapers(self,conditions=None,field="guid", max_results=sys.maxint):
         """
             Return a list of GUIDs in papers table where [conditions]
         """
@@ -457,12 +461,16 @@ class ElasticCorpus(BaseCorpus):
         else:
             query=self.filterQuery(field+":*")
 
+        prev_max_results=self.max_results
+        self.max_results=max_results
+
         hits=self.unlimitedQuery(
                 q=query,
                 index=ES_INDEX_PAPERS,
                 doc_type=ES_TYPE_PAPER,
                 _source=field,
         )
+        self.max_results=prev_max_results
 
         return self.abstractNestedResults(query, hits, field)
 
@@ -754,7 +762,7 @@ class ElasticCorpus(BaseCorpus):
                 doc_type=es_type,
             )
 
-    def unlimitedQuery(self, max_results=sys.maxint, *args, **kwargs):
+    def unlimitedQuery(self, *args, **kwargs):
         """
             Wraps elasticsearch querying to enable auto scroll for retrieving
             large amounts of results
@@ -764,9 +772,11 @@ class ElasticCorpus(BaseCorpus):
         """
         scroll_time="2m"
 
+        size=min(self.max_results,10000)
+
         res=self.es.search(
             *args,
-            size=10000,
+            size=size,
             search_type="scan",
             scroll=scroll_time,
             **kwargs
@@ -774,7 +784,7 @@ class ElasticCorpus(BaseCorpus):
 
         results = res['hits']['hits']
         scroll_size = res['hits']['total']
-        while (scroll_size > 0) and len(results) < max_results:
+        while (scroll_size > 0) and len(results) < self.max_results:
             try:
                 scroll_id = res['_scroll_id']
                 rs = self.es.scroll(scroll_id=scroll_id, scroll=scroll_time)
@@ -799,9 +809,9 @@ class ElasticCorpus(BaseCorpus):
         """
         query_items=[]
         if collection_id:
-            query_items.append("collection_id:\"%s\"" % collection_id)
+            query_items.append("metadata.collection_id:\"%s\"" % collection_id)
         if import_id:
-            query_items.append("import:\"%s\"" % import_id)
+            query_items.append("metadata.import_id:\"%s\"" % import_id)
         if date:
             query_items.append("time_created:%s" % date)
 

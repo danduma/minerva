@@ -1,18 +1,19 @@
-#-------------------------------------------------------------------------------
-# Name:        module1
-# Purpose:
+# SciXML writer class
 #
-# Author:      dd
-#
-# Created:     27/03/2015
-# Copyright:   (c) dd 2015
-# Licence:     <your licence>
-#-------------------------------------------------------------------------------
+# Copyright:   (c) Daniel Duma 2015
+# Author: Daniel Duma <danielduma@gmail.com>
+
+# For license information, see LICENSE.TXT
 
 import re, codecs
 
 from minerva.proc.general_utils import safe_unicode
 from base_classes import BaseSciDocXMLReader,BaseSciDocXMLWriter
+
+def escapeText(text):
+    """
+    """
+    return text.replace("<","&lt;").replace(">","&gt;").replace("&","&amp;")
 
 class SciXMLWriter(BaseSciDocXMLWriter):
     """
@@ -29,25 +30,30 @@ class SciXMLWriter(BaseSciDocXMLWriter):
         lines=[]
         lines.append("<METADATA>")
         if doc["metadata"].has_key("fileno"):
-            lines.append("<FILENO>"+doc.metadata["fileno"]+"</FILENO>\n")
+            lines.append("<FILENO>"+escapeText(doc.metadata["fileno"])+"</FILENO>\n")
 
-        lines.append("<FILENAME>"+doc.metadata["filename"]+"</FILENAME>\n")
+        lines.append("<TITLE>"+escapeText(doc.metadata["title"])+"</TITLE>\n")
+        lines.append("<FILENAME>"+escapeText(doc.metadata["filename"])+"</FILENAME>\n")
 
         lines.append("<APPEARED>")
         if "conference" in doc.metadata:
-            lines.append("<CONFERENCE>"+doc.metadata["conference"]+"</CONFERENCE>\n")
+            lines.append("<CONFERENCE>"+(doc.metadata["conference"])+"</CONFERENCE>\n")
         if "journal" in doc.metadata:
-            lines.append("<JOURNAL>"+doc.metadata["journal"]+"</JOURNAL>\n")
+            lines.append("<JOURNAL>"+(doc.metadata["journal"])+"</JOURNAL>\n")
 
-        lines.append(u"<CURRENT_AUTHORLIST>")
+##        lines.append(u"<CURRENT_AUTHORLIST>")
+##        for author in doc.metadata["authors"]:
+##            lines.append(u"<CURRENT_AUTHOR>")
+##            lines.append("<FIRSTNAME>%s</FIRSTNAME>" % author["given"])
+##            lines.append(u"<CURRENT_SURNAME>%s</CURRENT_SURNAME>" % author["family"])
+##            lines.append(u"</CURRENT_AUTHOR>")
+##        lines.append(u"</CURRENT_AUTHORLIST>")
+
+        lines.append(u"<AUTHORS>")
         for author in doc.metadata["authors"]:
-            bits=author.split(",")
-            rest=" ".join(bits[1:])
-            lines.append(u"<CURRENT_AUTHOR>")
-##            lines.append("<FIRSTNAME>%s</FIRSTNAME>" % rest)
-            lines.append(rest+u"<CURRENT_SURNAME>%s</CURRENT_SURNAME>" % bits[0])
-            lines.append(u"</CURRENT_AUTHOR>")
-        lines.append(u"</CURRENT_AUTHORLIST>")
+            lines.append("<AUTHOR>%s %s</AUTHOR>" % (escapeText(author["given"]),escapeText(author["family"])))
+        lines.append(u"</AUTHORS>")
+
 
 ##        lines.append("<SURNAMES>")
 ##        for author in doc["authors"]:
@@ -58,7 +64,7 @@ class SciXMLWriter(BaseSciDocXMLWriter):
         lines.append(u"</APPEARED>")
 
         if doc["metadata"].has_key("revisionhistory"):
-            lines.append(u"<REVISIONHISTORY>"+doc.metadata["revisionhistory"]+u"</REVISIONHISTORY>\n")
+            lines.append(u"<REVISIONHISTORY>"+escapeText(doc.metadata["revisionhistory"])+u"</REVISIONHISTORY>\n")
         lines.append(u"</METADATA>")
         return lines
 
@@ -77,8 +83,14 @@ class SciXMLWriter(BaseSciDocXMLWriter):
         lines.append(u"</ABSTRACT>")
         return lines
 
+    def processSentenceText(self, s, doc):
+        """
+            Allows overriding by descendant classes to do some processing of
+            the sentence text when saving, e.g. POS-tagging every word
+        """
+        return escapeText(s["text"])
 
-    def writeSentence(self, doc,s,in_abstract=False):
+    def writeSentence(self, doc, s, in_abstract=False):
         """
             Fixes all the contents of the sentence, returns a string of proper XML
         """
@@ -96,12 +108,12 @@ class SciXMLWriter(BaseSciDocXMLWriter):
         else:
             xmltag=u"S"
 
-        res=u"<"+xmltag+u' ID="%s"' % s["id"]
+        res=u"<"+xmltag+u' ID="A-%s"' % s["id"]
 
         if "az" in s:
             res+=u'AZ="%s"' % s["az"]
 
-        text=s["text"]
+        text=self.processSentenceText(s, doc)
         text=re.sub(r"<CIT ID=(.*?)\s?/>",repl_func, text)
         res+=">"+text+"</"+xmltag+">"
 
@@ -132,8 +144,8 @@ class SciXMLWriter(BaseSciDocXMLWriter):
         """
         self.header_depth+=1
         lines=[]
-        lines.append(u'<DIV depth="'+str(header_depth)+'">')
-        lines.append(u"<HEADER>%s</HEADER>" % section["header"])
+        lines.append(u'<DIV DEPTH="'+str(header_depth+1)+'">')
+        lines.append(u"<HEADER ID='H-1'>%s</HEADER>" % (escapeText(section["header"])))
         for element in section["content"]:
             element=doc.element_by_id[element]
             if element["type"]=="section":
@@ -162,10 +174,10 @@ class SciXMLWriter(BaseSciDocXMLWriter):
         lines=[]
         lines.append(u"<AUTHOR>")
         if isinstance(author,basestring):
-            lines.append(author)
+            lines.append(escapeText(author))
         elif isinstance(author,dict):
-            lines.append(author["given"])
-            lines.append(u"<SURNAME>%s</SURNAME>" % author["family"])
+            lines.append(escapeText(author.get("given","")))
+            lines.append(u"<SURNAME>%s</SURNAME>" % escapeText(author.get("family","")))
         lines.append(u"</AUTHOR>")
         return lines
 
@@ -192,10 +204,10 @@ class SciXMLWriter(BaseSciDocXMLWriter):
         lines=[]
         lines.append('<REFERENCE ID="%s">' % ref["id"])
         lines.extend(self.writeRefAuthors(doc,ref))
-        lines.append("<TITLE>%s</TITLE>" % ref["title"])
-        lines.append("<YEAR>%s</YEAR>" % ref["year"])
+        lines.append("<TITLE>%s</TITLE>" % escapeText(ref["title"]))
+        lines.append("<YEAR>%s</YEAR>" % escapeText(ref["year"]))
         if "journal" in ref:
-            lines.append("<JOURNAL>%s</JOURNAL>" % ref["journal"])
+            lines.append("<JOURNAL>%s</JOURNAL>" % escapeText(ref["journal"]))
         lines.append("</REFERENCE>")
         return lines
 
@@ -255,13 +267,10 @@ def basicTest():
 def main():
 ##    import minerva.db.corpora as cp
 ##    cp.useElasticCorpus()
+    print escapeText("balsdfbla & < >")
     pass
 
 
 if __name__ == '__main__':
     main()
 
-def saveSciXML(doc,filename):
-    """
-        Exports a SciDocJSON to a file in SciXML format
-    """

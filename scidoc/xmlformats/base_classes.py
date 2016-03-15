@@ -40,12 +40,17 @@ class BaseSciDocXMLReader(object):
         """
         raise NotImplementedError
 
-class BaseSciDocXMLWriter:
+class BaseSciDocXMLWriter(object):
+    """
+        Base class for all SciDoc writers.
+    """
     def __init__(self):
         pass
 
-    def write(self, doc, filename):
-        pass
+    def write(self, doc, filename=None):
+        """
+        """
+        raise NotImplementedError
 
 def main():
     pass

@@ -1,0 +1,11 @@
+beautifulsoup
+celery
+citeproc-py
+elasticsearch
+elasticsearch-dsl
+flask>=0.9
+flask-compress
+nltk>=2.0.4
+pandas
+pybtex>=0.19
+requests

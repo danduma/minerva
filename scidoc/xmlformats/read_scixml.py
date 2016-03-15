@@ -12,9 +12,9 @@ from BeautifulSoup import BeautifulStoneSoup
 
 from minerva.proc.general_utils import *
 
-import minerva.db.scidoc as scidoc
+from minerva.scidoc import SciDoc
 import minerva.db.corpora as cp
-from scidoc.xmlformats.base_classes import BaseSciDocXMLReader
+from minerva.scidoc.xmlformats.base_classes import BaseSciDocXMLReader
 
 all_azs=set([u'OTH', u'BKG', u'BAS', u'CTR', u'AIM', u'OWN', u'TXT']) # argumentative zones
 all_ais=set([u'OTH', u'BKG', u'OWN']) # intellectual attribution
@@ -60,19 +60,6 @@ def cleanxml(xmlstr):
     xmlstr=xmlstr.replace("  "," ").strip()
     return xmlstr
 
-def tryToExtractTitle(reftext):
-    """
-        If no <title> tag is available, try to strip everything else and make the remainder the title
-    """
-    reftext=re.sub(r"<reference.+?>","",reftext,0, re.IGNORECASE| re.DOTALL)
-    reftext=re.sub(r"</reference>","",reftext,0, re.IGNORECASE| re.DOTALL)
-    reftext=re.sub(r"<author>.*</author>","",reftext,0, re.IGNORECASE| re.DOTALL)
-    reftext=re.sub(r"<(\w+).*?>.*?</\1>","",reftext,0, re.IGNORECASE| re.DOTALL)
-    reftext=reftext.replace(", , , , and . . ","").replace(", , , and . .","")
-    reftext=reftext.replace(" and . . ","").replace(" and  ().","").replace(" and  .","").replace(" and , ","")
-    reftext=reftext.strip()
-    return reftext
-
 def processPlainTextAuthor(author):
     """
         Returns a dictionary with a processed author's name
@@ -104,7 +91,7 @@ class SciXMLReader(BaseSciDocXMLReader):
     """
     """
 
-    def processReference(ref, doc):
+    def processReference(self, ref, doc):
         """
             Process reference format, try to recover title, authors, date
         """
@@ -129,7 +116,7 @@ class SciXMLReader(BaseSciDocXMLReader):
         newref={"text":lines, "authors":authors, "surnames":surnames, "title":title, "year": date}
         doc["references"].append(newref)
 
-    def processReferenceXML(ref,doc, firstcall=True):
+    def processReferenceXML(self, ref, doc, firstcall=True):
         """
             Load a reference from the bibliography section
         """
@@ -139,19 +126,19 @@ class SciXMLReader(BaseSciDocXMLReader):
             """
             prevref=doc["references"][-1]
             doc["metadata"]["ref_replace_list"]=doc["metadata"].get("ref_replace_list",{})
-            id=""
+            ref_id=""
             try:
-                id=ref["id"]
-                if not id:
-                    id=prevref["id"]
+                ref_id=ref["id"]
+                if not ref_id:
+                    ref_id=prevref["id"]
                     if isinstance(id,basestring):
-                        id="ref"+str(len(doc["references"])+1)
+                        ref_id="ref"+str(len(doc["references"])+1)
                     elif isinstance(id,int):
-                        id=id+1
+                        ref_id=id+1
             except:
-                id="ref"+str(len(doc["references"])+1)
+                ref_id="ref"+str(len(doc["references"])+1)
 
-            doc["metadata"]["ref_replace_list"][id]=prevref["id"]
+            doc["metadata"]["ref_replace_list"][ref_id]=prevref["id"]
             doc["references"].remove(prevref)
 
             fullstring=re.sub(r"</reference>","",prevref["xml"],0,re.IGNORECASE)
@@ -221,7 +208,7 @@ class SciXMLReader(BaseSciDocXMLReader):
         return newref
 
 
-    def processCitationXML(intext):
+    def processCitationXML(self, intext):
         """
             Extract the authors, date of an in-text citation <ref> from XML dom
         """
@@ -246,7 +233,7 @@ class SciXMLReader(BaseSciDocXMLReader):
         else:
             return authors, date
 
-    def processCitation(intext):
+    def processCitation(self, intext):
         """
             Extract authors and date from in-text citation using plain text and regex
         """
@@ -269,7 +256,7 @@ class SciXMLReader(BaseSciDocXMLReader):
 
         return authors, year
 
-    def loadCitation(ref, sentence_id, newDocument, section):
+    def loadCitation(self, ref, sentence_id, newDocument, section):
         """
             Extract all info from <ref> tag, return dictionary
         """
@@ -303,7 +290,7 @@ class SciXMLReader(BaseSciDocXMLReader):
         res["parent_s"]=sentence_id
         return res
 
-    def findMatchingReferenceByOriginalId(id, doc):
+    def findMatchingReferenceByOriginalId(self, id, doc):
         """
             Returns a reference from the bibliography by its original_id if found, None otherwise
         """
@@ -312,7 +299,7 @@ class SciXMLReader(BaseSciDocXMLReader):
                 return ref
         return None
 
-    def matchCitationWithReference(intext,doc):
+    def matchCitationWithReference(self, intext,doc):
         """
             Matches an in-text reference with the bibliography
 
@@ -382,182 +369,171 @@ class SciXMLReader(BaseSciDocXMLReader):
     #   Corpus reference matching functions
     # ------------------------------------------------------------------------------
 
-    def buildHashIndex(index):
-        """
-            Takes the index of papers as input, outputs a dict where the keys are the hashes of each title
-        """
-        res={}
-        for doc in index:
-            title=normalizeTitle(doc["title"])
-            l=res.get(title,[])
-            l.append(doc)
-            doc["hash"]=title
-            res[title]=l
-        return res
 
-    def loadSciXML(filename):
-        """
-            Load a Cambridge-style SciXML
 
+    def extractSentenceText(s, newSent_id, doc):
         """
+            Returns a printable representation of the sentence where all references are now placeholders with numbers
+        """
+        global ref_rep_count
+        ref_rep_count=0
 
-        def extractSentenceText(s, newSent_id, doc):
+        newSent=doc.element_by_id[newSent_id]
+
+        def repFunc(match):
             """
-                Returns a printable representation of the sentence where all references are now placeholders with numbers
             """
             global ref_rep_count
-            ref_rep_count=0
+            ref_rep_count+=1
 
-            newSent=doc.element_by_id[newSent_id]
+            res=" <CIT ID="+str(doc.citation_by_id[newSent["citations"][ref_rep_count-1]]["id"])+" />"
+            return res
 
-            def repFunc(match):
-                """
-                """
-                global ref_rep_count
-                ref_rep_count+=1
+        text=s.renderContents()
+        text=re.sub(r"<ref.*?</ref>",repFunc,text,0,re.IGNORECASE|re.DOTALL)
+        text=re.sub(r"</?refauthor>","",text,0,re.IGNORECASE|re.DOTALL)
+        return text
 
-                res=" <CIT ID="+str(doc.citation_by_id[newSent["citations"][ref_rep_count-1]]["id"])+" />"
-                return res
+    def loadStructureProcessPara(p, newDocument, parent):
+        newPar_id=newDocument.addParagraph(parent)
 
-            text=s.renderContents()
-            text=re.sub(r"<ref.*?</ref>",repFunc,text,0,re.IGNORECASE|re.DOTALL)
-            text=re.sub(r"</?refauthor>","",text,0,re.IGNORECASE|re.DOTALL)
-            return text
+        for s in p.findChildren("s"):
+            newSent_id=newDocument.addSentence(newPar_id, "")
+            newSent=newDocument.element_by_id[newSent_id]
+            loadAttributesIfPresent(s,["ia","az","refid"],newSent)
+            refs=s.findAll("ref")
+            num=len(newDocument["citations"])+1
+##            for cit in citations:
+##                r["citation_id"]=num
+##                num+=1
+            loaded_refs=[loadCitation(r, newSent_id, newDocument, parent) for r in refs]
 
-        def loadStructureProcessPara(p, newDocument, parent):
-            newPar_id=newDocument.addParagraph(parent)
+            newSent["citations"]=[aref["id"] for aref in loaded_refs]
+            newSent["text"]=extractSentenceText(s, newSent_id, newDocument)
+            newDocument.countMultiCitations(newSent) # deal with many citations within characters of each other: make them know they are a cluster TODO cluster them
 
-            for s in p.findChildren("s"):
-                newSent_id=newDocument.addSentence(newPar_id, "")
-                newSent=newDocument.element_by_id[newSent_id]
-                loadAttributesIfPresent(s,["ia","az","refid"],newSent)
-                refs=s.findAll("ref")
-                num=len(newDocument["citations"])+1
-    ##            for cit in citations:
-    ##                r["citation_id"]=num
-    ##                num+=1
-                loaded_refs=[loadCitation(r, newSent_id, newDocument, parent) for r in refs]
+        return newPar_id
 
-                newSent["citations"]=[aref["id"] for aref in loaded_refs]
-                newSent["text"]=extractSentenceText(s, newSent_id, newDocument)
-                newDocument.countMultiCitations(newSent) # deal with many citations within characters of each other: make them know they are a cluster TODO cluster them
+    def loadStructureProcessDiv(div, newDocument):
+        header=div.find("header")
+        if not header:
+            header_id=0
+            header_text=""
+        else:
+            header_id=header["id"] or 0
+            header_text=re.sub(r"</?header.*?>","",header.__repr__())
 
-            return newPar_id
+        newSection_id=newDocument.addSection("root",header_text, header_id)
 
-        def loadStructureProcessDiv(div, newDocument):
-            header=div.find("header")
-            if not header:
-                header_id=0
-                header_text=""
-            else:
-                header_id=header["id"] or 0
-                header_text=re.sub(r"</?header.*?>","",header.__repr__())
+        for p in div.findAll("p"):
+            newPar_id=loadStructureProcessPara(p, newDocument, newSection_id)
 
-            newSection_id=newDocument.addSection("root",header_text, header_id)
+    def loadMetadataIfExists(branch, key, doc):
+        meta=branch.find(key)
+        if meta:
+            doc["metadata"][key]=meta.text
 
-            for p in div.findAll("p"):
-                newPar_id=loadStructureProcessPara(p, newDocument, newSection_id)
+    def loadAttributesIfPresent(branch, attributes, sent):
+        """
+            For each element in attributes, if present in branch, it is added to sent
+        """
+        for a in attributes:
+            if branch.has_key(a):
+                sent[a]=branch[a]
 
-        def loadMetadataIfExists(branch, key, doc):
-            meta=branch.find(key)
-            if meta:
-                doc["metadata"][key]=meta.text
+    def loadMetadata(newDocument,paper, fileno):
+        """
+            Does all the painful stuff of trying to recover metadata from inside a badly converted
+            SciXML file
+        """
+        title=paper.findChildren("title")
+        newDocument["metadata"]["title"]=title[0].text if len(title) > 0 else "NO TITLE"
 
-        def loadAttributesIfPresent(branch, attributes, sent):
-            """
-                For each element in attributes, if present in branch, it is added to sent
-            """
-            for a in attributes:
-                if branch.has_key(a):
-                    sent[a]=branch[a]
+        if fileno=="":
+            fileno=paper.find("fileno").text
 
-        def loadMetadata(newDocument,paper, fileno):
-            """
-                Does all the painful stuff of trying to recover metadata from inside a badly converted
-                SciXML file
-            """
-            title=paper.findChildren("title")
-            newDocument["metadata"]["title"]=title[0].text if len(title) > 0 else "NO TITLE"
+        newDocument["metadata"]["fileno"]=fileno
 
-            if fileno=="":
-                fileno=paper.find("fileno").text
+        authors=[]
+        meta=soup.find("metadata")
+        if not meta:
+            debugAddMessage(newDocument,"error","NO METADATA IN DOCUMENT! file:"+filename)
+            return newDocument
 
-            newDocument["metadata"]["fileno"]=fileno
+        for a in meta.findChildren("author"):
+            authors.append(processPlainTextAuthor(a.text))
 
-            authors=[]
-            meta=soup.find("metadata")
-            if not meta:
-                debugAddMessage(newDocument,"error","NO METADATA IN DOCUMENT! file:"+filename)
-                return newDocument
+        if authors==[]:
+            authorlist=soup.find("authorlist")
 
-            for a in meta.findChildren("author"):
-                authors.append(processPlainTextAuthor(a.text))
+        if authorlist:
+            for author in authorlist.findChildren("refauthor"):
+                authors.append(author.text)
 
-            if authors==[]:
-                authorlist=soup.find("authorlist")
+        appeared=meta.find("appeared")
+        if appeared:
+            loadMetadataIfExists(appeared, "conference", newDocument)
+            loadMetadataIfExists(appeared, "year", newDocument)
 
-            if authorlist:
-                for author in authorlist.findChildren("refauthor"):
-                    authors.append(author.text)
+        newDocument["metadata"]["authors"]=authors
+        newDocument["metadata"]["year"]=meta.find("year").text
 
-            appeared=meta.find("appeared")
-            if appeared:
-                loadMetadataIfExists(appeared, "conference", newDocument)
-                loadMetadataIfExists(appeared, "year", newDocument)
+    def sanitizeString(s, maxlen=200):
+        s=s.replace("\t"," ")
+        s=s[:maxlen]
+        return s
 
-            newDocument["metadata"]["authors"]=authors
-            newDocument["metadata"]["year"]=meta.find("year").text
+    def makeSureValuesAreReadable(newDocument):
+        """
+            This is to fix bad bobscixml. Remove?
+        """
+        newDocument["metadata"]["title"]=sanitizeString(newDocument["metadata"]["title"])
+        newAuthors=[]
+        for author in newDocument["metadata"]["authors"]:
+            newAuthors.append(sanitizeString(author,70))
+        newDocument["metadata"]["authors"]=newAuthors
 
-        def sanitizeString(s, maxlen=200):
-            s=s.replace("\t"," ")
-            s=s[:maxlen]
-            return s
+        newSurnames=[]
+        for surname in newDocument["metadata"]["surnames"]:
+            newSurnames.append(sanitizeString(surname,25))
+        newDocument["metadata"]["surnames"]=newSurnames
 
-        def makeSureValuesAreReadable(newDocument):
-            newDocument["metadata"]["title"]=sanitizeString(newDocument["metadata"]["title"])
-            newAuthors=[]
-            for author in newDocument["metadata"]["authors"]:
-                newAuthors.append(sanitizeString(author,70))
-            newDocument["metadata"]["authors"]=newAuthors
+        newDocument["metadata"]["year"]=sanitizeString(newDocument["metadata"]["year"])
+        if newDocument["metadata"].has_key("conference"):
+            newDocument["metadata"]["conference"]=sanitizeString(newDocument["metadata"]["conference"])
 
-            newSurnames=[]
-            for surname in newDocument["metadata"]["surnames"]:
-                newSurnames.append(sanitizeString(surname,25))
-            newDocument["metadata"]["surnames"]=newSurnames
+    def matchCitationsWithReferences(newDocument):
+        """
+            Match each citation with its reference
+        """
+        allcitations=[]
+        for s in newDocument.allsentences:
+            for citation_id in s["citations"]:
+                cit=newDocument.citation_by_id[citation_id]
 
-            newDocument["metadata"]["year"]=sanitizeString(newDocument["metadata"]["year"])
-            if newDocument["metadata"].has_key("conference"):
-                newDocument["metadata"]["conference"]=sanitizeString(newDocument["metadata"]["conference"])
+                if cit["ref_id"] != 0: # the citation already has a matching reference id in the original document, use it
+                    match=findMatchingReferenceByOriginalId(cit["ref_id"],newDocument)
+                    if not match:
+##                        print cit
+                        match=newDocument.matchReferenceById(cit["ref_id"])
+                else:
+                    # attempt to guess which reference the citation should point to
+                    match=matchCitationWithReference(cit["original_text"],newDocument)
 
-        def matchCitationsWithReferences(newDocument):
-            """
-                Match each citation with its reference
-            """
-            allcitations=[]
-            for s in newDocument.allsentences:
-                for citation_id in s["citations"]:
-                    cit=newDocument.citation_by_id[citation_id]
+                if match:
+                    # whatever the previous case, make sure citation points to the ID of its reference
+                    cit["ref_id"]=match["id"]
+                    match["citations"].append(cit["id"]) # add the citation ID to the reference's list of citations
+                    cit.pop("authors","")
+                    cit.pop("date","")
+                    cit.pop("original_text","")
+                else:
+                    debugAddMessage(newDocument,"notes","NO MATCH for CITATION in REFERENCES: "+ cleanxml(cit["original_text"])+", ")
+                    pass
 
-                    if cit["ref_id"] != 0: # the citation already has a matching reference id in the original document, use it
-                        match=findMatchingReferenceByOriginalId(cit["ref_id"],newDocument)
-                        if not match:
-    ##                        print cit
-                            match=newDocument.matchReferenceById(cit["ref_id"])
-                    else:
-                        # attempt to guess which reference the citation should point to
-                        match=matchCitationWithReference(cit["original_text"],newDocument)
-
-                    if match:
-                        # whatever the previous case, make sure citation points to the ID of its reference
-                        cit["ref_id"]=match["id"]
-                        match["citations"].append(cit["id"]) # add the citation ID to the reference's list of citations
-                        cit.pop("authors","")
-                        cit.pop("date","")
-                        cit.pop("original_text","")
-                    else:
-                        debugAddMessage(newDocument,"notes","NO MATCH for CITATION in REFERENCES: "+ cleanxml(cit["original_text"])+", ")
-                        pass
-
+    def read(self, xml, identifier):
+        """
+        """
         # main loadSciXML
         text=loadFileText(filename)
         soup=BeautifulStoneSoup(text)
@@ -566,7 +542,7 @@ class SciXMLReader(BaseSciDocXMLReader):
         fileno=fileno.text if fileno else ""
 
         # Create a new SciDoc to store the paper
-        newDocument=scidoc.SciDoc()
+        newDocument=SciDoc()
         newDocument["metadata"]["filename"]=os.path.basename(filename)
         newDocument["metadata"]["filepath"]=filename
 
@@ -628,123 +604,6 @@ class SciXMLReader(BaseSciDocXMLReader):
 
         return newDocument
 
-
-
-
-def authorOverlap(authors,surnames):
-    """
-        Computes a 0 to 1 score for author overlap
-    """
-    match=0
-
-    for s in surnames:
-        for a in authors:
-            au=a["family"].lower()
-            s=s.lower()
-            if s in au:
-                match+=1
-                break
-
-    if len(surnames) > 0:
-        return match/float(len(surnames))
-    else:
-        return 0
-
-
-def matchGenericSection(header, prev):
-    """
-        Returns what generic section you're in
-    """
-    # word overlap scores?
-    sections={"Introduction":"introduction",
-    "Abstract":"abstract",
-    "Conclusion":"conclusion concluding remarks conclusions",
-    "Future work": "future future future",
-    "Data":"data corpus cp statistics dataset datasets corpus corpus",
-    "Related work":"previous work related works comparison",
-    "Results/Discussion":"discussion discussions results",
-    "Problem":"problem task",
-    "Motivation":"background motivation problem formalism idea example investigating",
-    "Methodology":"methods method methodology feature features algorithm heuristic our approach preprocessing model training measure measures framework",
-    "Implementation":"implementation overview",
-    "Experiments":"experiment experiments experimental experimentation",
-    "Evaluation":"evaluation evaluating judgement analysis test performance",
-    "Acknowledgements": "acknowledgements"
-    }
-
-    for s in sections:
-        sections[s]=sections[s].split()
-
-    scores={"":0}
-    words=re.sub(r"[\d\.,-:;\s]{1,30}"," ",header.lower()).strip().split()
-    wdict={}
-    for w in words:
-        wdict[w]=wdict.get(w,0)+1
-
-    for w in wdict:
-        for s in sections:
-            for w2 in sections[s]:
-                if w==w2:
-                    scores[s]=scores.get(s,0)+wdict[w]
-
-    res=sorted(scores.iteritems(),key=lambda x:x[1],reverse=True)[0]
-    return res[0]
-
-def matchCoreSC(section,prev):
-    """
-        Returns the CoreSC equivalent of the current section
-    """
-    CSC=['Hypothesis', 'Motivation', 'Goal', 'Object', 'Background', 'Method', 'Experiment', 'Model',
- 'Observation', 'Result', 'Conclusion']
-    header=section["header"].lower()
-    match1=re.match(r"\s*\d\.\d(\.\d)*.*",header)
-    if match1: # is subheader
-        #can ignore
-        pass
-
-    for c in [c.lower() for c in CSC]:
-        if c in header:
-            print "yay",c+"!"
-
-    print header
-
-def writeTuplesToCSV(columns,tuples,filename):
-    """
-    """
-    try:
-        f=codecs.open(filename,"wb","utf-8", errors="replace")
-    except:
-        f=codecs.open(filename+str(random.randint(10,100)),"wb","utf-8", errors="replace")
-
-    line=u"".join([c+u"\t" for c in columns])
-    line=line.strip(u"\t")
-    line+=u"\n"
-    f.write(line)
-
-    pattern=u"".join([u"%s\t" for c in columns])
-    pattern=pattern.strip()
-    pattern+=u"\n"
-
-    for l in tuples:
-        try:
-            line=pattern % l
-            f.write(line)
-        except:
-            print "error writing: ", l
-
-    f.close()
-
-def loadOrProcessSciXML(filename):
-    """
-    """
-    doc=cp.Corpus.loadSciDoc(cp.Corpus.getFileUID(filename))
-    if not doc:
-        doc=loadSciXML(cp.Corpus.inputXML_dir+filename)
-        ensureDirExists(cp.Corpus.jsonDocs_dir)
-##        cp.Corpus.savePickledXML(filename,doc)
-        cp.Corpus.saveSciDoc(doc)
-##        doc.saveToFile(cp.Corpus.jsonDocs_dir+doc["guid"]+".json")
-    return doc
 
 def main():
     cp.Corpus.connectCorpus("C:\\nlp\\phd\\bob")
