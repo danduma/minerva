@@ -54,7 +54,7 @@ def getFeatureSliceOfDocument(features,sentence,doc, history=None):
         Returns the slice (out of 2) of the document the sentence's section falls into
     """
     NUM_SLICES=2
-    features["F_slice_of_document"]=1+((sentence["section_counter"]*NUM_SLICES)/len(doc.allsections))
+    features["F_slice_of_document"]=1+((sentence.get("section_counter",0)*NUM_SLICES)/len(doc.allsections))
 
 def getFeatureSentenceLengthMultiples3(features,sentence,doc, history=None):
     """

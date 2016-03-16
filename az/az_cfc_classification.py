@@ -44,7 +44,8 @@ class AZannotator:
                 feature(features,sentence,doc, None)
 
             for feature in AZ_precomputed_features:
-                features["F_"+feature]=sentence[feature]
+                if feature in sentence:
+                    features["F_"+feature]=sentence[feature]
 
             formPat.extractFeatures(sentence["text"],features) # formulaic patterns
             formPat.extractFeatures(sentence["text"],features,True) # agent patterns

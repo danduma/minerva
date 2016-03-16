@@ -48,6 +48,37 @@ def exportSciXML():
         cp.Corpus.saveSciDoc(doc)
         progress.showProgressReport("Exporting -- %s" % guid)
 
+
+def ownAZannot(export_annots=False):
+    """
+    """
+    from minerva.az.az_cfc_classification import AZannotator
+
+    annot=AZannotator("trained_az_classifier.pickle")
+
+    papers=cp.Corpus.listPapers(max_results=sys.maxint)
+
+    writer=AZPrimeWriter()
+    writer.save_pos_tags=True
+##    papers=papers[:1]
+    progress=ProgressIndicator(True, len(papers),False)
+
+    print("Producing annotations for SciDocs...")
+    for guid in papers:
+        doc=cp.Corpus.loadSciDoc(guid)
+        annot.annotateDoc(doc)
+        if export_annots:
+            output_filename=os.path.join(cp.Corpus.paths.output, doc.metadata["guid"]+".annot.txt")
+            output_file=open(output_filename,"w")
+            for sentence in doc.allsentences:
+                output_file.write(sentence.get("az","")+"\n")
+            output_file.close()
+        else:
+            cp.Corpus.saveSciDoc(doc)
+
+        progress.showProgressReport("Annotating -- %s" % guid)
+
+
 def loadAZLabels():
     """
     """
@@ -74,7 +105,8 @@ def annotateCorpus():
 
 def main():
     connectToCorpus()
-    exportSciXML()
+##    exportSciXML()
+    ownAZannot()
     pass
 
 
