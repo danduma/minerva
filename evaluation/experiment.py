@@ -76,13 +76,13 @@ class Experiment(object):
         self.options=options
 
         if cp.Corpus.__class__.__name__ == "ElasticCorpus":
-            from elastic_index import ElasticIndexer
-            from elastic_retrieval import ElasticRetrievalBoost
+            from minerva.retrieval.elastic_index import ElasticIndexer
+            from minerva.retrieval.elastic_retrieval import ElasticRetrievalBoost
             self.indexer=ElasticIndexer(use_celery=self.use_celery)
             self.retrieval_class=ElasticRetrievalBoost
         elif cp.Corpus.__class__.__name__ == "LocalCorpus":
-            from lucene_index import LuceneIndexer
-            from lucene_retrieval import LuceneRetrievalBoost
+            from minerva.retrieval.lucene_index import LuceneIndexer
+            from minerva.retrieval.lucene_retrieval import LuceneRetrievalBoost
             self.indexer=LuceneIndexer()
             self.retrieval_class=LuceneRetrievalBoost
 

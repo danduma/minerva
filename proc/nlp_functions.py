@@ -160,6 +160,53 @@ def formatSentenceForIndexing(s, no_stemming=False):
     text=unTokenize(tokens)
     return text
 
+def selectSentencesToAdd(docfrom,cit,param):
+    """
+        Returns a list of sentences to include based on the [param]
+
+        Args:
+            docfrom: SciDoc we are extracting from
+            cit: citation dict
+            param: ["paragraph", "1only", "[n]up_[n]down[_crosspar]"]
+    """
+    sent=docfrom.element_by_id[cit["parent_s"]]
+    para=docfrom.element_by_id[sent["parent"]]
+
+    match=re.search(r"(?:(?:(\d)up)_?(?:(\d)down)?(_withinpara)?)|(paragraph)|(1only)",param)
+    assert(match)
+
+    context={"ilc_AZ_"+zone:"" for zone in AZ_ZONES_LIST}
+    for zone in CORESC_LIST:
+        context["ilc_CSC_"+zone]=""
+    to_add=[]
+
+    if match.group(4): # paragraph
+        to_add=para["content"]
+    elif match.group(5): # 1only
+        to_add=[cit["parent_s"]]
+    else:               #1up_1down, etc
+        sent_up=int(match.group(1)) if match.group(1) else 0
+        sent_down=int(match.group(2)) if match.group(2) else 0
+        within_par=int(match.group(3) != None)
+
+
+        if not within_par:
+            all_sentence_ids=[s["id"] for s in docfrom.allsentences]
+        else:
+            all_sentence_ids=para["content"]
+
+        index=all_sentence_ids.index(cit["parent_s"])
+        if index > 0:
+            to_add.extend(all_sentence_ids[index-sent_up:index])
+
+        to_add.append(cit["parent_s"])
+
+        if index < len(docfrom.allsentences)-1:
+            to_add.extend(all_sentence_ids[index+1:index+1+sent_down])
+
+    return to_add
+
+
 def removePunctuation(tokens):
     return [token for token in tokens if token not in punctuation]
 

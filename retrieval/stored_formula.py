@@ -98,7 +98,7 @@ class StoredFormula:
 ##        computed_value=self.truncate(self.computeScore(defaultdict(lambda:1),self.round_to_decimal_places))
 ##        assert(computed_value == original_value)
 
-    def fromElasticExplanation(self,explanation):
+    def fromElasticExplanation(self,explanation,save_terms=False):
         """
             Loads the formula from a Lucene explanation
         """
@@ -129,10 +129,16 @@ class StoredFormula:
                         # if the queryWeight is 1, .explain() will not report it
 ##                        new_element={"type":"hit", "field":field_name, "qw": 1.0, "fw":elem["value"]}
                         # (field_name,query_weight,field_weight)
-                        new_element=(field_name, 1.0, elem["value"])
+                        if save_terms:
+                            new_element=(field_name, 1.0, elem["value"],"<term>")
+                        else:
+                            new_element=(field_name, 1.0, elem["value"])
                     else:
                         elements=elem["details"]
-                        new_element=(field_name, elements[0]["value"], elements[1]["value"])
+                        if save_terms:
+                            new_element=(field_name, elements[0]["value"], elements[1]["value"], "<term>")
+                        else:
+                            new_element=(field_name, elements[0]["value"], elements[1]["value"])
 ##                        new_element={"type":"hit", "field":field_name, "qw": elements[0]["value"], "fw":elements[1]["value"]}
                 elif detail["description"].startswith("match on required clause, product of"):
                     new_element={"type":"const", "value":detail["value"]}
@@ -169,7 +175,7 @@ class StoredFormula:
         """
             Recomputation of a Lucene explain formula using the values in
             [parameters] as per-field query weights. Recursive. Call with
-            formula.formula first.
+            formula.formula as parameter first, it will iterate from there.
 
             :param part: tuple, list or dict
             :returns: floating-point score

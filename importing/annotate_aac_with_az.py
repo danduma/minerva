@@ -26,7 +26,7 @@ from minerva.proc.results_logging import ProgressIndicator
 def connectToCorpus():
     """
     """
-    from minerva.squad.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
+    from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
 ##    cp.useLocalCorpus()
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)

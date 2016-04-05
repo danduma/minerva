@@ -12,7 +12,18 @@ from multiprocessing import Pool, cpu_count
 from sklearn import cross_validation
 
 from pipeline_functions import getDictOfTestingMethods
-from run_single_formula import runSingleFormula
+
+##def runSingleFormula(result_tuple):
+##    """
+##        Computes the score of a single formula given the parameters
+##
+##        :param result_tuple: this was to run with multiprocessing. Tuple of
+##            2 elementS: (unique_result, parameters)
+##    """
+##    unique_result, parameters = result_tuple
+##    formula=StoredFormula(unique_result["formula"])
+##    score=formula.computeScore(formula.formula, parameters)
+##    return (score,{"guid":unique_result["guid"]})
 
 def runPrecomputedQuery(retrieval_results, parameters):
     """
@@ -29,7 +40,10 @@ def runPrecomputedQuery(retrieval_results, parameters):
 ##    pool.close()
 ##    pool.join()
     for unique_result in retrieval_results:
-        scores.append(runSingleFormula([unique_result,parameters]))
+        formula=StoredFormula(unique_result["formula"])
+        score=formula.computeScore(formula.formula, parameters)
+        scores.append((score,{"guid":unique_result["guid"]}))
+##        scores.append(runSingleFormula([unique_result,parameters]))
 
     scores.sort(key=lambda x:x[0],reverse=True)
     return scores

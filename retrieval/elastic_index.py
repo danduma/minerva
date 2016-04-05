@@ -9,7 +9,7 @@ import json
 
 from elasticsearch import Elasticsearch
 from base_index import BaseIndexer
-from elastic_retrieval import ES_TYPE_DOC
+from minerva.retrieval.elastic_retrieval import ES_TYPE_DOC
 import index_functions
 from elastic_writer import ElasticWriter
 

@@ -6,9 +6,7 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
-import json, logging
-from string import punctuation
-from collections import namedtuple
+import logging
 
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionError
@@ -24,7 +22,7 @@ class ElasticRetrieval(BaseRetrieval):
     """
         Interfaces with the Elasticsearch API
     """
-    def __init__(self, index_name, method, logger=None, use_default_similarity=True, max_results=None, es_instance=None):
+    def __init__(self, index_name, method, logger=None, use_default_similarity=True, max_results=None, es_instance=None, save_terms=False):
         self.index_name=index_name
         if es_instance:
             self.es=es_instance
@@ -38,6 +36,7 @@ class ElasticRetrieval(BaseRetrieval):
         self.method=method # never used?
         self.logger=logger
         self.last_query={}
+        self.save_terms=save_terms
 
     def rewriteQueryAsDSL(self, structured_query, parameters):
         """
@@ -60,10 +59,13 @@ class ElasticRetrieval(BaseRetrieval):
 
         for  token in structured_query:
             # TODO proper computing of the boost formula. Different methods?
-            boost=token["boost"]*token["count"]
-            bool_val=token.get("bool", None) or ""
+##            boost=token["boost"]*token["count"]
+            boost=token.boost*token.count
+##            bool_val=token.get("bool", None) or ""
+            bool_val=token.bool or ""
 
-            lucene_query+="%s%s" % (bool_val,token["token"])
+##            lucene_query+="%s%s" % (bool_val,token["token"])
+            lucene_query+="%s%s" % (bool_val,token.token)
             if boost != 1:
                 lucene_query+="^%s" %str(boost)
             lucene_query+=" "
@@ -146,7 +148,7 @@ class ElasticRetrieval(BaseRetrieval):
 
         formula=StoredFormula()
         if explanation:
-            formula.fromElasticExplanation(explanation)
+            formula.fromElasticExplanation(explanation, self.save_terms)
         return formula
 
 class ElasticRetrievalBoost(ElasticRetrieval):
@@ -154,8 +156,9 @@ class ElasticRetrievalBoost(ElasticRetrieval):
         Use ElasticSearch for retrieval boosting different (AZ) fields differently
     """
 
-    def __init__(self, index_path, method, logger=None, use_default_similarity=False, max_results=None):
-        ElasticRetrieval.__init__(self, index_path, method, logger, use_default_similarity, max_results)
+    def __init__(self, index_name, method, logger=None, use_default_similarity=True, max_results=None, es_instance=None, save_terms=False):
+        super(self.__class__,self).__init__(index_name, method, logger, use_default_similarity, max_results, es_instance, save_terms)
+        self.return_fields=["guid"]
 
     def runQuery(self, structured_query, parameters, test_guid, max_results=None):
         """
@@ -182,7 +185,7 @@ class ElasticRetrievalBoost(ElasticRetrieval):
                     size=max_results,
                     index=self.index_name,
                     doc_type=ES_TYPE_DOC,
-                    _source=["guid"],
+                    _source=self.return_fields,
                     request_timeout=QUERY_TIMEOUT,
                     )
 
@@ -215,7 +218,8 @@ class ElasticRetrievalBoost(ElasticRetrieval):
         result=[]
         for hit in hits:
 ##            metadata= hit["_source"]["metadata"]
-            result.append((hit["_score"],{"guid":hit["_source"]["guid"]}))
+##            result.append((hit["_score"],{"guid":hit["_source"]["guid"]}))
+            result.append((hit["_score"],hit["_source"]))
 
         if self.logger and self.logger.full_citation_id in self.logger.citations_extra_info:
             print(query_text,"\n", hits, "\n", result, "\n")

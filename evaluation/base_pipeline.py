@@ -11,7 +11,7 @@ import os, sys, json
 from copy import deepcopy
 from collections import OrderedDict
 
-from base_retrieval import BaseRetrieval, MAX_RESULTS_RECALL
+from minerva.retrieval.base_retrieval import BaseRetrieval, MAX_RESULTS_RECALL
 
 import minerva.db.corpora as cp
 from minerva.proc.results_logging import ResultsLogger, ProgressIndicator
@@ -42,6 +42,7 @@ class BaseTestingPipeline(object):
         self.files_dict={}
         self.main_all_doc_methods={}
         self.current_all_doc_methods={}
+        self.save_terms=False
 
     def loadModel(self, guid):
         """
@@ -159,7 +160,8 @@ class BaseTestingPipeline(object):
                         model["method"],
                         logger=None,
                         use_default_similarity=self.exp["use_default_similarity"],
-                        max_results=self.exp["max_results_recall"])
+                        max_results=self.exp["max_results_recall"],
+                        save_terms=self.save_terms)
 
         self.main_all_doc_methods=all_doc_methods
 
@@ -241,7 +243,6 @@ class BaseTestingPipeline(object):
 ##        rank_per_method=defaultdict(lambda:[])
 ##        precision_per_method=defaultdict(lambda:[])
 
-        # this is for counting overlaps only
         previous_guid=""
 
         #=======================================

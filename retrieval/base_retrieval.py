@@ -51,10 +51,13 @@ class BaseRetrieval(object):
             for qindex, token in enumerate(structured_query):
 
                 # TODO proper computing of the boost formula. Different methods?
-                boost=parameters[param]*token["boost"]*token["count"]
-                bool=token.get("bool", None) or ""
+                boost=parameters[param]*token.boost*token.count
+##                boost=parameters[param]*token["boost"]*token["count"]
+                bool=token.bool or ""
+##                bool=token.get("bool", None) or ""
 
-                lucene_query+=bool+param+":\""+token["token"]+"\"^"+str(boost)+" "
+                lucene_query+=bool+param+":\""+token.token+"\"^"+str(boost)+" "
+##                lucene_query+=bool+param+":\""+token["token"]+"\"^"+str(boost)+" "
                 if qindex < len(structured_query)-1:
                     lucene_query+=" OR "
 

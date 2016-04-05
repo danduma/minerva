@@ -37,11 +37,13 @@ def prebuildMulti(method_name, parameters, function, doc, doctext, guid, force_p
         :param force_prebuild: if False, only build BOWs that are not in the db already
     """
     assert isinstance(parameters, list)
+
     if not force_prebuild:
         params=cp.Corpus.selectBOWParametersToPrebuild(guid,method_name,parameters)
     else:
         params=parameters
 
+    all_bows=[]
     if len(params) > 0:
         if isinstance(function,basestring):
             function=prebuildFunction(function)

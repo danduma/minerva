@@ -8,14 +8,13 @@
 
 from __future__ import print_function
 
-import re, os, json, sys
+import re, json, sys
 
 from string import punctuation
 from copy import deepcopy
 
 from BeautifulSoup import BeautifulStoneSoup
 from minerva.proc.general_utils import loadFileText
-from minerva.scidoc.reference_formatting import formatReference
 from minerva.scidoc.citation_utils import removeACLCitations, removeURLs
 from minerva.proc.nlp_functions import tokenizeText
 from minerva.scidoc.scidoc import SciDoc
@@ -268,9 +267,11 @@ class AtharQueryGenerator(QueryGenerator):
     """
     def __init__(self, filename, reassign_guids=False):
         """
-            Args:
-                filename: converted contexts file
+            :param filename: converted contexts file
+            :param reassign_guids: if True, it tries to match again each reference
+                from the paper with its metadata in the corpus
         """
+        super(self.__class__,self).__init__()
         self.docs=json.load(file(filename,"r"))
         for doc_id in self.docs:
             assert doc_id != ""
@@ -316,7 +317,6 @@ class AtharQueryGenerator(QueryGenerator):
         doc=self.loadSciDoc(guid) # load the SciDoc JSON from the corpus
         if not doc:
             raise ValueError("ERROR: Couldn't load SciDoc: %s" % guid)
-            return None
 
         doctext=doc.getFullDocumentText() #  store a plain text representation
 
@@ -396,8 +396,6 @@ def corpusStatistics(infile):
         Prints out statistics about the annotated contexts
     """
     data=json.load(file(infile,"r"))
-    stats={}
-    num_files=len(data)
     sources=[]
     targets=[]
 
@@ -406,7 +404,8 @@ def corpusStatistics(infile):
     for context in data:
         for line in context["lines"]:
             sent=line["sentiment"]
-            if not sent: sent="x"
+            if not sent:
+                sent="x"
             sentiments[sent]=sentiments.get(sent,0)+1
             for s in sent:
                 unique_sentiments[s]=unique_sentiments.get(s,0)+1
@@ -428,7 +427,7 @@ def corpusStatistics(infile):
 
 def main():
     drive="g"
-    processAtharCorpus(drive+r":\NLP\PhD\citation_context\*.html", drive+":\NLP\PhD\citation_context\doc_dict.json",)
+    processAtharCorpus(drive+r":\NLP\PhD\citation_context\*.html", drive+r":\NLP\PhD\citation_context\doc_dict.json",)
 ##    corpusStatistics(drive+r":\NLP\PhD\citation_context\all_contexts.json")
 
 ##    contexts=loadProcessedContexts(r"G:\NLP\PhD\citation_context\all_contexts.json")

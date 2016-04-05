@@ -29,7 +29,7 @@ def import_sapienta_pmc_corpus():
     """
         Do the importing of the Sapienta-annotated PMC corpus
     """
-    from minerva.squad.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
+    from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
     importer=CorpusImporter(reader=SapientaJATSXMLReader())
     importer.collection_id="PMC_CSC"
     importer.import_id="initial"

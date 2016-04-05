@@ -1,4 +1,4 @@
-# <purpose>
+# Pipeline that precomputes the retrieval results that can be used for weight training afterwards
 #
 # Copyright:   (c) Daniel Duma 2015
 # Author: Daniel Duma <danielduma@gmail.com>
@@ -10,16 +10,10 @@ from __future__ import print_function
 import json, os, time
 
 from base_pipeline import BaseTestingPipeline
-from base_retrieval import BaseRetrieval
+from minerva.retrieval.base_retrieval import BaseRetrieval
 
-##from celery.task import TaskSet
-##from celery import group
 from celery.result import ResultSet
 
-##from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
-##from minerva.proc.results_logging import ResultsLogger, ProgressIndicator
-
-##import minerva.db.corpora as cp
 from minerva.db.result_store import createResultStorers
 from precompute_functions import addPrecomputeExplainFormulas
 from minerva.squad.tasks import precomputeFormulasTask
@@ -117,14 +111,8 @@ class PrecomputedPipeline(BaseTestingPipeline):
         """
             Executes after the retrieval is done.
         """
-
-##        task_set=TaskSet()
-##        task_set.apply_async()
-
         if self.use_celery:
             print("Waiting for tasks to complete...")
-##            task_group=group(self.tasks)
-##            res=task_group()
             res=ResultSet(self.tasks)
             while not res.ready():
                 try:
@@ -136,28 +124,6 @@ class PrecomputedPipeline(BaseTestingPipeline):
 
         for writer in self.writers:
             self.writers[writer].saveAsJSON(os.path.join(self.exp["exp_dir"],self.writers[writer].table_name+".json"))
-
-    def checkPrecomputedRetrievalWorks(self, retrieval_result, doc_method, query, parameters, guid):
-        """
-            Compares the results of retrieval and those of running on the stored
-            formulas to test it is all doing what it should.
-        """
-        pass
-##        test_logger=ResultsLogger(False,False)
-##        result_dict1={"match_guid":retrieval_result["match_guid"],"query_method":retrieval_result["query_method"],"doc_method":doc_method}
-##        result_dict2={"match_guid":retrieval_result["match_guid"],"query_method":retrieval_result["query_method"],"doc_method":doc_method}
-##        result_dict1=test_logger.measureScoreAndLog(runPrecomputedQuery(retrieval_result,parameters),retrieval_result["citation_multi"],result_dict1)
-##        retrieved=actual_tfidfmodels[doc_method].runQuery(query["query_text"],parameters,guid)
-##        result_dict2=test_logger.measureScoreAndLog(retrieved,retrieval_result["citation_multi"],result_dict2)
-##        assert(result_dict1["precision_score"]==result_dict2["precision_score"])
-##
-##        parameters={x:y for y,x in enumerate(all_doc_methods[doc_method]["runtime_parameters"])}
-##        result_dict1={"match_guid":retrieval_result["match_guid"],"query_method":retrieval_result["query_method"],"doc_method":doc_method}
-##        result_dict2={"match_guid":retrieval_result["match_guid"],"query_method":retrieval_result["query_method"],"doc_method":doc_method}
-##        result_dict1=test_logger.measureScoreAndLog(runPrecomputedQuery(retrieval_result,parameters),retrieval_result["citation_multi"],result_dict1)
-##        retrieved=actual_tfidfmodels[doc_method].runQuery(query["query_text"],parameters,guid)
-##        result_dict2=test_logger.measureScoreAndLog(retrieved,retrieval_result["citation_multi"],result_dict2)
-##        assert(result_dict1["precision_score"]==result_dict2["precision_score"])
 
 
 def main():

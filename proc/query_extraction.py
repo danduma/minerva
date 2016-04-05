@@ -7,23 +7,21 @@
 
 from __future__ import print_function
 
-import re, copy
-from collections import defaultdict, OrderedDict
-from string import punctuation
+import re
+##from collections import defaultdict, OrderedDict
 
-from nlp_functions import (tokenizeText, tokenizeTextAndRemoveStopwords, stemText, stopwords, stemTokens,
+from nlp_functions import (tokenizeText, tokenizeTextAndRemoveStopwords, stopwords,
 CITATION_PLACEHOLDER, unTokenize, ESTIMATED_AVERAGE_WORD_LENGTH, removeCitations,
 PAR_MARKER, CIT_MARKER, BR_MARKER, AZ_ZONES_LIST, CORESC_LIST, formatSentenceForIndexing,
 getDictOfTokenCounts, removeStopwords)
 
-
 from general_utils import removeSymbols
+from structured_query import StructuredQuery
 from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
-import minerva.db.corpora as cp
 
 # this is for adding fields to a document in Lucene. These fields are not to be indexed
-FIELDS_TO_IGNORE=["left_start","right_end","params","guid_from","year_from", "query_method_id"]
-
+FIELDS_TO_IGNORE=["left_start","right_end","params","guid_from","year_from",
+                  "query_method_id", "sentences", "structured_query"]
 
 def getFieldSpecialTestName(fieldname, test_guid):
     """
@@ -105,20 +103,6 @@ class BaseQueryExtractor(object):
         query=query.strip()
         return query
 
-    def makeStructuredToken(self, token, count, boost=1, bool=None, field=None, distance=None):
-        """
-            Returns a StructuredToken dict from parameters.
-        """
-        query_token={
-                "token":token,
-                "count":count,
-                "boost":boost,
-                "bool":bool, # +/-
-                "field":field,
-                "distance": distance
-                }
-        return query_token
-
     def filterTokens(self, tokens):
         """
             Removes single numbers that should not be in a query
@@ -150,9 +134,9 @@ class BaseQueryExtractor(object):
         tokens=self.filterTokens(tokens)
         query_tokens=getDictOfTokenCounts(tokens)
 
-        res=[]
+        res=StructuredQuery()
         for token in query_tokens:
-            res.append(self.makeStructuredToken(token, query_tokens[token]))
+            res.addToken(token, query_tokens[token])
 
         return res
 
@@ -252,7 +236,8 @@ class WindowQueryExtractor(BaseQueryExtractor):
     def extractMulti(self, params):
         """
             Default method, up to x words left, x words right
-            returns a dict {"left_start","right_end"}
+
+            :returns: dict {"left_start","right_end", "query_method_id", "structured_query"}
         """
 ##match, doctext, parameters=[(20,20)], options={"jump_paragraphs":True}
         context_params={
@@ -293,7 +278,7 @@ class SentenceQueryExtractor(BaseQueryExtractor):
                 docfrom: SciDoc
                 cit: citation dict
                 selection: one of: ["paragraph", "1up", "1only", "1up_1down"]
-                separate_by_tag: "az" or none
+                separate_by_tag: "az", "csc" or None
                 dict_key: which key in the dict leads to the text
         """
         to_add=selectSentencesToAdd(params["docfrom"], params["cit"], params["current_parameter"])
@@ -314,6 +299,9 @@ class SentenceQueryExtractor(BaseQueryExtractor):
                 extracted_query["ilc_CSC_"+sent["csc_type"]]+=text+" "
             else:
                 extracted_query[params["dict_key"]]+=text+" "
+
+        if params.get("options",{}).get("add_full_sentences", False):
+            extracted_query["sentences"]=to_add
 
         extracted_query["params"]=params["current_parameter"]
         extracted_query["query_method_id"]=self.methodName(params)
@@ -388,105 +376,105 @@ class SelectedSentenceQueryExtractor(SentenceQueryExtractor):
         extracted_query["structured_query"]=self.generateStructuredQuery(extracted_query["text"])
         return extracted_query
 
-class HeuristicsQueryExtractor(WindowQueryExtractor):
-    """
-        class comment
-    """
-
-    def __init__(self):
-        pass
-
-    def extract(self, match, doctext, wleft=40, wright=40, stopbr=False):
-        """
-            Heuristic extraction of words around citation, dealing with paragraph
-            breaks, sentence breaks, etc.
-        """
-        def modTextExtractContext(text):
-            """
-                Change linke breaks, paragraph breaks and citations to tokens
-            """
-            text=re.sub(r"<cit\sid=.{1,5}\s*?/>"," "+CIT_MARKER+" ",text, 0, re.IGNORECASE|re.DOTALL)
-            text=re.sub(r"</?footnote.{0,11}>"," ",text, 0, re.IGNORECASE|re.DOTALL)
-            text=re.sub(r"\n\n"," "+PAR_MARKER+" ",text)
-            text=re.sub(r"\n"," "+BR_MARKER+" ",text)
-            return text
-
-        left=doctext[max(0,match.start()-(wleft*ESTIMATED_AVERAGE_WORD_LENGTH)):match.start()] # tokenize!
-        left=modTextExtractContext(left)
-        left=tokenizeText(left)
-
-        right=doctext[match.end():match.end()+(wright*ESTIMATED_AVERAGE_WORD_LENGTH)] # tokenize!
-        right=modTextExtractContext(right)
-        right=tokenizeText(right)
-
-        leftwords=[]
-        left=[x for x in reversed(left)]
-        for w in left[:wleft]:
-            new=[]
-            if w==PAR_MARKER:    # paragraph break
-                break
-            if w==CIT_MARKER:    # citation
-                break
-            if w==BR_MARKER:    # line break
-                if stopbr:
-                    print("break: br")
-                    break
-                else:
-                    continue
-            else:
-                new.append(w)
-                new.extend(leftwords)
-                leftwords=new
-
-        rightwords=[]
-        for w in right[:wright]:
-            if w==PAR_MARKER:    # paragraph break
-                print("break: paragraph")
-                break
-            if w==CIT_MARKER:    # citation
-                print("break: citation")
-                break
-            if w==BR_MARKER:    # line break
-                if stopbr:
-                    print("break: br")
-                    break
-                else:
-                    continue
-            else:
-                rightwords.append(w)
-
-    ##    print "Q Fancy:",
-        return self.joinCitationContext(leftwords, rightwords, {})
-
-
-    def extractMulti(match, doctext, parameters=[(20,20)], maxwords=20, options={"jump_paragraphs":True}):
-        """
-            Fancier method
-
-            returns a list = [[BOW from param1], [BOW from param2]...]
-        """
-
-        left=doctext[max(0,match.start()-(maxwords*ESTIMATED_AVERAGE_WORD_LENGTH)):match.start()] # tokenize!
-        left=tokenizeText(removeCitations(left))
-
-        right=doctext[match.end():match.end()+(maxwords*ESTIMATED_AVERAGE_WORD_LENGTH)] # tokenize!
-        right=tokenizeText(removeCitations(right))
-
-        res=[]
-
-        for words in parameters:
-            leftwords=left[-words[0]:]
-            rightwords=right[:words[1]]
-            res.append(self.joinCitationContext(leftwords,rightwords))
-
-        return res
+##class HeuristicsQueryExtractor(WindowQueryExtractor):
+##    """
+##        class comment
+##    """
+##
+##    def __init__(self):
+##        pass
+##
+##    def extract(self, match, doctext, wleft=40, wright=40, stopbr=False):
+##        """
+##            Heuristic extraction of words around citation, dealing with paragraph
+##            breaks, sentence breaks, etc.
+##        """
+##        def modTextExtractContext(text):
+##            """
+##                Change linke breaks, paragraph breaks and citations to tokens
+##            """
+##            text=re.sub(r"<cit\sid=.{1,5}\s*?/>"," "+CIT_MARKER+" ",text, 0, re.IGNORECASE|re.DOTALL)
+##            text=re.sub(r"</?footnote.{0,11}>"," ",text, 0, re.IGNORECASE|re.DOTALL)
+##            text=re.sub(r"\n\n"," "+PAR_MARKER+" ",text)
+##            text=re.sub(r"\n"," "+BR_MARKER+" ",text)
+##            return text
+##
+##        left=doctext[max(0,match.start()-(wleft*ESTIMATED_AVERAGE_WORD_LENGTH)):match.start()] # tokenize!
+##        left=modTextExtractContext(left)
+##        left=tokenizeText(left)
+##
+##        right=doctext[match.end():match.end()+(wright*ESTIMATED_AVERAGE_WORD_LENGTH)] # tokenize!
+##        right=modTextExtractContext(right)
+##        right=tokenizeText(right)
+##
+##        leftwords=[]
+##        left=[x for x in reversed(left)]
+##        for w in left[:wleft]:
+##            new=[]
+##            if w==PAR_MARKER:    # paragraph break
+##                break
+##            if w==CIT_MARKER:    # citation
+##                break
+##            if w==BR_MARKER:    # line break
+##                if stopbr:
+##                    print("break: br")
+##                    break
+##                else:
+##                    continue
+##            else:
+##                new.append(w)
+##                new.extend(leftwords)
+##                leftwords=new
+##
+##        rightwords=[]
+##        for w in right[:wright]:
+##            if w==PAR_MARKER:    # paragraph break
+##                print("break: paragraph")
+##                break
+##            if w==CIT_MARKER:    # citation
+##                print("break: citation")
+##                break
+##            if w==BR_MARKER:    # line break
+##                if stopbr:
+##                    print("break: br")
+##                    break
+##                else:
+##                    continue
+##            else:
+##                rightwords.append(w)
+##
+##    ##    print "Q Fancy:",
+##        return self.joinCitationContext(leftwords, rightwords, {})
+##
+##
+##    def extractMulti(self, match, doctext, parameters=[(20,20)], maxwords=20, options={"jump_paragraphs":True}):
+##        """
+##            Fancier method
+##
+##            returns a list = [[BOW from param1], [BOW from param2]...]
+##        """
+##
+##        left=doctext[max(0,match.start()-(maxwords*ESTIMATED_AVERAGE_WORD_LENGTH)):match.start()] # tokenize!
+##        left=tokenizeText(removeCitations(left))
+##
+##        right=doctext[match.end():match.end()+(maxwords*ESTIMATED_AVERAGE_WORD_LENGTH)] # tokenize!
+##        right=tokenizeText(removeCitations(right))
+##
+##        res=[]
+##
+##        for words in parameters:
+##            leftwords=left[-words[0]:]
+##            rightwords=right[:words[1]]
+##            res.append(self.joinCitationContext(leftwords,rightwords))
+##
+##        return res
 
 
 EXTRACTOR_LIST={
     "Window":WindowQueryExtractor(),
     "Sentences":SentenceQueryExtractor(),
     "SelectedSentences":SelectedSentenceQueryExtractor(),
-    "Heuristics":HeuristicsQueryExtractor(),
+##    "Heuristics":HeuristicsQueryExtractor(),
     }
 
 def main():

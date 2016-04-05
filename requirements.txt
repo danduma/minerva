@@ -9,3 +9,5 @@ nltk>=2.0.4
 pandas
 pybtex>=0.19
 requests
+scipy>=0.10
+scikit-learn

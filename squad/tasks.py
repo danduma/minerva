@@ -20,7 +20,7 @@ import requests
 
 import minerva.db.corpora as cp
 from minerva.db.elastic_corpus import ElasticCorpus
-from minerva.evaluation.elastic_retrieval import ElasticRetrieval
+from minerva.retrieval.elastic_retrieval import ElasticRetrieval
 
 from minerva.importing.importing_functions import (convertXMLAndAddToCorpus,
     updatePaperInCollectionReferences)

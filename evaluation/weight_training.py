@@ -1,23 +1,22 @@
-# FieldAgnostic/WeightTraining pipeline
+# Weight Training pipeline
 #
 # Copyright:   (c) Daniel Duma 2015
 # Author: Daniel Duma <danielduma@gmail.com>
 
 # For license information, see LICENSE.TXT
+
 from __future__ import print_function
 
-import json, gc, random, os
+import  gc, random, os
 from copy import deepcopy
 from collections import defaultdict
 from sklearn import cross_validation
 import pandas as pd
 
 import minerva.db.corpora as cp
-from minerva.proc.results_logging import ProgressIndicator, ResultsLogger
+from minerva.proc.results_logging import ResultsLogger
 ##from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
-from minerva.proc.general_utils import getSafeFilename
 from base_pipeline import getDictOfTestingMethods
-from stored_formula import StoredFormula
 from weight_functions import runPrecomputedQuery
 from minerva.db.result_store import ElasticResultStorer, ResultIncrementalReader, ResultDiskReader
 
@@ -32,6 +31,8 @@ class weightCounterList(object):
             values = list of values each weight can take
         """
         self.values=values
+        self.weights={}
+        self.parameters={}
         self.counters=[]
         self.MAX_COUNTER=len(values)-1
 
@@ -86,12 +87,11 @@ class WeightTrainer(object):
     """
         This class encapsulates all of the weight wrangling
     """
-    def __init__(self, exp, options, use_celery=False):
+    def __init__(self, exp, options):
         """
         """
         self.exp=exp
         self.options=options
-        self.use_celery=use_celery
         self.all_doc_methods={}
 
     def dynamicWeightValues(self, split_fold):
@@ -378,123 +378,6 @@ class WeightTrainer(object):
         fold_data=pd.DataFrame(fold_results)
         fold_data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_folds"+xtra+".csv")
 
-##        print("Avg % improvement per zone:")
-##        means=data[["zone_type","pct_improvement"]].groupby("zone_type").mean().sort(columns=["pct_improvement"],ascending=False)
-##        means=means.join(data[["zone_type","pct_improvement"]].groupby("zone_type").std())
-##        print(means)
-
-##    def measureCitationResolution(self, files_dict, precomputed_queries, all_doc_methods,
-##    citation_az, testing_methods, retrieval_class=None, full_corpus=False):
-##        """
-##            Use Citation Resolution to measure the impact of different runtime parameters.
-##
-##            files_dict is a dict where each key is a guid:
-##                "j97-3003": {"tfidf_models": [{"actual_dir": "C:\\NLP\\PhD\\bob\\fileDB\\LuceneIndeces\\j97-3003\\ilc_az_annotated_1_20",
-##    			"method": "az_annotated_1_ALL"}],
-##    		"resolvable_citations": 16,
-##    		"doc_methods": {"az_annotated_1_ALL": {
-##    				"index": "ilc_az_annotated_1_20",
-##    				"runtime_parameters": ["AIM",
-##    				"BAS",
-##    				"BKG",
-##    				"CTR",
-##    				"OTH",
-##    				"OWN",
-##    				"TXT"],
-##    				"parameters": [1],
-##    				"type": "annotated_boost",
-##    				"index_filename": "ilc_az_annotated_1_20",
-##    				"parameter": 1,
-##    				"method": "az_annotated"
-##    			}
-##    		},
-##    		"guid": "j97-3003",
-##    		"in_collection_references": 10}
-##        """
-##        logger=ResultsLogger(False) # init all the logging/counting
-##        logger.startCounting() # for timing the process, start now
-##
-##        logger.setNumItems(len(files_dict),print_out=False)
-##
-##        tfidfmodels={}
-##
-##        # if we're running over the full cp.Corpus, we should only load the indices once
-##        # at the beginning, as they're going to be the same
-##        if full_corpus:
-##            for model in files_dict["ALL_FILES"]["tfidf_models"]:
-##                # create a Lucene search instance for each method
-##                tfidfmodels[model["method"]]=retrieval_class(model["actual_dir"],model["method"],logger=None)
-##
-##        previous_guid=""
-##        logger.total_citations=len(precomputed_queries)
-##
-##        #===================================
-##        # MAIN LOOP over all testing files
-##        #===================================
-##        for query in precomputed_queries:
-##            # for every generated query for this context
-##            guid=query["file_guid"]
-##
-##            # if this is not a full_corpus run and we've moved on to the next test file
-##            # then we should load the indices for this new file
-##            if not full_corpus and guid != previous_guid:
-##    ##            logger.showProgressReport(guid) # prints out info on how it's going
-##                previous_guid=guid
-##                for model in files_dict[guid]["tfidf_models"]:
-##                    # create a Lucene search instance for each method
-##                    tfidfmodels[model["method"]]=retrieval_class(model["actual_dir"],model["method"],logger=None)
-##
-##            # for every method used for extracting BOWs
-##            for doc_method in all_doc_methods:
-##                # ACTUAL RETRIEVAL HAPPENING - run query
-##                retrieved=tfidfmodels[doc_method].runQuery(query["query_text"],all_doc_methods[doc_method]["runtime_parameters"], guid)
-##
-##                result_dict={"file_guid":guid,
-##                             "citation_id":query["citation_id"],
-##                             "doc_position":query["doc_position"],
-##                             "query_method":query["query_method"],
-##                             "doc_method":doc_method ,
-##                             "az":query["az"],
-##                             "cfc":query["cfc"],
-##                             "match_guid":query["match_guid"]}
-##
-##                if not retrieved:    # the query was empty or something
-##    ##                        print "Error: ", doc_method , qmethod,tfidfmodels[method].indexDir
-##    ##                        logger.addResolutionResult(guid,m,doc_position,qmethod,doc_method ,0,0,0)
-##                    result_dict["mrr_score"]=0
-##                    result_dict["precision_score"]=0
-##                    result_dict["ndcg_score"]=0
-##                    result_dict["rank"]=0
-##                    result_dict["first_result"]=""
-##
-##                    logger.addResolutionResultDict(result_dict)
-##                else:
-##                    logger.measureScoreAndLog(retrieved, query["citation_multi"], result_dict)
-##
-##
-##        logger.computeAverageScores()
-##        results=[]
-##        for query_method in logger.averages:
-##            for doc_method in logger.averages[query_method]:
-##                weights=all_doc_methods[doc_method]["runtime_parameters"]
-##                data_line={"query_method":query_method,"doc_method":doc_method,"citation_az":citation_az}
-##
-##                for metric in logger.averages[query_method][doc_method]:
-##                    data_line["avg_"+metric]=logger.averages[query_method][doc_method][metric]
-##                data_line["precision_total"]=logger.scores["precision"][query_method][doc_method]
-##
-##                signature=""
-##                for w in weights:
-##                    data_line[w]=weights[w]
-##                    signature+=str(w)
-##
-##                data_line["weight_signature"]=signature
-##                results.append(data_line)
-##
-##    ##    logger.writeDataToCSV(cp.Corpus.dir_output+"testing_test_precision.csv")
-##
-##        return results
-
     def measurePrecomputedResolution(self, retrieval_results,method,parameters, citation_az="*"):
         """
             This is kind of like measureCitationResolution:
@@ -530,8 +413,8 @@ class WeightTrainer(object):
                          "match_guid":result["match_guid"]}
 
             if not retrieved or len(retrieved)==0:    # the query was empty or something
-    ##                        print "Error: ", doc_method , qmethod,tfidfmodels[method].indexDir
-    ##                        logger.addResolutionResult(guid,m,doc_position,qmethod,doc_method ,0,0,0)
+##                print "Error: ", doc_method , qmethod,tfidfmodels[method].indexDir
+##                logger.addResolutionResult(guid,m,doc_position,qmethod,doc_method ,0,0,0)
                 result_dict["mrr_score"]=0
                 result_dict["precision_score"]=0
                 result_dict["ndcg_score"]=0
@@ -546,7 +429,6 @@ class WeightTrainer(object):
         results=[]
         for query_method in logger.averages:
             for doc_method in logger.averages[query_method]:
-    ##            weights=all_doc_methods[doc_method]["runtime_parameters"]
                 weights=parameters
                 data_line={"query_method":query_method,"doc_method":doc_method,"citation_az":citation_az}
 
@@ -554,14 +436,7 @@ class WeightTrainer(object):
                     data_line["avg_"+metric]=logger.averages[query_method][doc_method][metric]
                 data_line["precision_total"]=logger.scores["precision"][query_method][doc_method]
 
-##                signature=""
-##                for w in weights:
-##                    data_line[w]=weights[w]
-##                    signature+=str(w)
-    ##            data_line["weight_signature"]=signature
                 results.append(data_line)
-
-    ##    logger.writeDataToCSV(cp.cp.Corpus.dir_output+"testing_test_precision.csv")
 
         return results
 
@@ -572,9 +447,6 @@ class WeightTrainer(object):
         gc.collect()
         options=self.options
         self.all_doc_methods=getDictOfTestingMethods(self.exp["doc_methods"])
-
-##        if options["run_precompute_retrieval"] or not exists(self.exp["exp_dir"]+"prr_"+self.exp["queries_classification"]+"_"+self.exp["train_weights_for"][0]+".json"):
-##            self.query_generator.precomputeQueries(self.exp)
 
         best_weights={}
         if options.get("override_folds",None):
@@ -597,7 +469,7 @@ class WeightTrainer(object):
 
 def main():
     logger=ResultsLogger(False,False)
-    logger.addResolutionResultDict
+##    logger.addResolutionResultDict
     pass
 
 if __name__ == '__main__':

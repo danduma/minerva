@@ -11,9 +11,10 @@ import re, copy
 from collections import defaultdict, OrderedDict
 from string import punctuation
 
-from nlp_functions import tokenizeText, stemText, stopwords, stemTokens, \
-CITATION_PLACEHOLDER, unTokenize, ESTIMATED_AVERAGE_WORD_LENGTH, removeCitations, \
-PAR_MARKER, CIT_MARKER, BR_MARKER, AZ_ZONES_LIST, CORESC_LIST, formatSentenceForIndexing
+from nlp_functions import (tokenizeText, stemText, stopwords, stemTokens,
+CITATION_PLACEHOLDER, unTokenize, ESTIMATED_AVERAGE_WORD_LENGTH, removeCitations,
+PAR_MARKER, CIT_MARKER, BR_MARKER, AZ_ZONES_LIST, CORESC_LIST,
+formatSentenceForIndexing, selectSentencesToAdd)
 
 from minerva.proc.general_utils import getListAnyway
 from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
@@ -143,16 +144,16 @@ def filterInlinkContext(context_list, exclude_list=[], max_year=None, exclude_au
         Deals with the difference between a per-test-file-index and a full cp.Corpus index,
         creating the appropriate
     """
-    if full_corpus:
-        #!TODO FIX METHOD!
-        bow={}
-        for exclude_guid in exclude_list:
-            bow_temp=joinTogetherContextExcluding(context_list,[exclude_guid], max_year)
-            bow[getFieldSpecialTestName(method,exclude_guid)]=bow_temp[method]
-        bows=[bow]
-    else:
-        bows=[joinTogetherContextExcluding(context_list, exclude_list, max_year)]
-
+##    if full_corpus:
+##        bow={}
+##        for exclude_guid in exclude_list:
+##            bow_temp=joinTogetherContextExcluding(context_list,[exclude_guid], max_year)
+##            bow[getFieldSpecialTestName(method,exclude_guid)]=bow_temp[method]
+##        bows=[bow]
+##    else:
+##        bows=[joinTogetherContextExcluding(context_list, exclude_list, max_year)]
+    #TODO exclude authors: take out of this method? Do it before, assume the exclude_list already contains this filtering?
+    bows=[joinTogetherContextExcluding(context_list, exclude_list, max_year)]
     return bows
 
 
@@ -231,7 +232,7 @@ def generateDocBOW_ILC_Annotated(doc_incoming, parameters, doctext=None, full_pa
     for inlink_guid in doc_metadata["inlinks"]:
         # loads from cache if exists, XML otherwise
         docfrom=cp.Corpus.loadSciDoc(inlink_guid)
-        cp.Corpus.annotateDoc(docfrom,["AZ"])
+##        cp.Corpus.annotateDoc(docfrom,["AZ"])
 
         # important! the doctext here has to be that of the docfrom, NOT doc_incoming
         doctext=docfrom.getFullDocumentText()
