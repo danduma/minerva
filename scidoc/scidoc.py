@@ -112,6 +112,7 @@ class SciDoc(object):
         self.abstract={}
         self.citation_by_id={}
         self.reference_by_id={}
+        self.ignore_errors=["error_match_citation_with_reference"]
 
         for element in self.data["content"]:
             self.processSingleElement(element)

@@ -822,6 +822,11 @@ class ElasticCorpus(BaseCorpus):
 ##from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
 ##ec.connectCorpus("",endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 
+##ec.deleteByQuery("cache", "_id:resolvable_*")
+##ec.deleteByQuery("cache", "_id:bow_*")
+##ec.deleteAll("cache")
+##ec.deleteIndex("pmc_lrec_experiments_prr_az_*")
+
 ##hits=ec.unlimitedQuery(
 ##        q="_id:*ilc_annotated",
 ##        index=ES_INDEX_CACHE,
@@ -829,11 +834,6 @@ class ElasticCorpus(BaseCorpus):
 ##        _source="_id",
 ##)
 ##print(hits)
-
-##ec.deleteByQuery("cache", "_id:resolvable_*")
-##ec.deleteByQuery("cache", "_id:bow_*")
-##ec.deleteAll("cache")
-##ec.deleteIndex("pmc_lrec_experiments_prr_az_*")
 
 ##print(ec.loadSciDoc("f9c08f84-1e5e-4d57-80bc-b576fefa109f"))
 ##print(ec.SQLQuery("SELECT guid,metadata.filename FROM papers where metadata.year >2013"))

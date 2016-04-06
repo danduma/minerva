@@ -95,6 +95,8 @@ global_stemmer=SnowballStemmer("english")
 
 USING_STEMMING=False
 
+rx_sentences_to_add=re.compile(r"(?:(?:(\d)up)_?(?:(\d)down)?(_withinpara)?)|(paragraph)|(1only)", re.IGNORECASE)
+
 # helper functions
 def removeCitations(s):
     """
@@ -172,7 +174,7 @@ def selectSentencesToAdd(docfrom,cit,param):
     sent=docfrom.element_by_id[cit["parent_s"]]
     para=docfrom.element_by_id[sent["parent"]]
 
-    match=re.search(r"(?:(?:(\d)up)_?(?:(\d)down)?(_withinpara)?)|(paragraph)|(1only)",param)
+    match=rx_sentences_to_add.search(param)
     assert(match)
 
     context={"ilc_AZ_"+zone:"" for zone in AZ_ZONES_LIST}
