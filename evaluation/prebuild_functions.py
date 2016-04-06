@@ -24,7 +24,7 @@ def prebuildFunction(function_name):
     return function
 
 
-def prebuildMulti(method_name, parameters, function, doc, doctext, guid, force_prebuild, rhetorical_annotations):
+def prebuildMulti(method_name, parameters, function, doc, doctext, guid, overwrite_existing_bows, rhetorical_annotations):
     """
         Builds multiple BOWs for each document based on multiple parameters.
 
@@ -34,11 +34,11 @@ def prebuildMulti(method_name, parameters, function, doc, doctext, guid, force_p
         :param doc: loaded SciDoc, or None to load it in this function
         :param doctext: loaded SciDoc text, or None to load it in this function
         :param guid: guid of the file being processed
-        :param force_prebuild: if False, only build BOWs that are not in the db already
+        :param overwrite_existing_bows: if False, only build BOWs that are not in the db already
     """
     assert isinstance(parameters, list)
 
-    if not force_prebuild:
+    if not overwrite_existing_bows:
         params=cp.Corpus.selectBOWParametersToPrebuild(guid,method_name,parameters)
     else:
         params=parameters

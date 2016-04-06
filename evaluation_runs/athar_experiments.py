@@ -209,7 +209,7 @@ experiment={
 
 options={
     "run_prebuild_bows":False,
-    "force_prebuild":False,
+    "overwrite_existing_bows":False,
     "rebuild_indexes":False,
     "recompute_queries":False,
     "run_precompute_retrieval":False, # only applies if type == "train_weights"

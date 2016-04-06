@@ -32,7 +32,7 @@ class BasePrebuilder(object):
 
             :param parameters: list of parameters
             :param maxfiles: max. number of files to process. Simple parameter for debug
-            :param force_prebuild: should BOWs be rebuilt even if existing?
+            :param overwrite_existing_bows: should BOWs be rebuilt even if existing?
 
         """
         self.exp=exp
@@ -59,7 +59,7 @@ class BasePrebuilder(object):
                             self.exp["prebuild_bows"][method_name]["parameters"],
                             self.exp["prebuild_bows"][method_name]["function_name"],
                             guid,
-                            self.options["force_prebuild"],
+                            self.options["overwrite_existing_bows"],
                             run_annotators],
                             queue="prebuild_bows"))
 
@@ -75,7 +75,7 @@ class BasePrebuilder(object):
                                   None,
                                   None,
                                   guid,
-                                  self.options["force_prebuild"],
+                                  self.options["overwrite_existing_bows"],
                                   run_annotators
                                   )
                 progress.showProgressReport("Building BOWs")

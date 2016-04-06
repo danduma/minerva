@@ -428,7 +428,7 @@ class BaseCorpus(object):
         if type=="resolvable":
             return type+"_"+guid
         if type=="bow":
-            return type+"_"+guid+"_"+params["method"]+unicode(params["parameter"])
+            return type+"_"+guid+"_"+params["method"]+"_"+unicode(params["parameter"])
 
     def saveCachedJson(self, path, data):
         """

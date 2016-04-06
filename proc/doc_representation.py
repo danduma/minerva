@@ -248,12 +248,13 @@ def generateDocBOW_ILC_Annotated(doc_incoming, parameters, doctext=None, full_pa
                 context={"ilc_AZ_"+zone:"" for zone in AZ_ZONES_LIST}
                 for zone in CORESC_LIST:
                     context["ilc_CSC_"+zone]=""
-                to_add=[]
 
                 for sent_id in to_add:
                     sent=docfrom.element_by_id[sent_id]
                     text=formatSentenceForIndexing(sent)
-                    context["ilc_AZ_"+sent["az"]]+=" "+text
+                    if sent.get("az","") != "":
+                        context["ilc_AZ_"+sent.get("az","")]+=" "+text
+
                     if "csc_type" not in sent:
                         sent["csc_type"]="Bac"
                     context["ilc_CSC_"+sent["csc_type"]]+=" "+text
@@ -400,7 +401,7 @@ def getDocBOWTitleAbstract(doc, parameters=None, doctext=None):
     doctext=doc["metadata"]["title"]+". "
     if len(doc.allsections) > 0:
         try:
-            doctext+=doc.getSectionText(doc.allsections[0],False)
+            doctext+=" " + doc.getSectionText(doc.allsections[0],False)
         except:
             doctext+=u"<UNICODE ERROR>"
     doctext=removeCitations(doctext).lower()
@@ -411,12 +412,14 @@ def getDocBOWannotated(doc, parameters=None, doctext=None, keys=["az","csc_type"
     """
         Get BOW for document with AZ/CSC
     """
-    res=defaultdict(lambda:"")
+    res=defaultdict(lambda:[])
     for sentence in doc.allsentences:
         text=formatSentenceForIndexing(sentence)
         for key in keys:
             if sentence.has_key(key):
-                res[sentence[key]]+=text
+                res[sentence[key]].append(text)
+    for key in res:
+        res[key]=" ".join(res[key])
     addDocBOWFullTextField(doc,res,doctext)
     return {1:[res]}
 
@@ -427,8 +430,8 @@ def getDocBOWrandomZoning(doc, parameters=None, doctext=None, keys=["az","csc_ty
     res=defaultdict(lambda:"")
     for sentence in doc.allsentences:
         text=formatSentenceForIndexing(sentence)
-        res[random.choice(AZ_ZONES_LIST)]+=text
-        res[random.choice(CORESC_LIST)]+=text
+        res[random.choice(AZ_ZONES_LIST)]+=" " + text
+        res[random.choice(CORESC_LIST)]+=" " + text
 
     addDocBOWFullTextField(doc,res,doctext)
     return {1:[res]}
@@ -454,7 +457,7 @@ def getDocBOWannotatedSections(doc, parameters=None, doctext=None):
 
     paper_text=""
     for index in range(1,len(doc.allsections),1):
-        paper_text+=doc.getSectionText(doc.allsections[index],False)
+        paper_text+=" "+doc.getSectionText(doc.allsections[index],False)
 
     res["text"]=removeCitations(paper_text).lower()
     addDocBOWFullTextField(doc,res,doctext)

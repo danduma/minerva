@@ -18,8 +18,12 @@ prebuild_bows={
 ##"title_abstract":{"function":"getDocBOWTitleAbstract", "parameters":[1]},
 ##"passage":{"function":"getDocBOWpassagesMulti", "parameters":[150,175,200,250,300,350,400,450]},
 ##"inlink_context":{"function":"generateDocBOWInlinkContext", "parameters":[200] },
-"ilc_annotated":{"function":"generateDocBOW_ILC_Annotated", "parameters":["paragraph","1up_1down","1up","1only"] },
-"az_annotated":{"function":"getDocBOWannotated", "parameters":[1]},
+"ilc_annotated":{"function":"generateDocBOW_ILC_Annotated",
+    "parameters":
+        ["2up_2down",
+         "1up_1down",
+         "1only"] },
+##"az_annotated":{"function":"getDocBOWannotated", "parameters":[1]},
 ##"section_annotated":{"function":"getDocBOWannotatedSections", "parameters":[1]},
 }
 
@@ -30,7 +34,7 @@ prebuild_indexes={
 ##    "passage":{"type":"standard_multi", "bow_name":"passage", "parameters":[150,175,200,250,300,350,400,450]},
 ##    "inlink_context":{"type":"standard_multi", "bow_name":"inlink_context", "parameters":[5, 10, 15, 20, 30, 40, 50]},
 ##    "inlink_context_year":{"type":"standard_multi", "bow_name":"inlink_context", "parameters":[5, 10, 15, 20, 30, 40, 50], "options":{"max_year":True}},
-    "az_annotated_pmc_2013":{"type":"standard_multi",
+    "az_annotated_pmc_2014":{"type":"standard_multi",
                              "bow_name":"az_annotated", # bow to load
                              "parameters":["2up_2down", "1up_1down", "1only"], # parameter has to match a parameter of a prebuilt bow
                              },
@@ -45,9 +49,9 @@ prebuild_indexes={
 ##    "ilc_passage":{"type":"ilc_mashup", "ilc_method":"inlink_context", "mashup_method":"passage","ilc_parameters":[5, 10, 20, 30, 40, 50], "parameters":[250,300,350]},
 
 # this is just normal az_annotated + normal ilc
-##    "ilc_az_annotated_pmc_2013":{"type":"ilc_mashup", "ilc_method":"inlink_context",  "mashup_method":"az_annotated", "ilc_parameters":[5, 10,20,30, 40, 50], "parameters":[1]},
+##    "ilc_az_annotated_pmc_2014":{"type":"ilc_mashup", "ilc_method":"inlink_context",  "mashup_method":"az_annotated", "ilc_parameters":[5, 10,20,30, 40, 50], "parameters":[1]},
 # this is az-annotated text + az-annotated ilc
-    "az_ilc_az_pmc_2013":{"type":"ilc_mashup",
+    "az_ilc_az_pmc_2014":{"type":"ilc_mashup",
                           "ilc_method":"ilc_annotated",
                           "mashup_method":"az_annotated",
                           "ilc_parameters":["2up_2down","1up_1down","1only"],
@@ -57,16 +61,16 @@ prebuild_indexes={
 prebuild_general_indexes={
 ##    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "ilc_full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
-    "az_annotated_pmc_2013":{"type":"standard_multi",
+    "az_annotated_pmc_2014":{"type":"standard_multi",
                              "bow_name":"az_annotated", # bow to load
                              "parameters":[1], # parameter has to match a parameter of a prebuilt bow
-                             "max_year":2013 # cut-off point for adding files to index
+                             "max_year":2014 # cut-off point for adding files to index
                              },
-    "az_ilc_az_annotated_pmc_2013":{"type":"ilc_mashup",
+    "az_ilc_az_annotated_pmc_2014":{"type":"ilc_mashup",
                              "bow_name":"ilc_annotated", # bow to load
                              "ilc_parameters":["2up_2down"], # parameter has to match a parameter of a prebuilt bow
                              "parameters":[1], # parameter has to match a parameter of a prebuilt bow
-                             "max_year":2013 # cut-off point for adding files to index
+                             "max_year":2014 # cut-off point for adding files to index
                              },
 }
 
@@ -97,7 +101,7 @@ doc_methods={
 ##        }},
 
     "az_annotated":{"type":"annotated_boost",
-                    "index":"az_annotated_pmc_2013",
+                    "index":"az_annotated_pmc_2014",
                     "parameters":[1],
                     "runtime_parameters":{
                 ##        "AZ_ALL":AZ_ZONES_LIST,
@@ -116,7 +120,7 @@ doc_methods={
 ##        }},
 
     "ilc_annotated":{"type":"annotated_boost",
-                     "index":"az_ilc_az_annotated_pmc_2013",
+                     "index":"az_ilc_az_annotated_pmc_2014",
                      "parameters":["2up_2down"],
                      "runtime_parameters":
                         {
@@ -195,7 +199,7 @@ experiment={
     # list of files in the test set
     "test_files":[],
     # SQL condition to automatically generate the list above
-    "test_files_condition":"metadata.num_in_collection_references:>0 AND metadata.year:>2013",
+    "test_files_condition":"metadata.num_in_collection_references:>0 AND metadata.year:>2014",
     # This lets us pick just the first N files
     "max_test_files":100,
     # Use Lucene DefaultSimilarity? As opposed to FieldAgnosticSimilarity
@@ -212,10 +216,10 @@ experiment={
     # use full-collection retrival? If False, it runs "citation resolution"
     "full_corpus":True,
     # "compute_once","train_weights"
-    "type":"train_weights",
+    "type":"",
     # If full_corpus, this is the cut-off year for including documents in the general index.
     # In this way we can separate test files and retrieval files.
-    "index_max_year": 2013,
+    "index_max_year": 2014,
     # how many chunks to split each file for statistics on where the citation occurs
     "numchunks":10,
     # name of CSV file to save results in
@@ -237,13 +241,14 @@ experiment={
 
 options={
     "run_prebuild_bows":1, # should the whole BOW building process run?
-    "force_prebuild":0,   # if a BOW exists already, should we overwrite it?
+    "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
     "rebuild_indexes":0,   # rebuild indices?
     "recompute_queries":0,  # force rebuilding of queries too?
     "run_precompute_retrieval":0,  # only applies if type == "train_weights"
     "clear_existing_prr_results":False, # delete previous precomputed results? i.e. start from scratch
     "override_folds":4,
     "override_metric":"avg_ndcg",
+##    "max_files_to_process":1
 }
 
 def main():

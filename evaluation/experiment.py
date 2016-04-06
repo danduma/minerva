@@ -183,6 +183,11 @@ class Experiment(object):
                 pipeline.runPipeline(self.exp)
             weight_trainer=WeightTrainer(self.exp, self.options)
             weight_trainer.trainWeights()
+        elif self.exp["type"] in ["", "do_nothing"]:
+            return
+        else:
+            raise NotImplementedError("Unkown experiment type")
+
 
     def run(self):
         """

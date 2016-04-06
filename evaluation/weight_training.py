@@ -128,7 +128,7 @@ class WeightTrainer(object):
                 print("Number of results is smaller than number of folds for zone type ", zone_type)
                 continue
 
-            cv = cross_validation.KFold(len(retrieval_results), n_folds=numfolds, indices=True, shuffle=False, random_state=None, k=None)
+            cv = cross_validation.KFold(len(retrieval_results), n_folds=numfolds, shuffle=False, random_state=None) # indices=True, k=None
             cv=[k for k in cv]
 
             traincv, testcv=cv[split_fold]
@@ -303,7 +303,7 @@ class WeightTrainer(object):
                     print("Number of results is smaller than number of folds for zone type ", zone_type)
                     continue
 
-                cv = cross_validation.KFold(len(retrieval_results), n_folds=numfolds, indices=True, shuffle=False, random_state=None, k=None)
+                cv = cross_validation.KFold(len(retrieval_results), n_folds=numfolds, shuffle=False, random_state=None)
                 cv=[k for k in cv] # run the generator
                 traincv, testcv=cv[split_fold]
                 if isinstance(retrieval_results, ResultIncrementalReader):
