@@ -17,8 +17,8 @@ from minerva.proc.results_logging import ProgressIndicator
 import minerva.db.corpora as cp
 
 from importing_functions import (convertXMLAndAddToCorpus, updatePaperInCollectionReferences)
+from minerva.evaluation.statistics_functions import computeAnnotationStatistics
 from minerva.squad.tasks import (importXMLTask, updateReferencesTask)
-
 
 FILES_TO_PROCESS_FROM=0
 FILES_TO_PROCESS_TO=sys.maxint
@@ -313,6 +313,25 @@ class CorpusImporter(object):
                 continue
 
             progress.showProgressReport("Importing -- latest file %s" % fn)
+
+    def computeStatistics(self, conditions):
+        """
+            For each paper in the corpus, it tries to load its SciDoc
+        """
+        papers=cp.Corpus.listPapers()
+        print("Computing statistics for each SciDoc")
+        progress=ProgressIndicator(True,len(files_to_process), print_out=False)
+        for guid in papers:
+            if self.use_celery:
+                computeAnnotationStatisticsTask.apply_async(
+                    args=[guid],
+                    kwargs={},
+                    queue="compute_statistics"
+                    )
+            else:
+                computeAnnotationStatistics(guid)
+                progress.showProgressReport("Computing statistics -- latest paper "+filename)
+
 
 # To inspect queues
 ##from celery.task.control import inspect

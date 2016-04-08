@@ -269,12 +269,11 @@ def generateDocBOW_ILC_Annotated(doc_incoming, parameters, doctext=None, full_pa
     return all_contexts
 
 
-def mashupBOWinlinkMethods(doc_incoming, exclude_files, max_year, method_params, full_corpus=False):
+def mashupBOWinlinkMethods(doc_incoming_guid, exclude_files, max_year, method_params, full_corpus=False):
     """
         Returns BOWs ready to add to indeces of different parameters for inlink_context
     """
-    doc_incoming_guid=doc_incoming.metadata["guid"]
-    ilc_bow=cp.Corpus.loadPrebuiltBOW(doc_incoming_guid, method_params["ilc_method"], method_params["ilc_parameter"])
+    ilc_bow=cp.Corpus.loadPrebuiltBOW(doc_incoming_guid, {"method":method_params["ilc_method"], "parameter":method_params["ilc_parameter"]})
     if ilc_bow is None:
         print("Prebuilt BOW not found for: inlink_context", method_params["ilc_method"] + method_params["ilc_parameter"])
         return None
@@ -285,7 +284,8 @@ def mashupBOWinlinkMethods(doc_incoming, exclude_files, max_year, method_params,
     # for some reason this shouldn't be a list
     ilc_bow=ilc_bow[0]
 
-    bow_method1=getListAnyway(cp.Corpus.loadPrebuiltBOW(doc_incoming_guid,method_params["mashup_method"],method_params["parameter"]))
+    bow_method1=getListAnyway(cp.Corpus.loadPrebuiltBOW(doc_incoming_guid,{"method":method_params["mashup_method"],
+                                                                           "parameter":method_params["parameter"]}))
 
     res=[]
     for passage in bow_method1:

@@ -61,15 +61,27 @@ prebuild_indexes={
 prebuild_general_indexes={
 ##    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "ilc_full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
-    "az_annotated_pmc_2014":{"type":"standard_multi",
-                             "bow_name":"az_annotated", # bow to load
-                             "parameters":[1], # parameter has to match a parameter of a prebuilt bow
-                             "max_year":2014 # cut-off point for adding files to index
-                             },
-    "az_ilc_az_annotated_pmc_2014":{"type":"ilc_mashup",
+
+##    "az_annotated_pmc_2014":{"type":"standard_multi",
+##                             "bow_name":"az_annotated", # bow to load
+##                             "parameters":[1], # parameter has to match a parameter of a prebuilt bow
+##                             "max_year":2014 # cut-off point for adding files to index
+##                             },
+
+##    "az_ilc_az_annotated_pmc_2014":{"type":"ilc_mashup",
+##                             "bow_name":"ilc_annotated", # bow to load
+##                             "ilc_method":"ilc_annotated", # bow to load
+##                             "mashup_method":"az_annotated",
+##                             "ilc_parameters":["paragraph"], # parameter has to match a parameter of a prebuilt bow
+##                             "parameters":[1], # parameter has to match a parameter of a prebuilt bow
+##                             "max_year":2014 # cut-off point for adding files to index
+##                             },
+
+    "ilc_az_annotated_pmc_2014":{"type":"standard_multi",
                              "bow_name":"ilc_annotated", # bow to load
-                             "ilc_parameters":["2up_2down"], # parameter has to match a parameter of a prebuilt bow
-                             "parameters":[1], # parameter has to match a parameter of a prebuilt bow
+                             "ilc_method":"ilc_annotated", # bow to load
+                             "ilc_parameters":["paragraph"], # parameter has to match a parameter of a prebuilt bow
+                             "parameters":["paragraph"], # parameter has to match a parameter of a prebuilt bow
                              "max_year":2014 # cut-off point for adding files to index
                              },
 }
@@ -255,10 +267,9 @@ def main():
     from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
+    cp.Corpus.setCorpusFilter("PMC_CSC")
 
-##    experiment["test_files"]=["456f8c80-9807-46a9-8455-cd4a7e346f9d"]
-
-    exp=Experiment(experiment, options, True)
+    exp=Experiment(experiment, options, False)
     exp.run()
 
 if __name__ == '__main__':

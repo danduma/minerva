@@ -28,6 +28,7 @@ from minerva.evaluation.prebuild_functions import prebuildMulti
 from minerva.evaluation.precompute_functions import addPrecomputeExplainFormulas
 from minerva.db.result_store import createResultStorers
 from minerva.evaluation.index_functions import addBOWsToIndex
+from minerva.evaluation.statistics_functions import computeAnnotationStatistics
 
 import celery_app
 from celery_app import app
@@ -132,6 +133,16 @@ def precomputeFormulasTask(self, precomputed_query, doc_method, doc_list, index_
         addPrecomputeExplainFormulas(precomputed_query, doc_method, doc_list, model, writers, experiment_id)
     except:
         logging.exception("Error running addPrecomputeExplainFormulas")
+        self.retry(countdown=120, max_retries=4)
+
+@app.task(ignore_result=True, bind=True)
+def computeAnnotationStatisticsTask(self, guid):
+    """
+    """
+    try:
+        computeAnnotationStatistics(guid)
+    except:
+        logging.exception("Error running computeAnnotationStatisticsTask")
         self.retry(countdown=120, max_retries=4)
 
 checkCorpusConnection()

@@ -163,6 +163,7 @@ class ElasticResultStorer(object):
             try:
                 scroll_id = res['_scroll_id']
                 rs = self.es.scroll(scroll_id=scroll_id, scroll=scroll_time)
+                res=rs
                 res_ids.extend([r["_id"] for r in rs['hits']['hits']])
                 scroll_size = len(rs['hits']['hits'])
             except TransportError as e:
@@ -233,6 +234,7 @@ class ElasticResultStorer(object):
             try:
                 scroll_id = res['_scroll_id']
                 rs = self.es.scroll(scroll_id=scroll_id, scroll=scroll_time, ignore=[404])
+                res=rs
                 writeResults(rs['hits']['hits'])
                 scroll_size = len(rs['hits']['hits'])
             except:

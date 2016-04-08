@@ -90,16 +90,17 @@ class BaseIndexer(object):
         """
         # TODO make classes for the extractors, so that each class reports its fields
         # WARNING this function is super hackish for tests
+        # like, seriously, I need to change this
 
         if index_data["type"] in ["annotated_boost", "ilc_annotated_boost"]:
             return index_data["runtime_parameters"]
         elif index_data["type"] in ["inlink_context"]:
             pass
         elif index_data["type"] in ["ilc_mashup"]:
-            pass
+            return CORESC_LIST + ["ilc_CSC_"+zone for zone in CORESC_LIST]
         elif index_data["type"] in ["standard_multi"]:
-            if index_data["method"] == "az_annotated":
-                return CORESC_LIST
+            if index_data["method"] in ["az_annotated", "ilc_annotated"]:
+                return CORESC_LIST + ["ilc_CSC_"+zone for zone in CORESC_LIST]
             pass
 
 
@@ -116,8 +117,9 @@ class BaseIndexer(object):
         for entry_name in indexNames:
             entry=indexNames[entry_name]
             entry["function_name"]=exp["prebuild_bows"][entry["bow_name"]]["function_name"]
-##        indexNames=getDictOfTestingMethods(methods)
-        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year)
+
+        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year, max_results=100)
+##        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year)
         for indexName in indexNames:
             actual_dir=cp.Corpus.getRetrievalIndexPath("ALL_GUIDS", indexName, full_corpus=True)
             fields=self.listFieldsToIndex(indexNames[indexName])
@@ -182,7 +184,6 @@ class BaseIndexer(object):
 ##            :param bow_info: a dict with info on the bow: how it was generated, etc.
 ##        """
 ##        raise NotImplementedError
-
 
 
 def main():

@@ -84,7 +84,7 @@ def addBOWsToIndex(guid, indexNames, index_max_year, fwriters=None, full_corpus=
         elif index_data["type"] in ["inlink_context"]:
             addOrBuildBOWToIndexExcludingCurrent(fwriters[indexName], guid,  cp.Corpus.TEST_FILES, index_max_year, method, parameter)
         elif index_data["type"]=="ilc_mashup":
-            bows=doc_representation.mashupBOWinlinkMethods(meta,[guid], index_max_year, indexNames[indexName], full_corpus=True)
+            bows=doc_representation.mashupBOWinlinkMethods(guid, [guid], index_max_year, indexNames[indexName], full_corpus=True)
             if not bows:
                 print("ERROR: Couldn't load prebuilt BOWs for mashup with inlink_context and ", method, ", parameters:",parameter, ilc_parameter)
                 continue
@@ -100,7 +100,7 @@ def addOrBuildBOWToIndex(writer, guid, index_data, full_corpus=False):
     except:
         bows=None
 
-    if not bows:
+    if bows is None:
         print("BOW not found, rebuilding")
         bows=prebuildMulti(index_data["method"],
                            index_data["parameters"],

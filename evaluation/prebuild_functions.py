@@ -43,7 +43,7 @@ def prebuildMulti(method_name, parameters, function, doc, doctext, guid, overwri
     else:
         params=parameters
 
-    all_bows=[]
+    all_bows={}
     if len(params) > 0:
         if isinstance(function,basestring):
             function=prebuildFunction(function)

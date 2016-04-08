@@ -78,7 +78,7 @@ class Experiment(object):
         if cp.Corpus.__class__.__name__ == "ElasticCorpus":
             from minerva.retrieval.elastic_index import ElasticIndexer
             from minerva.retrieval.elastic_retrieval import ElasticRetrievalBoost
-            self.indexer=ElasticIndexer(use_celery=self.use_celery)
+            self.indexer=ElasticIndexer(endpoint=cp.Corpus.endpoint,use_celery=self.use_celery)
             self.retrieval_class=ElasticRetrievalBoost
         elif cp.Corpus.__class__.__name__ == "LocalCorpus":
             from minerva.retrieval.lucene_index import LuceneIndexer
@@ -151,12 +151,12 @@ class Experiment(object):
     def buildIndex(self):
         """
         """
-        if not self.exp["full_corpus"]:
-            if self.options["rebuild_indexes"] and len(self.exp["prebuild_indexes"]) > 0:
-                self.indexer.buildIndexes(cp.Corpus.TEST_FILES, self.exp["prebuild_indexes"], self.options)
-        else:
+        if self.exp["full_corpus"]:
             if self.options["rebuild_indexes"] and len(self.exp["prebuild_general_indexes"]) > 0:
                 self.indexer.buildGeneralIndex(self.exp)
+        else:
+            if self.options["rebuild_indexes"] and len(self.exp["prebuild_indexes"]) > 0:
+                self.indexer.buildIndexes(cp.Corpus.TEST_FILES, self.exp["prebuild_indexes"], self.options)
 
     def computeQueries(self):
         """

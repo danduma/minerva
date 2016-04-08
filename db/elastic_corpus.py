@@ -214,10 +214,11 @@ class ElasticCorpus(BaseCorpus):
     def getRecord(self, rec_id, table="papers", source=None):
         """
             Abstracts over getting data from a row in the db. Returns all the
-            fields of the record for one type of table.
+            fields of the record for one type of table, or those specified in source.
 
             :param rec_id: id of the record
             :param table: table alias, e.g. ["papers", "scidocs"]
+            :param source: fields to return
         """
         self.checkConnectedToDB()
 
@@ -237,6 +238,32 @@ class ElasticCorpus(BaseCorpus):
         if not res:
             raise IndexError("Can't find record with id %s" % rec_id)
         return res["_source"]
+
+    def setRecord(self, rec_id, body, table="papers", op_type="index"):
+        """
+            Abstracts over setting getting data for a row in the db.
+
+            :param rec_id: id of the record
+            :param table: table alias, e.g. ["papers", "scidocs"]
+            :param body: data to set
+        """
+        self.checkConnectedToDB()
+
+        if table not in index_equivalence:
+            raise ValueError("Unknown record type")
+
+        try:
+            self.es.index(
+                index=index_equivalence[table]["index"],
+                doc_type=index_equivalence[table]["type"],
+                op_type=op_type,
+                id=rec_id,
+                body=body
+                )
+        except:
+            raise ValueError("Error writing record: %s in index %s" % (rec_id,index_equivalence[table]["index"]))
+
+        return
 
     def getRecordField(self, rec_id, table="papers"):
         """
@@ -377,6 +404,7 @@ class ElasticCorpus(BaseCorpus):
             index=ES_INDEX_PAPERS,
             doc_type=ES_TYPE_PAPER,
             _source="metadata",
+            size=1,
             q=query)
 
         hits=res["hits"]["hits"]
@@ -384,6 +412,18 @@ class ElasticCorpus(BaseCorpus):
             return None
 
         return hits[0]["_source"]["metadata"]
+
+    def getStatistics(self, guid):
+        """
+            Easy method to get a paper's statistics
+        """
+        return self.getRecord(guid, "papers", "statistics")["statistics"]
+
+    def setStatistics(self, guid, stats):
+        """
+            Easy method to set a paper's statistics
+        """
+        return self.setRecord(guid, {"statistics":stats}, "papers")
 
     def filterQuery(self, query, table="papers"):
         """
@@ -788,12 +828,13 @@ class ElasticCorpus(BaseCorpus):
             try:
                 scroll_id = res['_scroll_id']
                 rs = self.es.scroll(scroll_id=scroll_id, scroll=scroll_time)
+                res=rs
                 results.extend(rs['hits']['hits'])
                 scroll_size = len(rs['hits']['hits'])
             except:
                 break
 
-        return results
+        return results[:self.max_results]
 
     def setCorpusFilter(self, collection_id=None, import_id=None, date=None):
         """
@@ -824,16 +865,15 @@ class ElasticCorpus(BaseCorpus):
 
 ##ec.deleteByQuery("cache", "_id:resolvable_*")
 ##ec.deleteByQuery("cache", "_id:bow_*")
-##ec.deleteAll("cache")
 ##ec.deleteIndex("pmc_lrec_experiments_prr_az_*")
 
 ##hits=ec.unlimitedQuery(
-##        q="_id:*ilc_annotated",
-##        index=ES_INDEX_CACHE,
-##        doc_type=ES_TYPE_CACHE,
+##        q="metadata.collection_id:AAC",
+##        index=ES_INDEX_PAPERS,
+##        doc_type=ES_TYPE_PAPER,
 ##        _source="_id",
 ##)
-##print(hits)
+##print(len(hits))
 
 ##print(ec.loadSciDoc("f9c08f84-1e5e-4d57-80bc-b576fefa109f"))
 ##print(ec.SQLQuery("SELECT guid,metadata.filename FROM papers where metadata.year >2013"))
