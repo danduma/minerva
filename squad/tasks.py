@@ -27,7 +27,7 @@ from minerva.importing.importing_functions import (convertXMLAndAddToCorpus,
 from minerva.evaluation.prebuild_functions import prebuildMulti
 from minerva.evaluation.precompute_functions import addPrecomputeExplainFormulas
 from minerva.db.result_store import createResultStorers
-from minerva.evaluation.index_functions import addBOWsToIndex
+from minerva.retrieval.index_functions import addBOWsToIndex
 from minerva.evaluation.statistics_functions import computeAnnotationStatistics
 
 import celery_app

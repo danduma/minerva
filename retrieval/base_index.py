@@ -104,7 +104,7 @@ class BaseIndexer(object):
             pass
 
 
-    def buildGeneralIndex(self, exp):
+    def buildGeneralIndex(self, exp, options):
         """
             Creates one index for each method and parameter, adding all files to each
         """
@@ -118,8 +118,9 @@ class BaseIndexer(object):
             entry=indexNames[entry_name]
             entry["function_name"]=exp["prebuild_bows"][entry["bow_name"]]["function_name"]
 
-##        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year, max_results=10)
-        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year)
+        max_results=options.get("max_files_to_process",sys.maxint)
+
+        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year,  max_results=max_results)
         for indexName in indexNames:
             actual_dir=cp.Corpus.getRetrievalIndexPath("ALL_GUIDS", indexName, full_corpus=True)
             fields=self.listFieldsToIndex(indexNames[indexName])

@@ -153,7 +153,7 @@ class Experiment(object):
         """
         if self.exp["full_corpus"]:
             if self.options["rebuild_indexes"] and len(self.exp["prebuild_general_indexes"]) > 0:
-                self.indexer.buildGeneralIndex(self.exp)
+                self.indexer.buildGeneralIndex(self.exp, self.options)
         else:
             if self.options["rebuild_indexes"] and len(self.exp["prebuild_indexes"]) > 0:
                 self.indexer.buildIndexes(cp.Corpus.TEST_FILES, self.exp["prebuild_indexes"], self.options)

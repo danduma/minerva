@@ -263,7 +263,7 @@ options={
     "clear_existing_prr_results":False, # delete previous precomputed results? i.e. start from scratch
     "override_folds":4,
     "override_metric":"avg_ndcg",
-##    "max_files_to_process":1
+    "max_files_to_process":100
 }
 
 def main():
