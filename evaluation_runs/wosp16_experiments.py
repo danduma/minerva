@@ -19,11 +19,11 @@ prebuild_bows={
 ##"passage":{"function":"getDocBOWpassagesMulti", "parameters":[150,175,200,250,300,350,400,450]},
 ##"inlink_context":{"function":"generateDocBOWInlinkContext", "parameters":[200] },
 
-##"ilc_annotated":{"function":"generateDocBOW_ILC_Annotated",
-##    "parameters":
-##        ["2up_2down",
-##         "1up_1down",
-##         "paragraph"] },
+"ilc_annotated":{"function":"generateDocBOW_ILC_Annotated",
+    "parameters":
+        ["2up_2down",
+         "1up_1down",
+         "paragraph"] },
 
 "az_annotated":{"function":"getDocBOWannotated", "parameters":[1]},
 
@@ -71,22 +71,22 @@ prebuild_general_indexes={
 ##                             "max_year":2014 # cut-off point for adding files to index
 ##                             },
 
-##    "az_ilc_az_annotated_pmc_2014":{"type":"ilc_mashup",
-##                             "bow_name":"ilc_annotated", # bow to load
-##                             "ilc_method":"ilc_annotated", # bow to load
-##                             "mashup_method":"az_annotated",
-##                             "ilc_parameters":["paragraph"], # parameter has to match a parameter of a prebuilt bow
-##                             "parameters":[1], # parameter has to match a parameter of a prebuilt bow
-##                             "max_year":2014 # cut-off point for adding files to index
-##                             },
-
-    "ilc_az_annotated_pmc_2014":{"type":"standard_multi",
+    "az_ilc_az_annotated_pmc_2014":{"type":"ilc_mashup",
                              "bow_name":"ilc_annotated", # bow to load
                              "ilc_method":"ilc_annotated", # bow to load
+                             "mashup_method":"az_annotated",
                              "ilc_parameters":["paragraph"], # parameter has to match a parameter of a prebuilt bow
-                             "parameters":["paragraph"], # parameter has to match a parameter of a prebuilt bow
+                             "parameters":[1], # parameter has to match a parameter of a prebuilt bow
                              "max_year":2014 # cut-off point for adding files to index
                              },
+
+##    "ilc_az_annotated_pmc_2014":{"type":"standard_multi",
+##                             "bow_name":"ilc_annotated", # bow to load
+##                             "ilc_method":"ilc_annotated", # bow to load
+##                             "ilc_parameters":["paragraph"], # parameter has to match a parameter of a prebuilt bow
+##                             "parameters":["paragraph"], # parameter has to match a parameter of a prebuilt bow
+##                             "max_year":2014 # cut-off point for adding files to index
+##                             },
 }
 
 doc_methods={
@@ -115,13 +115,13 @@ doc_methods={
 ##         "full_text":["title", "abstract","text","inlink_context"],
 ##        }},
 
-    "az_annotated":{"type":"annotated_boost",
-                    "index":"az_annotated_pmc_2014",
-                    "parameters":[1],
-                    "runtime_parameters":{
-                ##        "AZ_ALL":AZ_ZONES_LIST,
-                        "CSC_ALL":CORESC_LIST,
-                        }},
+##    "az_annotated":{"type":"annotated_boost",
+##                    "index":"az_annotated_pmc_2014",
+##                    "parameters":[1],
+##                    "runtime_parameters":{
+##                ##        "AZ_ALL":AZ_ZONES_LIST,
+##                        "CSC_ALL":CORESC_LIST,
+##                        }},
 
     # this is normal ilc + az_annotated
 ##    "ilc_az_annotated":{"type":"ilc_annotated_boost", "index":"ilc_az_annotated", "parameters":[1], "ilc_parameters":[10, 20, 30, 40, 50], "runtime_parameters":
@@ -255,9 +255,9 @@ experiment={
 
 
 options={
-    "run_prebuild_bows":1, # should the whole BOW building process run?
+    "run_prebuild_bows":0, # should the whole BOW building process run?
     "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
-    "rebuild_indexes":0,   # rebuild indices?
+    "rebuild_indexes":1,   # rebuild indices?
     "recompute_queries":0,  # force rebuilding of queries too?
     "run_precompute_retrieval":0,  # only applies if type == "train_weights"
     "clear_existing_prr_results":False, # delete previous precomputed results? i.e. start from scratch

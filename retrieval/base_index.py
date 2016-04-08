@@ -118,8 +118,8 @@ class BaseIndexer(object):
             entry=indexNames[entry_name]
             entry["function_name"]=exp["prebuild_bows"][entry["bow_name"]]["function_name"]
 
-        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year, max_results=100)
-##        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year)
+##        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year, max_results=10)
+        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year)
         for indexName in indexNames:
             actual_dir=cp.Corpus.getRetrievalIndexPath("ALL_GUIDS", indexName, full_corpus=True)
             fields=self.listFieldsToIndex(indexNames[indexName])
