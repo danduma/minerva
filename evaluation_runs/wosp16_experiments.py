@@ -18,12 +18,15 @@ prebuild_bows={
 ##"title_abstract":{"function":"getDocBOWTitleAbstract", "parameters":[1]},
 ##"passage":{"function":"getDocBOWpassagesMulti", "parameters":[150,175,200,250,300,350,400,450]},
 ##"inlink_context":{"function":"generateDocBOWInlinkContext", "parameters":[200] },
-"ilc_annotated":{"function":"generateDocBOW_ILC_Annotated",
-    "parameters":
-        ["2up_2down",
-         "1up_1down",
-         "paragraph"] },
-##"az_annotated":{"function":"getDocBOWannotated", "parameters":[1]},
+
+##"ilc_annotated":{"function":"generateDocBOW_ILC_Annotated",
+##    "parameters":
+##        ["2up_2down",
+##         "1up_1down",
+##         "paragraph"] },
+
+"az_annotated":{"function":"getDocBOWannotated", "parameters":[1]},
+
 ##"section_annotated":{"function":"getDocBOWannotatedSections", "parameters":[1]},
 }
 
@@ -269,7 +272,7 @@ def main():
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     cp.Corpus.setCorpusFilter("PMC_CSC")
 
-    exp=Experiment(experiment, options, False)
+    exp=Experiment(experiment, options, True)
     exp.run()
 
 if __name__ == '__main__':
