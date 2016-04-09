@@ -49,7 +49,7 @@ class BaseTestingPipeline(object):
             Loads all the retrieval models for a single file
         """
         for model in self.files_dict[guid]["tfidf_models"]:
-            # create a Lucene search instance for each method
+            # create a search instance for each method
             self.tfidfmodels[model["method"]]=self.retrieval_class(
                 model["actual_dir"],
                 model["method"],

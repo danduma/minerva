@@ -50,7 +50,7 @@ class StructuredQuery(list):
                               token["distance"]
                               )
             elif isinstance(token, tuple) or isinstance(token, list):
-                self.addToken(**token)
+                self.addToken(*token)
             else:
                 raise ValueError("Type not recognized")
 

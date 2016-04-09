@@ -6,14 +6,15 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
-import logging
+import logging, sys
 
 from elasticsearch import Elasticsearch
-from elasticsearch.exceptions import ConnectionError
+from elasticsearch.exceptions import ConnectionError, TransportError
 
 import minerva.db.corpora as cp
 from base_retrieval import BaseRetrieval, SPECIAL_FIELDS_FOR_TESTS, MAX_RESULTS_RECALL
 from stored_formula import StoredFormula
+from minerva.proc.structured_query import StructuredQuery
 
 ES_TYPE_DOC="doc"
 QUERY_TIMEOUT=500 # this is in seconds!
@@ -27,7 +28,11 @@ class ElasticRetrieval(BaseRetrieval):
         if es_instance:
             self.es=es_instance
         else:
-            self.es=Elasticsearch()
+            if cp.Corpus.__class__.__name__ == "ElasticCorpus":
+                self.es=cp.Corpus.es
+            else:
+                self.es=Elasticsearch()
+
         if max_results:
             self.max_results=max_results
         else:
@@ -49,7 +54,9 @@ class ElasticRetrieval(BaseRetrieval):
         if "structured_query" in structured_query:
             structured_query=structured_query["structured_query"]
 
-##        original_query=structured_query
+        if not isinstance(structured_query,StructuredQuery):
+            structured_query=StructuredQuery(structured_query)
+
         if not structured_query or len(structured_query) == 0:
             return None
 
@@ -179,6 +186,7 @@ class ElasticRetrievalBoost(ElasticRetrieval):
             print("MAAAC! Empty query!")
             hits=[]
         else:
+##            assert(False)
             try:
                 res=self.es.search(
                     body={"query":dsl_query},
@@ -193,8 +201,13 @@ class ElasticRetrievalBoost(ElasticRetrieval):
                 structured_query["dsl_query"]=dsl_query
             except ConnectionError as e:
                 logging.exception("Error connecting to ES. Timeout?")
+                print("Exception:", sys.exc_info()[:2])
                 cp.Corpus.global_counters["query_error"]=cp.Corpus.global_counters.get("query_error",0)+1
                 print("Query error. Query len: ",len(query_text))
+                hits=[]
+            except TransportError as e:
+                logging.exception("Error in query:")
+                print("Exception:", sys.exc_info()[:2])
                 hits=[]
 
         # explain the query

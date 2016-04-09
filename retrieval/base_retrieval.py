@@ -8,6 +8,7 @@
 import re
 
 from minerva.proc.query_extraction import getFieldSpecialTestName
+from minerva.proc.structured_query import StructuredQuery
 
 MAX_RESULTS_RECALL=200
 SPECIAL_FIELDS_FOR_TESTS=["inlink_context"]
@@ -31,6 +32,9 @@ class BaseRetrieval(object):
         """
         if "structured_query" in structured_query:
             structured_query=structured_query["structured_query"]
+
+        if not isinstance(structured_query,StructuredQuery):
+            structured_query=StructuredQuery(structured_query)
 
         original_query=structured_query
         if not structured_query or len(structured_query) == 0:

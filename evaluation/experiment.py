@@ -180,6 +180,7 @@ class Experiment(object):
         elif self.exp["type"] == "train_weights":
             if self.options.get("run_precompute_retrieval", False):
                 pipeline=PrecomputedPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
+                pipeline.max_per_class_results=self.exp.get("max_per_class_results",pipeline.max_per_class_results)
                 pipeline.runPipeline(self.exp)
             weight_trainer=WeightTrainer(self.exp, self.options)
             weight_trainer.trainWeights()

@@ -135,8 +135,8 @@ doc_methods={
 ##        }},
 
     "ilc_annotated":{"type":"annotated_boost",
-                     "index":"az_ilc_az_annotated_pmc_2014",
-                     "parameters":["2up_2down"],
+                     "index":"az_ilc_az_annotated_pmc_2014_1",
+                     "parameters":["paragraph"],
                      "runtime_parameters":
                         {
 ##                        "AZ":["ilc_AZ_AIM","ilc_AZ_BAS","ilc_AZ_BKG","ilc_AZ_CTR","ilc_AZ_OTH","ilc_AZ_OWN","ilc_AZ_TXT"],
@@ -198,9 +198,9 @@ qmethods={
                 }
 
 experiment={
-    "name":"pmc_lrec_experiments2",
+    "name":"wosp16_experiments",
     "description":
-        """Re-run the original LREC experiments, but this time with the whole Sapienta-annotated PMC""",
+        """Re-run the LREC experiments (Sapienta-annotated PMC) looking at classifying the sentences in incoming-link context""",
     # dict of bag-of-word document representations to prebuild
     "prebuild_bows":prebuild_bows,
     # dict of per-file indexes to prebuild
@@ -216,7 +216,7 @@ experiment={
     # SQL condition to automatically generate the list above
     "test_files_condition":"metadata.num_in_collection_references:>0 AND metadata.year:>2014",
     # This lets us pick just the first N files
-    "max_test_files":100,
+    "max_test_files":1000,
     # Use Lucene DefaultSimilarity? As opposed to FieldAgnosticSimilarity
     "use_default_similarity":True,
     # Annotate sentences with AZ/CoreSC/etc?
@@ -249,21 +249,23 @@ experiment={
     "add_random_control_result": False,
     "precomputed_queries_filename":"precomputed_queries.json",
     "files_dict_filename":"files_dict.json",
+    # maximum number of queries of the same AZ/CSC type to process
+    "max_per_class_results":1000,
     # Type of experiment. "compute_once","train_weights" or "" to do nothing
-    "type":"",
+    "type":"train_weights",
 }
 
 
 options={
     "run_prebuild_bows":0, # should the whole BOW building process run?
     "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
-    "rebuild_indexes":1,   # rebuild indices?
+    "rebuild_indexes":0,   # rebuild indices?
     "recompute_queries":0,  # force rebuilding of queries too?
-    "run_precompute_retrieval":0,  # only applies if type == "train_weights"
+    "run_precompute_retrieval":1,  # only applies if type == "train_weights"
     "clear_existing_prr_results":False, # delete previous precomputed results? i.e. start from scratch
     "override_folds":4,
     "override_metric":"avg_ndcg",
-    "max_files_to_process":100
+##    "max_files_to_process":10
 }
 
 def main():
