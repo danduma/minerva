@@ -15,9 +15,9 @@ def addPrecomputeExplainFormulas(precomputed_query, doc_method, doc_list, retrie
         for each result
     """
     # !TODO remove this, it's a temporary fix
-    if precomputed_query.get("csc_type","Bac") in ["Bac"]:
-        print("Ignoring query of type %s" % precomputed_query.get("csc_type",""))
-        return
+##    if precomputed_query.get("csc_type","Bac") in ["Bac"]:
+##        print("Ignoring query of type %s" % precomputed_query.get("csc_type",""))
+##        return
 
     retrieval_result=deepcopy(precomputed_query)
     retrieval_result["doc_method"]=doc_method
