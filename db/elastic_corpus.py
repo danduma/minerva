@@ -865,7 +865,7 @@ class ElasticCorpus(BaseCorpus):
 
 ##ec.deleteByQuery("cache", "_id:resolvable_*")
 ##ec.deleteByQuery("cache", "_id:bow_*")
-##ec.deleteIndex("pmc_lrec_experiments_prr_az_*")
+##ec.deleteIndex("wosp16_experiments_prr_*")
 
 ##hits=ec.unlimitedQuery(
 ##        q="metadata.collection_id:AAC",

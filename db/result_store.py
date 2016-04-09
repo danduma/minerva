@@ -187,7 +187,7 @@ class ElasticResultStorer(object):
             Returns the number of results already available
         """
         try:
-            return self.es.count(index=self.index_name, doc_type="result")
+            return self.es.count(index=self.index_name, doc_type="result")["count"]
         except TransportError:
             return 0
 

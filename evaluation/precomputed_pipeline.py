@@ -37,13 +37,16 @@ class PrecomputedPipeline(BaseTestingPipeline):
         """
         doc_list=[hit[1]["guid"] for hit in retrieved_results]
 
-        must_process=False
         for zone_type in ["csc_type", "az"]:
-            if precomputed_query.get(zone_type,"") != "" and self.writers[zone_type+"_"+precomputed_query[zone_type]].getResultCount() < self.max_per_class_results:
-                must_process=True
+            if precomputed_query.get(zone_type,"") != "":
+                if self.writers[zone_type+"_"+precomputed_query[zone_type]].getResultCount() < self.max_per_class_results:
+                    must_process=True
+                else:
+                    must_process=False
+                    print("Too many queries of type %s already" % precomputed_query[zone_type])
+##                  assert(False)
 
         if not must_process:
-            print("Too many queries of type %s already", "csc_type")
             return
 
         if self.use_celery:
