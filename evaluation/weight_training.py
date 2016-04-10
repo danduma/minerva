@@ -265,13 +265,12 @@ class WeightTrainer(object):
             Loads the previously computed retrieval results, including query, etc.
         """
         prr=ElasticResultStorer(self.exp["name"],"prr_"+self.exp["queries_classification"]+"_"+zone_type, cp.Corpus.endpoint)
-        reader=ResultDiskReader(prr, cache_dir=os.path.join(self.exp["exp_dir"], "cache"), max_results=700)
+        reader=ResultDiskReader(prr, cache_dir=os.path.join(self.exp["exp_dir"], "cache"), max_results=self.exp.get("max_per_class_results",1000))
         reader.bufsize=30
         return reader
 
 ##        return prr.readResults(250)
 ##        return json.load(open(self.exp["exp_dir"]+"prr_"+self.exp["queries_classification"]+"_"+zone_type+".json","r"))
-
 
     def measureScoresOfWeights(self, best_weights):
         """

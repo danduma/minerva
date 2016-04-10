@@ -268,8 +268,8 @@ class BaseTestingPipeline(object):
             # for every method used for extracting BOWs
             for doc_method in all_doc_methods:
                 # Log everything if the logger is enabled
-                self.logger.logReport("Citation: "+precomputed_query["citation_id"]+"\n Query method:"+precomputed_query["query_method"]+" \nDoc method: "+doc_method +"\n")
-                self.logger.logReport(precomputed_query["query_text"]+"\n")
+##                self.logger.logReport("Citation: "+precomputed_query["citation_id"]+"\n Query method:"+precomputed_query["query_method"]+" \nDoc method: "+doc_method +"\n")
+##                self.logger.logReport(precomputed_query["query_text"]+"\n")
 
                 # ACTUAL RETRIEVAL HAPPENING - run query
                 retrieved=self.tfidfmodels[doc_method].runQuery(

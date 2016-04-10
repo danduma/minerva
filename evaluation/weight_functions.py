@@ -12,6 +12,7 @@ from multiprocessing import Pool, cpu_count
 from sklearn import cross_validation
 
 from pipeline_functions import getDictOfTestingMethods
+from minerva.retrieval.stored_formula import StoredFormula
 
 ##def runSingleFormula(result_tuple):
 ##    """

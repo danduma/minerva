@@ -33,10 +33,27 @@ class Experiment(object):
     def __init__(self, experiment, options={}, use_celery=False):
         """
             :param experiment: either a dict or a file name to load
+            :param use_celery: if true, tasks will not be executed automatically
+                but added to the celery queue. See squad.celery_py:app
         """
         self.use_celery=use_celery
         self.load(experiment, options)
+        self.exp["experiment_id"]=datetime.datetime.now().isoformat("/")
         self.query_generator=QueryGenerator()
+
+    def processCommandLineArguments(self):
+        """
+            Processes optional command line arguments
+        """
+        import argparse
+        parser = argparse.ArgumentParser(description='Run experiment %s ' % self.exp["name"])
+        parser.add_argument("-d", "--exp_dir",  dest='exp_dir', default=self.exp["exp_dir"],
+                           help='Experiment directory, i.e. where to store cache files and output')
+        parser.add_argument("-w", "--train_weights_for", type=str, nargs='+', dest='train_weights_for', default=self.exp["train_weights_for"],
+                           help='Experiment directory, i.e. where to store cache files and output')
+        args = parser.parse_args()
+        for arg in args.__dict__:
+            self.exp[arg]=args.__dict__[arg]
 
     def experimentExists(self, filename):
         """
@@ -194,8 +211,6 @@ class Experiment(object):
         """
             Loads an experiment and runs it all
         """
-        self.exp["experiment_id"]=datetime.datetime.now().isoformat("/")
-
         # BIND EXTRACTORS
         self.bindAllExtractors()
 

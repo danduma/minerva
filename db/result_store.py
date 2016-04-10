@@ -150,7 +150,7 @@ class ElasticResultStorer(object):
         res=self.es.search(
             index=self.index_name,
             doc_type="result",
-            size=10000,
+            size=5000,
             search_type="scan",
             scroll=scroll_time,
             _source=False,
@@ -187,7 +187,7 @@ class ElasticResultStorer(object):
             Returns the number of results already available
         """
         try:
-            return self.es.count(index=self.index_name, doc_type="result")["count"]
+            return int(self.es.count(index=self.index_name, doc_type="result")["count"])
         except TransportError:
             return 0
 

@@ -862,10 +862,11 @@ class ElasticCorpus(BaseCorpus):
 ##ec=ElasticCorpus()
 ##from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
 ##ec.connectCorpus("",endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
+##
+##ec.deleteIndex("wosp16_experiments_prr_*")
 
 ##ec.deleteByQuery("cache", "_id:resolvable_*")
 ##ec.deleteByQuery("cache", "_id:bow_*")
-##ec.deleteIndex("wosp16_experiments_prr_*")
 
 ##hits=ec.unlimitedQuery(
 ##        q="metadata.collection_id:AAC",

@@ -244,7 +244,7 @@ experiment={
     # of all precomputed queries, which classes should be processed/evaluated?
     "queries_to_process":["ALL"],
     # what "zones" to try to train weights for
-    "train_weights_for": ["Mod"], #CORESC_LIST, #["Bac"], ["Hyp","Mot","Bac","Goa","Obj","Met","Exp","Mod","Obs","Res","Con"]
+    "train_weights_for": CORESC_LIST, #["Bac"], ["Hyp","Mot","Bac","Goa","Obj","Met","Exp","Mod","Obs","Res","Con"]
     # add another doc_method showing the score based on analytical random chance?
     "add_random_control_result": False,
     "precomputed_queries_filename":"precomputed_queries.json",
@@ -261,12 +261,15 @@ options={
     "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
     "rebuild_indexes":0,   # rebuild indices?
     "recompute_queries":0,  # force rebuilding of queries too?
-    "run_precompute_retrieval":1,  # only applies if type == "train_weights"
+    "run_precompute_retrieval":0,  # only applies if type == "train_weights"
     "clear_existing_prr_results":False, # delete previous precomputed results? i.e. start from scratch
     "override_folds":4,
     "override_metric":"avg_ndcg",
 ##    "max_files_to_process":10
 }
+
+
+# usage: wosp16_experiments.py --w Mod
 
 def main():
     from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
@@ -275,11 +278,8 @@ def main():
     cp.Corpus.setCorpusFilter("PMC_CSC")
 
     exp=Experiment(experiment, options, True)
-    exp.run()
+    exp.processCommandLineArguments()
+##    exp.run()
 
 if __name__ == '__main__':
     main()
-##    from minerva.proc.doc_representation import getDictOfLuceneIndeces
-##    from minerva.evaluation.base_pipeline import getDictOfTestingMethods
-##    print(getDictOfLuceneIndeces(prebuild_general_indexes))
-##    print(getDictOfTestingMethods(doc_methods))
