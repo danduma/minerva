@@ -38,6 +38,7 @@ class Experiment(object):
         """
         self.use_celery=use_celery
         self.load(experiment, options)
+        self.processCommandLineArguments()
         self.exp["experiment_id"]=datetime.datetime.now().isoformat("/")
         self.query_generator=QueryGenerator()
 
@@ -47,13 +48,17 @@ class Experiment(object):
         """
         import argparse
         parser = argparse.ArgumentParser(description='Run experiment %s ' % self.exp["name"])
-        parser.add_argument("-d", "--exp_dir",  dest='exp_dir', default=self.exp["exp_dir"],
+        parser.add_argument("-d", "--exp_dir",  dest='exp_dir', default=None,
                            help='Experiment directory, i.e. where to store cache files and output')
-        parser.add_argument("-w", "--train_weights_for", type=str, nargs='+', dest='train_weights_for', default=self.exp["train_weights_for"],
+        parser.add_argument("-w", "--train_weights_for", type=str, nargs='+', dest='train_weights_for', default=None,
                            help='Experiment directory, i.e. where to store cache files and output')
         args = parser.parse_args()
-        for arg in args.__dict__:
-            self.exp[arg]=args.__dict__[arg]
+        self.arguments=args.__dict__
+
+        for arg in self.arguments:
+            arg_val=self.arguments[arg]
+            if arg_val:
+                self.exp[arg]=arg_val
 
     def experimentExists(self, filename):
         """
@@ -70,7 +75,6 @@ class Experiment(object):
         assert(os.path.isfile(filename))
         exp=json.load(open(filename,"r"))
         exp["exp_dir"]=os.path.join(exp_path,os.sep)
-
         return exp
 
     def load(self, experiment, options):
@@ -89,7 +93,6 @@ class Experiment(object):
             from copy import deepcopy
             self.exp=deepcopy(experiment)
             self.exp["exp_dir"]=os.path.join(cp.Corpus.paths.experiments,self.exp["name"])+os.sep
-        ensureDirExists(self.exp["exp_dir"])
         self.options=options
 
         if cp.Corpus.__class__.__name__ == "ElasticCorpus":
@@ -211,6 +214,8 @@ class Experiment(object):
         """
             Loads an experiment and runs it all
         """
+        ensureDirExists(self.exp["exp_dir"])
+
         # BIND EXTRACTORS
         self.bindAllExtractors()
 

@@ -278,8 +278,7 @@ def main():
     cp.Corpus.setCorpusFilter("PMC_CSC")
 
     exp=Experiment(experiment, options, True)
-    exp.processCommandLineArguments()
-##    exp.run()
+    exp.run()
 
 if __name__ == '__main__':
     main()
