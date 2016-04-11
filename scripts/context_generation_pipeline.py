@@ -8,8 +8,8 @@
 from collections import defaultdict
 from math import log
 
-from precomputed_pipeline import PrecomputedPipeline
-from experiment import Experiment
+from minerva.evaluation.precomputed_pipeline import PrecomputedPipeline
+from minerva.evaluation.experiment import Experiment
 
 def termScoresInFormula(part):
     """

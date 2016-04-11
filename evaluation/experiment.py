@@ -51,14 +51,20 @@ class Experiment(object):
         parser.add_argument("-d", "--exp_dir",  dest='exp_dir', default=None,
                            help='Experiment directory, i.e. where to store cache files and output')
         parser.add_argument("-w", "--train_weights_for", type=str, nargs='+', dest='train_weights_for', default=None,
+                           help='List of query classes that we should train weights for, if the experiment is of type weight_training')
+        parser.add_argument("-r", "--running_stage", type=int, nargs='+', dest='running_stage', default=None,
                            help='Experiment directory, i.e. where to store cache files and output')
+
+
         args = parser.parse_args()
         self.arguments=args.__dict__
 
         for arg in self.arguments:
-            arg_val=self.arguments[arg]
-            if arg_val:
-                self.exp[arg]=arg_val
+            for which in[self.exp, self.options]:
+                if arg in which:
+                    arg_val=self.arguments[arg]
+                    if arg_val:
+                        which[arg]=arg_val
 
     def experimentExists(self, filename):
         """
@@ -184,7 +190,7 @@ class Experiment(object):
         gc.collect()
         queries_file=os.path.join(self.exp["exp_dir"],self.exp["precomputed_queries_filename"])
 
-        if self.options["recompute_queries"] or not exists(queries_file):
+        if self.options.get("compute_queries",True) and (self.options.get("overwrite_existing_queries",False) or not exists(queries_file)):
             self.query_generator.precomputeQueries(self.exp)
 
         self.exp["precomputed_queries_file_path"]=queries_file
@@ -214,6 +220,7 @@ class Experiment(object):
         """
             Loads an experiment and runs it all
         """
+        self.exp["exp_dir"]=os.path.normpath(path) + os.sep
         ensureDirExists(self.exp["exp_dir"])
 
         # BIND EXTRACTORS

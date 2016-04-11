@@ -80,13 +80,6 @@ prebuild_general_indexes={
                              "max_year":2014 # cut-off point for adding files to index
                              },
 
-##    "ilc_az_annotated_pmc_2014":{"type":"standard_multi",
-##                             "bow_name":"ilc_annotated", # bow to load
-##                             "ilc_method":"ilc_annotated", # bow to load
-##                             "ilc_parameters":["paragraph"], # parameter has to match a parameter of a prebuilt bow
-##                             "parameters":["paragraph"], # parameter has to match a parameter of a prebuilt bow
-##                             "max_year":2014 # cut-off point for adding files to index
-##                             },
 }
 
 doc_methods={
@@ -128,19 +121,25 @@ doc_methods={
 ##        {"ALL":["AIM","BAS","BKG","CTR","OTH","OWN","TXT","inlink_context"],
 ##        }},
 
-    # this is sentence-based ILC, annotated with AZ and CSC
-##    "ilc_AZ":{"type":"annotated_boost", "index":"ilc_AZ", "parameters":["paragraph","1up_1down","1up","1only"], "runtime_parameters":
-##        {
-##        "ALL":["ilc_AZ_AIM","ilc_AZ_BAS","ilc_AZ_BKG","ilc_AZ_CTR","ilc_AZ_OTH","ilc_AZ_OWN","ilc_AZ_TXT"]
-##        }},
+    # this is sentence-based ILC, annotated with AZ/CSC
+##    "ilc_annotated":{"type":"annotated_boost",
+##                     "index":"az_ilc_az_annotated_pmc_2014_1",
+##                     "parameters":["paragraph"],
+##                     "runtime_parameters":
+##                        {
+####                        "AZ":["ilc_AZ_AIM","ilc_AZ_BAS","ilc_AZ_BKG","ilc_AZ_CTR","ilc_AZ_OTH","ilc_AZ_OWN","ilc_AZ_TXT"],
+##                        "CSC": ["ilc_CSC_"+zone for zone in CORESC_LIST],
+##                        }},
 
-    "ilc_annotated":{"type":"annotated_boost",
+    # this is sentence-based ILC, annotated with AZ/CSC
+    "full_ilc_annotated":{"type":"annotated_boost",
                      "index":"az_ilc_az_annotated_pmc_2014_1",
                      "parameters":["paragraph"],
                      "runtime_parameters":
                         {
 ##                        "AZ":["ilc_AZ_AIM","ilc_AZ_BAS","ilc_AZ_BKG","ilc_AZ_CTR","ilc_AZ_OTH","ilc_AZ_OWN","ilc_AZ_TXT"],
-                        "CSC": ["ilc_CSC_"+zone for zone in CORESC_LIST],
+##                        "CSC": ["ilc_CSC_"+zone for zone in CORESC_LIST],
+                        "CSC": CORESC_LIST + ["ilc_CSC_"+zone for zone in CORESC_LIST],
                         }},
 
     # this is sentence-based AZ and AZ-annotated document contents
@@ -198,7 +197,7 @@ qmethods={
                 }
 
 experiment={
-    "name":"wosp16_experiments",
+    "name":"wosp16_full_experiments",
     "description":
         """Re-run the LREC experiments (Sapienta-annotated PMC) looking at classifying the sentences in incoming-link context""",
     # dict of bag-of-word document representations to prebuild
@@ -260,8 +259,9 @@ options={
     "run_prebuild_bows":0, # should the whole BOW building process run?
     "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
     "rebuild_indexes":0,   # rebuild indices?
-    "recompute_queries":0,  # force rebuilding of queries too?
-    "run_precompute_retrieval":0,  # only applies if type == "train_weights"
+    "compute_queries":0,  # should we compute the queries?
+    "overwrite_existing_queries":0,  # force rebuilding of queries too?
+    "run_precompute_retrieval":1,  # only applies if type == "train_weights"
     "clear_existing_prr_results":False, # delete previous precomputed results? i.e. start from scratch
     "override_folds":4,
     "override_metric":"avg_ndcg",

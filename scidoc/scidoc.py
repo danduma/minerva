@@ -231,10 +231,15 @@ class SciDoc(object):
         self.processSingleElement(element)
         return element
 
-    def addSection(self,parent, header, header_id=None):
+    def addSection(self, parent, header, header_id=None):
         """
             Create a new section element, add to SciDoc, set header_id if provided
+
+            :param parent: id of section it hangs from, or set parent to None or "root" if it is a root section
+            :param header: heading text of section
         """
+        if parent is None:
+            parent="root"
         newElement={"type":"section", "header":header, "content":[], "parent":parent}
         if header_id: newElement["header_id"]=header_id
         return self.addElement(newElement)
@@ -242,6 +247,8 @@ class SciDoc(object):
     def addParagraph(self,parent):
         """
             Create a new paragraph element, add to SciDoc
+
+            :param parent: id of element (section) it hangs from
         """
         newElement={"type":"p", "content":[], "parent":parent}
         return self.addElement(newElement)

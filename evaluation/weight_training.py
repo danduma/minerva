@@ -375,7 +375,7 @@ class WeightTrainer(object):
         data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_improvements"+xtra+".csv")
 
         fold_data=pd.DataFrame(fold_results)
-        fold_data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_folds"+xtra+".csv")
+        fold_data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_folds_"+xtra+".csv")
 
     def measurePrecomputedResolution(self, retrieval_results,method,parameters, citation_az="*"):
         """

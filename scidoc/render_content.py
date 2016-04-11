@@ -29,8 +29,11 @@ metadata_labels={
 class SciDocRenderer(object):
     """
         Renderer object. Encapsulates all the functions that deal with pretty
-        printing the SciDoc
+        printing the SciDoc.
+
+        Note: a bit hackish, needs refactoring.
     """
+    # TODO: make a class that can be subclassed to override formatting functions etc.
     def __init__(self, doc):
         """
         """
