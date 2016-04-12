@@ -52,7 +52,7 @@ def padWithHTML(html):
     """
         Adds <html> tags and includes required stylesheet/JS
     """
-    result="""<html><meta charset="utf-8" /> <head><link href='scidocview.css' rel='stylesheet'>
+    result="""<html><head><meta charset="utf-8" /> <link href='scidocview.css' rel='stylesheet'>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 
     <script>

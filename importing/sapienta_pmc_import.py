@@ -1,4 +1,4 @@
-# AAC corpus importer
+# Sapienta-annotated PMC corpus importer
 #
 # Copyright:   (c) Daniel Duma 2015
 # Author: Daniel Duma <danielduma@gmail.com>

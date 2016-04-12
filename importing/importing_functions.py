@@ -38,7 +38,7 @@ def addSciDocToDB(doc, import_id, collection_id):
     meta["num_citations"]=0
     meta["import_id"]=import_id
     meta["collection_id"]=collection_id
-    cp.Corpus.addPaper(meta)
+    cp.Corpus.addPaper(meta, check_existing=False)
 
 def convertXMLAndAddToCorpus(file_path, corpus_id, import_id, collection_id,
     import_options, xml_string=None, existing_guid=None):

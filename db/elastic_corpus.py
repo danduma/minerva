@@ -239,7 +239,7 @@ class ElasticCorpus(BaseCorpus):
             raise IndexError("Can't find record with id %s" % rec_id)
         return res["_source"]
 
-    def setRecord(self, rec_id, body, table="papers", op_type="index"):
+    def setRecord(self, rec_id, body, table="papers", op_type="update"):
         """
             Abstracts over setting getting data for a row in the db.
 
@@ -252,7 +252,16 @@ class ElasticCorpus(BaseCorpus):
         if table not in index_equivalence:
             raise ValueError("Unknown record type")
 
-        try:
+##~        try:
+        if op_type == "update":
+            body={"doc":body}
+            self.es.update(
+                            index=index_equivalence[table]["index"],
+                            doc_type=index_equivalence[table]["type"],
+                            id=rec_id,
+                            body=body
+                            )
+        elif op_type in ["index", "create"]:
             self.es.index(
                 index=index_equivalence[table]["index"],
                 doc_type=index_equivalence[table]["type"],
@@ -260,8 +269,10 @@ class ElasticCorpus(BaseCorpus):
                 id=rec_id,
                 body=body
                 )
-        except:
-            raise ValueError("Error writing record: %s in index %s" % (rec_id,index_equivalence[table]["index"]))
+        else:
+            raise ValueError("Unkown op_type %s" % op_type)
+##        except:
+##            raise ValueError("Error writing record: %s in index %s : %s" % (rec_id,index_equivalence[table]["index"], str(sys.exc_info[:2])))
 
         return
 
@@ -423,7 +434,7 @@ class ElasticCorpus(BaseCorpus):
         """
             Easy method to set a paper's statistics
         """
-        return self.setRecord(guid, {"statistics":stats}, "papers")
+        return self.setRecord(guid, {"statistics":stats}, "papers", op_type="update")
 
     def filterQuery(self, query, table="papers"):
         """
@@ -486,33 +497,46 @@ class ElasticCorpus(BaseCorpus):
                 return [r["_source"] for r in hits]
         else:
             if field:
-                return [r["_source"][field] for r in hits]
+                if field.startswith("_"):
+                    return [r[field] for r in hits]
+                else:
+                    return [r["_source"][field] for r in hits]
             else:
                 return [r["_source"] for r in hits]
 
-    def listPapers(self,conditions=None,field="guid", max_results=sys.maxint):
+    def listRecords(self, conditions=None, field="guid", max_results=sys.maxint, table="papers"):
         """
-            Return a list of GUIDs in papers table where [conditions]
+            This is the equivalent of a SELECT clause
         """
         self.checkConnectedToDB()
+
+        es_index=index_equivalence[table]["index"]
+        es_type=index_equivalence[table]["type"]
 
         if conditions:
             query=self.filterQuery(conditions)
         else:
-            query=self.filterQuery(field+":*")
+##            query=self.filterQuery(field+":*")
+            query=self.filterQuery("*:*")
 
         prev_max_results=self.max_results
         self.max_results=max_results
 
         hits=self.unlimitedQuery(
                 q=query,
-                index=ES_INDEX_PAPERS,
-                doc_type=ES_TYPE_PAPER,
+                index=es_index,
+                doc_type=es_type,
                 _source=field,
         )
         self.max_results=prev_max_results
 
         return self.abstractNestedResults(query, hits, field)
+
+    def listPapers(self,conditions=None,field="guid", max_results=sys.maxint):
+        """
+            Return a list of GUIDs in papers table where [conditions]
+        """
+        return self.listRecords(conditions, field, max_results, "papers")
 
     def runSingleValueQuery(self,query):
         raise NotImplementedError
@@ -657,9 +681,9 @@ class ElasticCorpus(BaseCorpus):
         body={"guid": metadata["guid"],
                 "metadata": metadata,
                 "norm_title": metadata["norm_title"],
-                "num_in_collection_references": metadata["num_in_collection_references"],
-                "num_resolvable_citations": metadata["num_resolvable_citations"],
-                "num_inlinks": len(metadata["inlinks"]),
+                "num_in_collection_references": metadata.get("num_in_collection_references",0),
+                "num_resolvable_citations": metadata.get("num_resolvable_citations",0),
+                "num_inlinks": len(metadata.get("inlinks",[])),
                 "time_modified": timestamp,
 ##                "corpus_id": metadata["corpus_id"],
 ##                "filename": metadata["filename"],
@@ -676,14 +700,22 @@ class ElasticCorpus(BaseCorpus):
         if op_type=="create":
             body["time_created"]=timestamp
 
-        self.es.index(
-            index=ES_INDEX_PAPERS,
-            doc_type=ES_TYPE_PAPER,
-            op_type=op_type,
-            id=metadata["guid"],
-            body=body
-            )
-
+        if op_type=="update":
+            body={"doc":body}
+            self.es.update(
+                index=ES_INDEX_PAPERS,
+                doc_type=ES_TYPE_PAPER,
+                id=metadata["guid"],
+                body=body
+                )
+        else:
+            self.es.index(
+                index=ES_INDEX_PAPERS,
+                doc_type=ES_TYPE_PAPER,
+                op_type=op_type,
+                id=metadata["guid"],
+                body=body
+                )
 
     def addLink(self,GUID_from,GUID_to,authors_from,authors_to,year_from,year_to,numcitations):
         """

@@ -28,7 +28,7 @@ def getAnnotationStatistics(doc):
             csc_counts[sentence["csc_type"]] += 1
             zone_list.append(sentence["csc_type"])
         elif sentence.get("az","") != "":
-            azc_counts[sentence["az"]] += 1
+            az_counts[sentence["az"]] += 1
             zone_list.append(sentence["az"])
 
     for citation in doc.citations:
@@ -42,7 +42,7 @@ def getAnnotationStatistics(doc):
             csc_counts[sentence["csc_type"]] += 1
             zone_list.append(sentence["csc_type"])
         elif sentence.get("az","") != "":
-            azc_counts[sentence["az"]] += 1
+            az_counts[sentence["az"]] += 1
             zone_list.append(sentence["az"])
 
         s_type=doc.element_by_id[parent].get("csc_type", "")
@@ -61,27 +61,42 @@ def getAnnotationStatistics(doc):
             "per_zone_citations":citation_zone_counts
             }
 
+from minerva.importing.importing_functions import addSciDocToDB
+
+
 def computeAnnotationStatistics(guid):
     """
         Store for each scidoc statistics on the PMC annotation
 
         :param guid: the uuid of the paper to compute statistics for
     """
-    try:
-        doc=cp.Corpus.loadSciDoc(guid)
-        stats=getAnnotationStatistics(doc)
-        cp.Corpus.setStatistics(guid, stats)
-    except:
-        print("Error computing statistics for %s :", sys.exc_info()[:2])
+##    try:
+    doc=cp.Corpus.loadSciDoc(guid)
+    stats=getAnnotationStatistics(doc)
+
+    # TODO remove this when fixed: this is to fix having broken the corpus
+    # !TODO ALSO CHANGE ElasticCorpus.addPaper : check_existing=True
+    addSciDocToDB(doc,doc.metadata.get("import_id",""), doc.metadata.get("collection_id",""))
+##    cp.Corpus.updatePaper(doc.metadata, op_type="index", has_scidoc=True)
+
+##    meta=cp.Corpus.getMetadataByGUID(guid)
+##    print meta
+    # remove until here
+    cp.Corpus.setStatistics(guid, stats)
+
+
+##    except:
+##        print("Error computing statistics for %s :", sys.exc_info()[:2])
 
 def main():
+    import json
     cp.useElasticCorpus()
     from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.Corpus.connectCorpus("",endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 ##    doc=cp.Corpus.loadSciDoc("957e1fcf-d5b4-41dc-af32-7db08f1d2ded")
 ##    print getAnnotationStatistics(doc)
     computeAnnotationStatistics("957e1fcf-d5b4-41dc-af32-7db08f1d2ded")
-    print cp.Corpus.getStatistics("957e1fcf-d5b4-41dc-af32-7db08f1d2ded")
+    print json.dumps(cp.Corpus.getStatistics("957e1fcf-d5b4-41dc-af32-7db08f1d2ded"),indent=3)
     pass
 
 if __name__ == '__main__':
