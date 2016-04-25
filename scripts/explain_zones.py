@@ -4,7 +4,7 @@
 # Author: Daniel Duma <danielduma@gmail.com>
 # For license information, see LICENSE.TXT
 
-import os
+import os, re
 
 import minerva.db.corpora as cp
 from minerva.proc.general_utils import writeFileText
@@ -13,6 +13,8 @@ from minerva.scidoc.render_content import SciDocRenderer
 from minerva.scidoc.reference_formatting import formatCitation
 
 from collections import defaultdict
+
+CURRENT_CITATION=""
 
 def extraAttributes(s,attributes, glob):
     """
@@ -47,6 +49,18 @@ def referenceFormatting(text, glob, ref):
         reftype+=" in-collection"
     res="<span class='"+reftype+"'>"+text+"</span>"
     return res
+
+def citationFormatting(text, match):
+    """
+        Changes the class of all citations not pointing to the current citation
+        to avoid highlighting them
+    """
+    global CURRENT_CITATION
+
+    class_match=re.search(CURRENT_CITATION, text, re.IGNORECASE)
+    if not class_match:
+        text=re.sub(r"class=\"citation\"","class=\"citation_ignore\"", text, flags=re.IGNORECASE)
+    return text
 
 def padWithHTML(html):
     """
@@ -143,21 +157,28 @@ def trimDocToRelevantBits(doc, guid):
     para=doc.addParagraph(new_sect["id"])
     sent=doc.addSentence(para["id"],"MATCHED REFERENCE: %s" % formatCitation(linked_ref))
     content=[new_sect, para, sent]
+    to_add=[]
 
     for cit_id in linked_ref["citations"]:
         cit=doc.citation_by_id[cit_id]
         parent_p=None
         if "parent_p" in cit:
-            parent_p=cit["parent_p"]
+            para=cit["parent_p"]
         else:
             parent_s=cit.get("parent_s",None) or cit["parent"]
             sent=doc.element_by_id[parent_s]
             para=doc.element_by_id[sent["parent"]]
-            para["parent"]=new_sect["id"]
-            content.append(para)
-            content.extend([doc.element_by_id[s] for s in para["content"]])
-            new_sect["content"].append(para["id"])
+        para["parent"]=new_sect["id"]
+        to_add.append(para)
+        to_add.extend([doc.element_by_id[s] for s in para["content"]])
 
+    to_add=list(set([element["id"] for element in to_add]))
+    to_add=[doc.element_by_id[id] for id in to_add]
+    for element in to_add:
+        if element.get("type","") == "p":
+            new_sect["content"].append(element["id"])
+
+    content.extend(to_add)
     doc["content"]=content
     doc.updateContentLists()
 
@@ -169,6 +190,8 @@ def explainAnchorTextZoning(guid, max_inlinks=10, use_full_text=False):
     """
     meta=cp.Corpus.getMetadataByGUID(guid)
     all_html=["""<h1 class="title">%s</h1><span>Inlink context summary for %s</span>""" % (meta["title"],formatCitation(meta))]
+    global CURRENT_CITATION
+    CURRENT_CITATION=re.escape(formatCitation(meta))
 
     for index, link in enumerate(meta["inlinks"]):
         if index == max_inlinks:
@@ -185,6 +208,7 @@ def explainAnchorTextZoning(guid, max_inlinks=10, use_full_text=False):
             include_bibliography=use_full_text,
             wrap_with_HTML_tags=False,
             extra_attribute_function=extraAttributes,
+            citation_formatting_function=citationFormatting,
             reference_formatting_function=referenceFormatting)
         all_html.append(html)
 
@@ -201,7 +225,7 @@ def connectToCorpus():
 def main():
     connectToCorpus()
 ##    guid="df8c8824-1784-46f1-b621-cc6e5aca0dad"
-    guid="947b3f74-2d41-4fa0-9ccd-5320efedefea"
+    guid="d7aceeb7-f1a0-4301-9b66-e5f32c476aac"
 
     explainInFileZoning(guid)
     explainAnchorTextZoning(guid, 30)

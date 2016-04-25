@@ -107,6 +107,10 @@ def updatePaperInCollectionReferences(doc_id, import_options):
     doc_meta["num_references"]=len(doc_file["references"])
     doc_meta["num_resolvable_citations"]=len(resolvable)
     doc_meta["num_citations"]=len(doc_file["citations"])
+    if import_options.get("force_collection_id", None):
+        doc_meta["collection_id"]=import_options["force_collection_id"]
+    if import_options.get("force_import_id", None):
+        doc_meta["import_id"]=import_options["force_import_id"]
 
     for ref in in_collection_references:
         match_meta=cp.Corpus.getMetadataByGUID(ref)

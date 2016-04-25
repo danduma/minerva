@@ -128,6 +128,7 @@ class ElasticCorpus(BaseCorpus):
 
         properties={
             "scidoc": {"type":"string", "index": "no", "store":True},
+            "guid": {"type":"string", "index": "not_analyzed", "store":True},
             "time_created": {"type":"date"},
             "time_modified": {"type":"date"},
             }
@@ -306,15 +307,40 @@ class ElasticCorpus(BaseCorpus):
             :param query: SQL query
             :type query: string
         """
-        uri="http://%s:%s/_sql?sql=%s" % (self.endpoint["host"],self.endpoint["port"],query)
+        uri="http://%s:%s/_sql/_explain?sql=%s" % (self.endpoint["host"],self.endpoint["port"],query)
         response = requests.get(uri)
-        hits = json.loads(response.text)
+        dsl_query = json.loads(response.text)
 
-        if "error" in hits:
-            raise ConnectionError("Error in query: " + str(hits["error"]["root_cause"]))
-        hits=hits["hits"]["hits"]
+        if "error" in dsl_query:
+            raise ConnectionError("Error in query: " + str(dsl_query["error"]["root_cause"]))
 
-        return [hit["_source"] for hit in hits]
+        dsl_query["body"]={"query":dsl_query.pop("query")}
+        dsl_query["from_"]=dsl_query.pop("from")
+        dsl_query["_source_include"]=dsl_query["_source"]["includes"]
+        dsl_query["_source_exclude"]=dsl_query["_source"]["excludes"]
+        dsl_query.pop("_source")
+
+        match=re.search(r"select.+?from[\s\"\']+([\w,]+)", query, flags=re.IGNORECASE)
+        if match:
+            table_name=match.group(1)
+        else:
+            table_name="papers"
+
+        dsl_query["index"]=index_equivalence[table_name]["index"]
+        dsl_query["doc_type"]=index_equivalence[table_name]["type"]
+
+        tmp_max=self.max_results
+        self.max_results=dsl_query["size"]
+        if "size" in dsl_query:
+            del dsl_query["size"]
+        results=self.unlimitedQuery(**dsl_query)
+        self.max_results=tmp_max
+
+        results=[r["_source"] for r in results]
+        if len(dsl_query["_source_include"]) == 1:
+            results=[r[dsl_query["_source_include"][0]] for r in results]
+
+        return results
 
     def cachedJsonExists(self, type, guid, params=None):
         """
@@ -382,6 +408,7 @@ class ElasticCorpus(BaseCorpus):
                     op_type="index",
                     body={
                         "scidoc": json.dumps(doc.data),
+                        "guid":doc["metadata"]["guid"],
                         "time_created": timestamp,
                         "time_modified": timestamp,
                         }
@@ -842,7 +869,7 @@ class ElasticCorpus(BaseCorpus):
             It does more or less what elasticsearch.helpers.scan does, only this
             one actually works.
         """
-        scroll_time="2m"
+        scroll_time="20m"
 
         size=min(self.max_results,10000)
 

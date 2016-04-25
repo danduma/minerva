@@ -20,9 +20,9 @@ def add_statistics_to_all_files(use_celery=False, conditions=None, max_files=sys
         For each paper in the corpus, it computes and stores its statistics
     """
     print("Listing files...")
-##    papers=cp.Corpus.listPapers(conditions, max_results=max_files)
-    papers=cp.Corpus.listRecords(conditions, max_results=max_files, field="_id", table="scidocs")
-    print("Computing statistics for each SciDoc")
+    papers=cp.Corpus.listPapers(conditions, max_results=max_files)
+##    papers=cp.Corpus.listRecords(conditions, max_results=max_files, field="_id", table="papers")
+    print("Computing statistics for %d SciDocs" % len(papers))
     progress=ProgressIndicator(True,len(papers), print_out=False)
     for guid in papers:
         if use_celery:
@@ -38,6 +38,7 @@ def add_statistics_to_all_files(use_celery=False, conditions=None, max_files=sys
 
 def aggregate_statistics(conditions=None, max_files=sys.maxint):
     """
+        Aggretates all counts from all documents in the collection
     """
     res={
         "csc_type_counts":{},
@@ -51,8 +52,8 @@ def aggregate_statistics(conditions=None, max_files=sys.maxint):
 
     print("Listing files...")
 
-    papers=cp.Corpus.listRecords(conditions, max_results=max_files, table="scidocs", field="_id")
-    print("Aggregating statistics for each SciDoc")
+    papers=cp.Corpus.listRecords(conditions, max_results=max_files, table="papers", field="_id")
+    print("Aggregating statistics for %d SciDocs" % len(papers))
     progress=ProgressIndicator(True,len(papers), print_out=False)
 
     num_files=0
@@ -88,13 +89,21 @@ def aggregate_statistics(conditions=None, max_files=sys.maxint):
     json.dump(res, file(os.path.join(cp.Corpus.paths.output,"stats.json"), "w"))
 
 
+def fix_collection_id():
+    """
+    """
+
+
 def main():
     from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
+##    cp.Corpus.setCorpusFilter(collection_id="PMC_CSC")
 
-    add_statistics_to_all_files(use_celery=True, max_files=1000)
-##    aggregate_statistics(max_files=10)
+##    add_statistics_to_all_files(use_celery=True)
+##    add_statistics_to_all_files(use_celery=False, max_files=10)
+    aggregate_statistics()
+##    fix_collection_id()
     pass
 
 if __name__ == '__main__':

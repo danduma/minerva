@@ -45,6 +45,9 @@ def import_sapienta_pmc_corpus():
         "convert_and_import_docs":False, # default: True
 ##        "update_doc_references":False, # default: True
         "force_generate_resolvable_citations":True, # default: False
+
+        "force_collection_id":"PMC_CSC", # this sets the collection_id again after updating references. Used for fixes
+        "force_import_id":"fixed",
     }
 
 ##    corpus_import.FILES_TO_PROCESS_FROM=4500

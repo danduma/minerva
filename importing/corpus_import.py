@@ -234,7 +234,10 @@ class CorpusImporter(object):
 
         if import_options.get("update_doc_references",True):
             print("Updating in-collection links...")
-            ALL_GUIDS=cp.Corpus.listPapers("metadata.collection_id:\"%s\"" % self.collection_id)
+
+            ALL_GUIDS=cp.Corpus.SQLQuery("SELECT guid FROM papers where metadata.original_citation_style = \"AFI\" or metadata.original_citation_style = null or metadata.pmc_id <> null limit 20000000")
+##            ALL_GUIDS=cp.Corpus.listPapers("metadata.collection_id:\"%s\"" % self.collection_id)
+##            assert False
             self.updateInCollectionReferences(ALL_GUIDS, import_options)
 
         self.end_time=datetime.datetime.now()
