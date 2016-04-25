@@ -55,7 +55,7 @@ def import_sapienta_pmc_corpus():
 
 ##    importer.restartCollectionImport(options)
 
-    importer.use_celery = False
+    importer.use_celery = True
     importer.importCorpus("g:\\nlp\\phd\\pmc_coresc\\inputXML", file_mask="*.xml", import_options=options)
 
 

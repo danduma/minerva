@@ -10,7 +10,7 @@ from __future__ import print_function
 import sys, json, datetime, re, copy
 
 from elasticsearch import Elasticsearch
-from elasticsearch.exceptions import ConnectionTimeout, ConnectionError
+from elasticsearch.exceptions import ConnectionTimeout, ConnectionError, TransportError
 import requests
 
 from minerva.proc.general_utils import ensureTrailingBackslash
@@ -729,12 +729,22 @@ class ElasticCorpus(BaseCorpus):
 
         if op_type=="update":
             body={"doc":body}
-            self.es.update(
-                index=ES_INDEX_PAPERS,
-                doc_type=ES_TYPE_PAPER,
-                id=metadata["guid"],
-                body=body
-                )
+            try:
+                self.es.update(
+                    index=ES_INDEX_PAPERS,
+                    doc_type=ES_TYPE_PAPER,
+                    id=metadata["guid"],
+                    body=body
+                    )
+            except TransportError as e:
+                self.es.indices.refresh(index=ES_INDEX_PAPERS)
+                self.es.update(
+                    index=ES_INDEX_PAPERS,
+                    doc_type=ES_TYPE_PAPER,
+                    id=metadata["guid"],
+                    body=body
+                    )
+
         else:
             self.es.index(
                 index=ES_INDEX_PAPERS,
