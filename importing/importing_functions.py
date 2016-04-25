@@ -125,7 +125,7 @@ def updatePaperInCollectionReferences(doc_id, import_options):
 
 ##    assert len(resolvable) == 0
 
-    cp.Corpus.updatePaper(doc_meta)
+    cp.Corpus.updatePaper(doc_meta, op_type="update")
     if import_options.get("list_missing_references", False):
         for ref in missing_references:
             cp.Corpus.addMissingPaper(copyDictExceptKeys(ref,["xml"]))
