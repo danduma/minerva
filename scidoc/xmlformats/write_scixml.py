@@ -12,8 +12,12 @@ from base_classes import BaseSciDocXMLReader,BaseSciDocXMLWriter
 
 def escapeText(text):
     """
+        Escapes (X/H)TML characters in the string
     """
-    return text.replace("<","&lt;").replace(">","&gt;").replace("&","&amp;")
+    text=re.sub(r"(>|&gt;)","&gt;",text, flags=re.IGNORECASE)
+    text=re.sub(r"(<|&lt;)","&lt;",text, flags=re.IGNORECASE)
+    text=re.sub(r"(&|&amp;)","&amp;",text, flags=re.IGNORECASE)
+    return text
 
 class SciXMLWriter(BaseSciDocXMLWriter):
     """
@@ -23,6 +27,7 @@ class SciXMLWriter(BaseSciDocXMLWriter):
         """
         """
         self.header_depth=0
+        self.already_rendered=[]
 
     def writeMetadata(self, doc):
         """
@@ -111,7 +116,7 @@ class SciXMLWriter(BaseSciDocXMLWriter):
         res=u"<"+xmltag+u' ID="A-%s"' % s["id"]
 
         if "az" in s:
-            res+=u'AZ="%s"' % s["az"]
+            res+=u' AZ="%s"' % s["az"]
 
         text=self.processSentenceText(s, doc)
         text=re.sub(r"<CIT ID=(.*?)\s?/>",repl_func, text)
@@ -142,6 +147,10 @@ class SciXMLWriter(BaseSciDocXMLWriter):
     def writeSection(self, doc,section, header_depth):
         """
         """
+        if section["id"] in self.already_rendered:
+            return []
+        self.already_rendered.append(section["id"])
+
         self.header_depth+=1
         lines=[]
         lines.append(u'<DIV DEPTH="'+str(header_depth+1)+'">')
@@ -205,7 +214,7 @@ class SciXMLWriter(BaseSciDocXMLWriter):
         lines.append('<REFERENCE ID="%s">' % ref["id"])
         lines.extend(self.writeRefAuthors(doc,ref))
         lines.append("<TITLE>%s</TITLE>" % escapeText(ref["title"]))
-        lines.append("<YEAR>%s</YEAR>" % escapeText(ref["year"]))
+        lines.append("<YEAR>%s</YEAR>" % escapeText(ref.get("year","????")))
         if "journal" in ref:
             lines.append("<JOURNAL>%s</JOURNAL>" % escapeText(ref["journal"]))
         lines.append("</REFERENCE>")
@@ -224,6 +233,7 @@ class SciXMLWriter(BaseSciDocXMLWriter):
     def write(self, doc, filename):
         """
         """
+        self.already_rendered=[]
         lines=[]
         lines.append('<?xml version="1.0" encoding="UTF-8"?>')
         lines.append('<!DOCTYPE PAPER SYSTEM "paper-structure-annotation.dtd">')

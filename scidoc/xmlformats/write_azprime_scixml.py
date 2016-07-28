@@ -24,6 +24,7 @@ class AZPrimeWriter(SciXMLWriter):
 
     def processSentenceText(self, s, doc):
         """
+            This overriden function POS-tags every token in the sentence to spoonfeed it to the AZPrime classifier
         """
         if s.get("pos_tagged","") != "":
             return s["pos_tagged"]

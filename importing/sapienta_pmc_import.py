@@ -92,10 +92,28 @@ def fix_broken_scidocs():
     importer.reloadSciDocsOnly("metadata.collection_id:\"PMC_CSC\"",
         "g:\\nlp\\phd\\pmc_coresc\\inputXML", "*.xml")
 
+def set_collection_id(sql, new_id, guids=None):
+    """
+        Select a bunch of papers by a sql query,
+    """
+    if not guids:
+        guids=cp.Corpus.SQLQuery(sql)
+
+    for guid in guids:
+        print(guid)
+        meta=cp.Corpus.getMetadataByGUID(guid)
+        meta["collection_id"]=new_id
+        cp.Corpus.updatePaper(meta)
+    print ("Total files %d" % len(guids))
 
 def main():
-    import_sapienta_pmc_corpus()
+##    import_sapienta_pmc_corpus()
 ##    fix_broken_scidocs()
+##    set_collection_id("SELECT guid FROM papers where metadata.collection_id <> \"PMC_CSC\"", "AAC")
+##    set_collection_id("SELECT guid FROM papers where metadata.collection_id = \"AAC\" and metadata.year > 2011", "PMC_CSC")
+
+    guids=["cdee4ecf-59f0-4a19-bded-9b0f727e13ae", "0eebf17f-5aaa-414e-b3a3-6cfa62fee701", ]
+    set_collection_id("", "PMC_CSC", guids)
 
     pass
 

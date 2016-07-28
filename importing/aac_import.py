@@ -176,6 +176,7 @@ def import_aac_corpus():
     """
         Do the importing of the AAC corpus
     """
+    from minerva.squad.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
     importer=CorpusImporter(reader=PaperXMLReader())
     importer.collection_id="AAC"
     importer.import_id="initial"
@@ -183,7 +184,7 @@ def import_aac_corpus():
 
 ##    cp.useLocalCorpus()
     cp.useElasticCorpus()
-    cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac")
+    cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 
     options={
 ##        "list_missing_references":True, # default: False
@@ -193,8 +194,8 @@ def import_aac_corpus():
 ##    corpus_import.FILES_TO_PROCESS_FROM=10222
 ##    corpus_import.FILES_TO_PROCESS_TO=500
 
-    importer.restartCollectionImport(options)
-    cp.Corpus.createAndInitializeDatabase()
+##    importer.restartCollectionImport(options)
+##    cp.Corpus.createAndInitializeDatabase()
     cp.Corpus.matcher=AANReferenceMatcher("g:\\nlp\\phd\\aan\\release\\acl_full.txt")
 
     importer.use_celery = True

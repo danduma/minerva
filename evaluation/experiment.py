@@ -220,7 +220,7 @@ class Experiment(object):
         """
             Loads an experiment and runs it all
         """
-        self.exp["exp_dir"]=os.path.normpath(path) + os.sep
+        self.exp["exp_dir"]=os.path.normpath(os.path.join(cp.Corpus.paths.experiments,self.exp["name"])) + os.sep
         ensureDirExists(self.exp["exp_dir"])
 
         # BIND EXTRACTORS

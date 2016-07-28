@@ -1,4 +1,5 @@
-# <purpose>
+# Uses either external output from AZprime or own classifier to label whole
+# corpus with AZ
 #
 # Copyright:   (c) Daniel Duma 2016
 # Author: Daniel Duma <danielduma@gmail.com>
@@ -34,6 +35,7 @@ def connectToCorpus():
 
 def exportSciXML():
     """
+        Exports all scidocs with the selected collection_id to AZPrime XML in the output dir of the corpus
     """
     papers=cp.Corpus.listPapers(max_results=sys.maxint)
 
@@ -44,6 +46,8 @@ def exportSciXML():
     print("Exporting SciXML files")
     for guid in papers:
         doc=cp.Corpus.loadSciDoc(guid)
+        if len(doc.allsentences) < 1:
+            continue
         writer.write(doc, os.path.join(cp.Corpus.paths.output, doc.metadata["guid"]+".pos.xml"))
         cp.Corpus.saveSciDoc(doc)
         progress.showProgressReport("Exporting -- %s" % guid)
@@ -51,6 +55,7 @@ def exportSciXML():
 
 def ownAZannot(export_annots=False):
     """
+        Annotates each sentence using own classifier
     """
     from minerva.az.az_cfc_classification import AZannotator
 
@@ -79,34 +84,59 @@ def ownAZannot(export_annots=False):
         progress.showProgressReport("Annotating -- %s" % guid)
 
 
-def loadAZLabels():
+def loadAZLabels(annot_dir=""):
     """
+        Loads generated AZ labels from AZPrime output
     """
-    papers=cp.Corpus.listPapers(max_results=10)
+    if annot_dir=="":
+        annot_dir=cp.Corpus.paths.output
 
-    writer=AZPrimeWriter()
-    for guid in papers[:1]:
-        filename=os.path.join(cp.Corpus.paths.output, doc.metadata["guid"]+".annot.txt")
+    papers=cp.Corpus.listPapers()
+
+    print("Loading AZPrime labels...")
+    progress=ProgressIndicator(True, len(papers),False)
+
+    for guid in papers:
+        filename=os.path.join(annot_dir, guid+".pred.txt")
         if os.path.exists(filename):
+
             doc=cp.Corpus.loadSciDoc(guid)
             f=file(filename, "r")
             lines=f.readlines()
-            for index,sent in enumerate(doc.allsentences):
+            allsentences=[s for s in doc.allsentences if s.get("type","") == "s"]
+
+            if len(lines) != len(allsentences):
+                print("Number of tags mismatch! %d != %d -- %s" % (len(lines), len(allsentences), guid))
+                lines=["" for n in range(len(allsentences))]
+##            else:
+##                print("No mismatch! %d != %d -- %s" % (len(lines), len(doc.allsentences), guid))
+
+            for index,sent in enumerate(allsentences):
                 sent["az"]=lines[index]
             cp.Corpus.saveSciDoc(doc)
         else:
             print("Cannot find annotation file for guid %s" % guid)
 
-def annotateCorpus():
+        progress.showProgressReport("Loading labels -- %s" % guid)
+
+def testLabels():
     """
     """
-    pass
+    guid="f7921eed-89bc-4f38-a794-7c9a5878a7ee"
+    writer=AZPrimeWriter()
+    writer.save_pos_tags=True
+
+    doc=cp.Corpus.loadSciDoc(guid)
+
+    writer.write(doc, os.path.join(cp.Corpus.paths.output, doc.metadata["guid"]+".pos.xml"))
 
 
 def main():
     connectToCorpus()
 ##    exportSciXML()
-    ownAZannot()
+##    testLabels()
+    loadAZLabels(r"G:\NLP\PhD\aac\azprime_output")
+##    ownAZannot()
     pass
 
 

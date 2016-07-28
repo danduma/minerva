@@ -330,7 +330,7 @@ class ElasticCorpus(BaseCorpus):
         dsl_query["doc_type"]=index_equivalence[table_name]["type"]
 
         tmp_max=self.max_results
-        self.max_results=dsl_query["size"]
+##        self.max_results=dsl_query["size"]
         if "size" in dsl_query:
             del dsl_query["size"]
         results=self.unlimitedQuery(**dsl_query)

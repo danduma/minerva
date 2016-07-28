@@ -357,7 +357,7 @@ class WeightTrainer(object):
                     results.append(result)
 
             fold_result={"fold":split_fold,
-                         "avg_improvement":sum(improvements)/float(len(improvements)),
+                         "avg_improvement":sum(improvements)/float(len(improvements)) if len(improvements) > 0 else 0,
                          "num_improved_zones":len([x for x in improvements if x > 0]),
                          "num_zones":len(improvements),
                          "better_zones":better_zones,

@@ -146,12 +146,16 @@ class CorpusImporter(object):
         """
         ALL_FILES=[]
 
+        from minerva.proc.results_logging import ProgressIndicator
+        progress=ProgressIndicator(True, 25000, False)
+
         for dirpath, dirnames, filenames in os.walk(start_dir):
             for filename in filenames:
                 if fnmatch.fnmatch(filename,file_mask) and filename not in cp.Corpus.FILES_TO_IGNORE:
                         fn=os.path.join(dirpath,filename)
                         fn=fn.replace(start_dir,"")
                         ALL_FILES.append(fn)
+                        progress.showProgressReport("listing")
 
         print("Total files:",len(ALL_FILES))
         return ALL_FILES
@@ -235,10 +239,10 @@ class CorpusImporter(object):
         if import_options.get("update_doc_references",True):
             print("Updating in-collection links...")
 
-            ALL_GUIDS=cp.Corpus.SQLQuery("SELECT guid FROM papers where metadata.original_citation_style = \"AFI\" or metadata.original_citation_style = null or metadata.pmc_id <> null limit 20000000")
+##            ALL_GUIDS=cp.Corpus.SQLQuery("SELECT guid FROM papers where metadata.original_citation_style = \"AFI\" or metadata.original_citation_style = null or metadata.pmc_id <> null limit 20000000")
 ##            ALL_GUIDS=cp.Corpus.SQLQuery("SELECT guid FROM papers where metadata.original_citation_style = \"AFI\" or metadata.original_citation_style = null or metadata.pmc_id <> null limit 200")
 
-##            ALL_GUIDS=cp.Corpus.listPapers("metadata.collection_id:\"%s\"" % self.collection_id)
+            ALL_GUIDS=cp.Corpus.listPapers("metadata.collection_id:\"%s\"" % self.collection_id)
 ##            assert False
             self.updateInCollectionReferences(ALL_GUIDS, import_options)
 
