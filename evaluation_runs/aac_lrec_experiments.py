@@ -182,7 +182,7 @@ experiment={
     # SQL condition to automatically generate the list above
     "test_files_condition":"metadata.num_in_collection_references:>0 AND metadata.year:>2010",
     # This lets us pick just the first N files
-    "max_test_files":1500,
+    "max_test_files":1000,
     # Use Lucene DefaultSimilarity? As opposed to FieldAgnosticSimilarity
     "use_default_similarity":True,
     # Annotate sentences with AZ/CoreSC/etc?
@@ -209,6 +209,8 @@ experiment={
     "max_results_recall":200,
     # should queries be classified based on some rhetorical class of the sentence: "az", "csc_type"
     "queries_classification":"az",
+    # do not process more than this number of queries of the same type (type on line above)
+    "max_per_class_results" : 1000,
     # of all precomputed queries, which classes should be processed/evaluated?
     "queries_to_process":["ALL"],
     # what "zones" to try to train weights for
@@ -223,9 +225,9 @@ experiment={
 options={
     "run_prebuild_bows":0, # should the whole BOW building process run?
     "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
-    "rebuild_indexes":1,   # rebuild indices?
-    "recompute_queries":1,  # force rebuilding of queries too?
-    "run_precompute_retrieval":1,  # only applies if type == "train_weights"
+    "rebuild_indexes":0,   # rebuild indices?
+    "overwrite_existing_queries":0,  # force rebuilding of queries too?
+    "run_precompute_retrieval":0,  # only applies if type == "train_weights"
     "clear_existing_prr_results":False, # delete previous precomputed results? i.e. start from scratch
     "override_folds":4,
     "override_metric":"avg_ndcg",

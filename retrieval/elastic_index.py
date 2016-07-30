@@ -68,7 +68,8 @@ def addDocument(writer, new_doc, metadata, fields_to_process, bow_info):
 
     body={"guid": metadata["guid"],
           "metadata": metadata,
-          "bow_info": json.dumps(bow_info),
+##          "bow_info": json.dumps(bow_info),
+          "bow_info": bow_info,
           }
 
     for field in fields_to_process:

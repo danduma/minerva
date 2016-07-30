@@ -186,7 +186,7 @@ def addLoadedBOWsToIndex(writer, guid, bows, bow_info):
 ##            unique_terms=len(set(new_doc[field].split()))  # unique terms
             numTerms[field]=field_len
             # ignore fields that start with _ for total word count
-            if field[0] != "_":
+            if len (field) > 0 and field[0] != "_":
                 total_numTerms+=field_len
 
         bow_info["passage_num"]=i

@@ -19,6 +19,9 @@ import minerva.db.corpora as cp
 def createResultStorers(exp_name, exp_random_zoning=False, clear_existing_prr_results=False):
     """
         Returns a dict with instances of ElasticResultStorer
+
+        :param exp_name:
+        :string
     """
     writers={}
     if exp_random_zoning:

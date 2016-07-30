@@ -78,9 +78,8 @@ class DefaultReferenceMatcher(BaseReferenceMatcher):
             Returns the matching document in the db based on the guid, corpus_id,
             title and surnames of authors
 
-            Args:
-                ref: reference dict
-                doc: SciDoc (optional). Only here to enable decendant
+            :param ref: reference dict
+            :aram doc: SciDoc (optional). Only here to enable decendant classes to use
         """
         self.corpus.checkConnectedToDB()
 
@@ -147,10 +146,9 @@ class BaseCorpus(object):
         """
             If DB has been created, connect to it. If not, initialize it first.
 
-            Args:
-                base_directory: root dir of this corpus
-                initializing_corpus: if True, create DB and directories
-                suppress_error: if true, db doesn't complain if it's connected already
+            :param base_directory: root dir of this corpus
+            :param initializing_corpus: if True, create DB and directories
+            :param suppress_error: if true, db doesn't complain if it's connected already
         """
         raise NotImplementedError
 

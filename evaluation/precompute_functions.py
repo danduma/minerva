@@ -38,12 +38,13 @@ def addPrecomputeExplainFormulas(precomputed_query, doc_method, doc_list, retrie
     if exp_random_zoning:
         pass
     else:
-        assert retrieval_result["csc_type"] != "", "No csc_type!"
+##        assert retrieval_result["csc_type"] != "", "No csc_type!"
         if retrieval_result.get("az","") != "":
             writers["az_"+retrieval_result["az"]].addResult(retrieval_result)
 ##        if retrieval_result["csc_type"] == "":
 ##            retrieval_result["csc_type"] = "Bac"
-        writers["csc_type_"+retrieval_result["csc_type"]].addResult(retrieval_result)
+        if retrieval_result.get("csc_type","") != "":
+            writers["csc_type_"+retrieval_result["csc_type"]].addResult(retrieval_result)
 
 
 def precomputeFormulas(retrieval_model, query, doc_list):

@@ -1,13 +1,9 @@
-#-------------------------------------------------------------------------------
-# Name:        module1
-# Purpose:
+# Generate HTML/JS visualization of word overlap between citing and cited documents
 #
-# Author:      dd
-#
-# Created:     22/04/2015
-# Copyright:   (c) dd 2015
-# Licence:     <your licence>
-#-------------------------------------------------------------------------------
+# Copyright:   (c) Daniel Duma 2015
+# Author: Daniel Duma <danielduma@gmail.com>
+
+# For license information, see LICENSE.TXT
 
 
 from pandas import *

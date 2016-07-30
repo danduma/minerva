@@ -132,9 +132,9 @@ class QueryGenerator(object):
                 queries[query["query_method_id"]]=query
 
         parent_s=doc.element_by_id[m["cit"]["parent_s"]]
-        base_dict={"az":parent_s.get("az",""),
+        base_dict={"az":parent_s.get("az","").strip(),
                    "cfc":doc.citation_by_id[m["cit"]["id"]].get("cfunc",""),
-                   "csc_type":parent_s.get("csc_type",""),
+                   "csc_type":parent_s.get("csc_type","").strip(),
                    "csc_adv":parent_s.get("csc_adv",""),
                    "csc_nov":parent_s.get("csc_nov",""),
                   }

@@ -1,4 +1,4 @@
-# Generate a HTML for a file
+# Generate a HTML for a file, highlighting each sentence with its CoreSC type
 #
 # Copyright:   (c) Daniel Duma 2014
 # Author: Daniel Duma <danielduma@gmail.com>

@@ -8,7 +8,7 @@
 
 from base_corpus import BaseCorpus
 
-global Corpus
+##global Corpus
 Corpus=BaseCorpus()
 
 def useLocalCorpus():

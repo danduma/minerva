@@ -42,6 +42,7 @@ class ElasticRetrieval(BaseRetrieval):
         self.logger=logger
         self.last_query={}
         self.save_terms=save_terms
+        self.default_field="text"
 
     def rewriteQueryAsDSL(self, structured_query, parameters):
         """
@@ -105,7 +106,7 @@ class ElasticRetrieval(BaseRetrieval):
             max_results=self.max_results
 
         self.last_query=dict(structured_query)
-        dsl_query=self.rewriteQueryAsDSL(structured_query["structured_query"], ["text"])
+        dsl_query=self.rewriteQueryAsDSL(structured_query["structured_query"], [self.default_field])
 
         res=self.es.search(
             body={"query":dsl_query},

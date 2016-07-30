@@ -53,7 +53,7 @@ class Experiment(object):
         parser.add_argument("-w", "--train_weights_for", type=str, nargs='+', dest='train_weights_for', default=None,
                            help='List of query classes that we should train weights for, if the experiment is of type weight_training')
         parser.add_argument("-r", "--running_stage", type=int, nargs='+', dest='running_stage', default=None,
-                           help='Experiment directory, i.e. where to store cache files and output')
+                           help='Running stage')
 
 
         args = parser.parse_args()
@@ -206,7 +206,6 @@ class Experiment(object):
         elif self.exp["type"] == "train_weights":
             if self.options.get("run_precompute_retrieval", False):
                 pipeline=PrecomputedPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
-                pipeline.max_per_class_results=self.exp.get("max_per_class_results",pipeline.max_per_class_results)
                 pipeline.runPipeline(self.exp)
             weight_trainer=WeightTrainer(self.exp, self.options)
             weight_trainer.trainWeights()

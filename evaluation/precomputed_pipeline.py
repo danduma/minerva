@@ -27,7 +27,7 @@ class PrecomputedPipeline(BaseTestingPipeline):
     def __init__(self, retrieval_class=BaseRetrieval, use_celery=False):
         super(self.__class__, self).__init__(retrieval_class=retrieval_class, use_celery=use_celery)
         self.writers={}
-        self.max_per_class_results=1000
+
 
     def addResult(self, guid, precomputed_query, doc_method, retrieved_results):
         """
@@ -39,10 +39,11 @@ class PrecomputedPipeline(BaseTestingPipeline):
 
         for zone_type in ["csc_type", "az"]:
             if precomputed_query.get(zone_type,"") != "":
-                if self.writers[zone_type+"_"+precomputed_query[zone_type]].getResultCount() < self.max_per_class_results:
+                if self.writers[zone_type+"_"+precomputed_query[zone_type].strip()].getResultCount() < self.max_per_class_results:
                     must_process=True
                 else:
                     must_process=False
+                    # TODO this is redundant now. Merge this into base_pipeline.py?
                     print("Too many queries of type %s already" % precomputed_query[zone_type])
 ##                  assert(False)
 

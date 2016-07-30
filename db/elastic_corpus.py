@@ -928,27 +928,6 @@ class ElasticCorpus(BaseCorpus):
         self.query_filter=" AND ".join(query_items)+" AND "
 
 
-##ec=ElasticCorpus()
-##from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
-##ec.connectCorpus("",endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
-##
-##ec.deleteIndex("wosp16_experiments_prr_*")
-
-##ec.deleteByQuery("cache", "_id:resolvable_*")
-##ec.deleteByQuery("cache", "_id:bow_*")
-
-##hits=ec.unlimitedQuery(
-##        q="metadata.collection_id:AAC",
-##        index=ES_INDEX_PAPERS,
-##        doc_type=ES_TYPE_PAPER,
-##        _source="_id",
-##)
-##print(len(hits))
-
-##print(ec.loadSciDoc("f9c08f84-1e5e-4d57-80bc-b576fefa109f"))
-##print(ec.SQLQuery("SELECT guid,metadata.filename FROM papers where metadata.year >2013"))
-##print(ec.getMetadataByGUID("df8c8824-1784-46f1-b621-cc6e5aca0dad"))
-
 DOCTEST = False
 
 if __name__ == '__main__':

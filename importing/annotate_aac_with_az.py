@@ -112,7 +112,7 @@ def loadAZLabels(annot_dir=""):
 ##                print("No mismatch! %d != %d -- %s" % (len(lines), len(doc.allsentences), guid))
 
             for index,sent in enumerate(allsentences):
-                sent["az"]=lines[index]
+                sent["az"]=lines[index].strip()
             cp.Corpus.saveSciDoc(doc)
         else:
             print("Cannot find annotation file for guid %s" % guid)

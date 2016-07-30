@@ -9,7 +9,7 @@ from __future__ import print_function
 
 import os, sys, json
 from copy import deepcopy
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 from minerva.retrieval.base_retrieval import BaseRetrieval, MAX_RESULTS_RECALL
 
@@ -43,6 +43,7 @@ class BaseTestingPipeline(object):
         self.main_all_doc_methods={}
         self.current_all_doc_methods={}
         self.save_terms=False
+        self.max_per_class_results=1000
 
     def loadModel(self, guid):
         """
@@ -231,6 +232,9 @@ class BaseTestingPipeline(object):
         """
         self.exp=exp
 
+        self.max_per_class_results=self.exp.get("max_per_class_results",self.max_per_class_results)
+        self.per_class_count=defaultdict(lambda:0)
+
         self.startLogging()
         self.initializePipeline()
         self.loadQueriesAndFileList()
@@ -249,6 +253,14 @@ class BaseTestingPipeline(object):
         # MAIN LOOP over all precomputed queries
         #=======================================
         for precomputed_query in self.precomputed_queries:
+            if self.exp.get("queries_classification","") != "":
+                q_type=precomputed_query[self.exp.get("queries_classification")]
+                if self.per_class_count[q_type] < self.max_per_class_results:
+                    self.per_class_count[q_type] += 1
+                else:
+                    print("Too many queries of type %s already" % q_type)
+                    continue
+
             guid=precomputed_query["file_guid"]
             self.logger.total_citations+=self.files_dict[guid]["resolvable_citations"]
 
