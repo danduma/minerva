@@ -26,6 +26,17 @@ from minerva.retrieval.stored_formula import StoredFormula
 ##    score=formula.computeScore(formula.formula, parameters)
 ##    return (score,{"guid":unique_result["guid"]})
 
+
+def addExtraWeights(weights, exp):
+    """
+        Deep copies the weight dictionary and adds the fixed weights if any
+        are specified in the experiment
+    """
+    res=deepcopy(weights)
+    for extra_method in exp.get("fixed_runtime_parameters",{}):
+        res[extra_method]=exp["fixed_runtime_parameters"][extra_method]
+    return res
+
 def runPrecomputedQuery(retrieval_results, parameters):
     """
         This takes a query that has already had the results added and parameters

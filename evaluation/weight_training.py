@@ -17,71 +17,10 @@ import minerva.db.corpora as cp
 from minerva.proc.results_logging import ResultsLogger
 ##from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
 from base_pipeline import getDictOfTestingMethods
-from weight_functions import runPrecomputedQuery
+from weight_functions import runPrecomputedQuery, addExtraWeights
 from minerva.db.result_store import ElasticResultStorer, ResultIncrementalReader, ResultDiskReader
 
 GLOBAL_FILE_COUNTER=0
-
-class weightCounterList(object):
-    """
-        Deals with iterating over combinations of weights for training
-    """
-    def __init__(self, values=[1,3,5]):
-        """
-            values = list of values each weight can take
-        """
-        self.values=values
-        self.weights={}
-        self.parameters={}
-        self.counters=[]
-        self.MAX_COUNTER=len(values)-1
-
-    def numCombinations(self):
-        """
-            Returns the number of total possible combinations of this counter
-        """
-        return pow(len(self.values),len(self.counters))
-
-    def initWeights(self,parameters):
-        """
-            Creates counters and weights from input list of parameters to change
-        """
-        self.parameters=parameters
-        # create a dict where every field gets a weight of x
-        self.weights={x:self.values[0] for x in parameters}
-        # make a counter for each field
-        self.counters=[0 for _ in range(len(self.weights))]
-
-    def allOnes(self):
-        """
-            Return all ones
-        """
-        return {x:1 for x in self.parameters}
-
-    def allCombinationsProcessed(self):
-        """
-            Returns false if there is some counter that is not at its max
-        """
-        for counter in self.counters:
-            if counter < self.MAX_COUNTER:
-                return False
-        return True
-
-    def nextCombination(self):
-        """
-            Increases the counters and adjusts weights as necessary
-        """
-        self.counters[0]+=1
-
-        for index in range(len(self.counters)):
-            if self.counters[index] > self.MAX_COUNTER:
-                self.counters[index+1] += 1
-                self.counters[index]=0
-            self.weights[self.weights.keys()[index]]=self.values[self.counters[index]]
-
-    def getPossibleValues(self):
-        return self.values
-
 
 class WeightTrainer(object):
     """
@@ -96,7 +35,7 @@ class WeightTrainer(object):
 
     def dynamicWeightValues(self, split_fold):
         """
-            Find the best combination of weights through dynamic programming, not
+            Find the best combination of weights using a greedy heuristic, not
             testing every possible one, but selecting the best one at each stage
         """
         all_doc_methods=getDictOfTestingMethods(self.exp["doc_methods"])
@@ -115,17 +54,17 @@ class WeightTrainer(object):
 
         print("Processing zones ",self.exp["train_weights_for"])
 
-        for zone_type in self.exp["train_weights_for"]:
-            best_weights[zone_type]={}
+        for query_type in self.exp["train_weights_for"]:
+            best_weights[query_type]={}
             results_compare=[]
 
-            retrieval_results=self.loadPrecomputedFormulas(zone_type)
+            retrieval_results=self.loadPrecomputedFormulas(query_type)
             if len(retrieval_results) == 0:
-                print("No precomputed formulas for ", zone_type)
+                print("No precomputed formulas for ", query_type)
                 continue
 
             if len(retrieval_results) < numfolds:
-                print("Number of results is smaller than number of folds for zone type ", zone_type)
+                print("Number of results is smaller than number of folds for zone type ", query_type)
                 continue
 
             cv = cross_validation.KFold(len(retrieval_results), n_folds=numfolds, shuffle=False, random_state=None) # indices=True, k=None
@@ -144,7 +83,7 @@ class WeightTrainer(object):
                 print("Training set len is 0!")
                 return defaultdict(lambda:1)
 
-            print("Training for citations in ",zone_type,"zones:",len(train_set),"/",len(retrieval_results))
+            print("Training for citations in ",query_type,"zones:",len(train_set),"/",len(retrieval_results))
             for method in annotated_boost_methods:
                 res={}
 
@@ -157,9 +96,8 @@ class WeightTrainer(object):
     ##                    counter.weights={x:random.randint(-10,10) for x in all_doc_methods[method]["runtime_parameters"]}
 
                     all_doc_methods[method]["runtime_parameters"]=weights
-
                     print("Computing initial score...")
-                    scores=self.measurePrecomputedResolution(train_set,method,weights, zone_type)
+                    scores=self.measurePrecomputedResolution(train_set, method, addExtraWeights(weights, self.exp), query_type)
 
                     score_baseline=scores[0][self.exp["metric"]]
                     previous_score=score_baseline
@@ -167,8 +105,8 @@ class WeightTrainer(object):
                     score_progression=[score_baseline]
 
                     global GLOBAL_FILE_COUNTER
-##                    drawWeights(self.exp,weights,zone_type+"_weights_"+str(GLOBAL_FILE_COUNTER))
-##                    drawScoreProgression(self.exp,score_progression,zone_type+"_"+str(GLOBAL_FILE_COUNTER))
+##                    drawWeights(self.exp,weights,query_type+"_weights_"+str(GLOBAL_FILE_COUNTER))
+##                    drawScoreProgression(self.exp,score_progression,query_type+"_"+str(GLOBAL_FILE_COUNTER))
                     GLOBAL_FILE_COUNTER+=1
 
                     overall_improvement = score_baseline
@@ -185,7 +123,7 @@ class WeightTrainer(object):
                                 # hard lower limit of 0 for weights
                                 weights[weight_name]=max(MIN_WEIGHT,weights[weight_name]+direction)
 
-                                scores=self.measurePrecomputedResolution(train_set,method,weights, zone_type)
+                                scores=self.measurePrecomputedResolution(train_set,method,addExtraWeights(weights, self.exp), query_type)
                                 this_score=scores[0][self.exp["metric"]]
 
                                 if this_score <= previous_score:
@@ -198,13 +136,13 @@ class WeightTrainer(object):
                         score_progression.append(this_score)
 
                         # This is to export the graphs as weights are trained
-##                        drawWeights(self.exp,weights,zone_type+"_weights_"+str(GLOBAL_FILE_COUNTER))
-##                        drawScoreProgression(self.exp,{self.exp["metric"]:score_progression},zone_type+"_"+str(GLOBAL_FILE_COUNTER))
+##                        drawWeights(self.exp,weights,query_type+"_weights_"+str(GLOBAL_FILE_COUNTER))
+##                        drawScoreProgression(self.exp,{self.exp["metric"]:score_progression},query_type+"_"+str(GLOBAL_FILE_COUNTER))
                         GLOBAL_FILE_COUNTER+=1
 
                         passes+=1
 
-                    scores=self.measurePrecomputedResolution(train_set, method, weights, zone_type)
+                    scores=self.measurePrecomputedResolution(train_set, method, addExtraWeights(weights, self.exp), query_type)
                     this_score=scores[0][self.exp["metric"]]
 
     ##                if split_fold is not None:
@@ -215,23 +153,19 @@ class WeightTrainer(object):
     ##                print "Weight inialization:",weight_initalization
                     improvement=100*((this_score-first_baseline)/float(first_baseline)) if first_baseline > 0 else 0
                     print ("   Weights found, with score: {:.5f}".format(this_score)," Improvement: {:.2f}%".format(improvement))
-                    best_weights[zone_type][method]=deepcopy(weights)
+                    best_weights[query_type][method]=addExtraWeights(weights, self.exp)
                     print ("   ",weights.values())
 
                     if self.exp.get("smooth_weights",None):
                         # this is to smooth a bit the weights in case they're too crazy
-                        for weight in best_weights[zone_type][method]:
-                            amount=abs(min(1,best_weights[zone_type][method][weight]) / float(3))
-                            if best_weights[zone_type][method][weight] > 1:
-                                best_weights[zone_type][method][weight] -= amount
-                            elif best_weights[zone_type][method][weight] < 1:
-                                best_weights[zone_type][method][weight] += amount
+                        for weight in best_weights[query_type][method]:
+                            amount=abs(min(1,best_weights[query_type][method][weight]) / float(3))
+                            if best_weights[query_type][method][weight] > 1:
+                                best_weights[query_type][method][weight] -= amount
+                            elif best_weights[query_type][method][weight] < 1:
+                                best_weights[query_type][method][weight] += amount
 
-    ##                filename=self.exp["exp_dir"]+"weights_"+zone_type+"_[1, 3, 5]"+split_set_str+filename_add+".csv"
-    ##                data=pandas.read_csv(filename,nrows=11)
                     res[weight_initalization]=this_score
-    ##                print "Old weights:"
-    ##                print data.iloc[0][CORESC_LIST+["avg_mrr","avg_precision"]]
 
                 results_compare.append(res)
 
@@ -254,23 +188,23 @@ class WeightTrainer(object):
     ##            split_set_str="_s"+str(split_set)
     ##        else:
     ##            split_set_str=""
-    ##        filename=getSafeFilename(self.exp["exp_dir"]+"weights_"+zone_type+"_"+str(counter.getPossibleValues())+split_set_str+filename_add+".csv")
+    ##        filename=getSafeFilename(self.exp["exp_dir"]+"weights_"+query_type+"_"+str(counter.getPossibleValues())+split_set_str+filename_add+".csv")
     ##        data.to_csv(filename)
 
         return best_weights
 
 
-    def loadPrecomputedFormulas(self, zone_type):
+    def loadPrecomputedFormulas(self, query_type):
         """
             Loads the previously computed retrieval results, including query, etc.
         """
-        prr=ElasticResultStorer(self.exp["name"],"prr_"+self.exp["queries_classification"]+"_"+zone_type, cp.Corpus.endpoint)
+        prr=ElasticResultStorer(self.exp["name"],"prr_"+self.exp["queries_classification"]+"_"+query_type, cp.Corpus.endpoint)
         reader=ResultDiskReader(prr, cache_dir=os.path.join(self.exp["exp_dir"], "cache"), max_results=self.exp.get("max_per_class_results",1000))
         reader.bufsize=30
         return reader
 
 ##        return prr.readResults(250)
-##        return json.load(open(self.exp["exp_dir"]+"prr_"+self.exp["queries_classification"]+"_"+zone_type+".json","r"))
+##        return json.load(open(self.exp["exp_dir"]+"prr_"+self.exp["queries_classification"]+"_"+query_type+".json","r"))
 
     def measureScoresOfWeights(self, best_weights):
         """
@@ -293,13 +227,13 @@ class WeightTrainer(object):
             better_zones=[]
             better_zones_details=[]
 
-            for zone_type in self.exp["train_weights_for"]:
-                retrieval_results=self.loadPrecomputedFormulas(zone_type)
+            for query_type in self.exp["train_weights_for"]:
+                retrieval_results=self.loadPrecomputedFormulas(query_type)
                 if len(retrieval_results) == 0:
                     continue
 
                 if len(retrieval_results) < numfolds:
-                    print("Number of results is smaller than number of folds for zone type ", zone_type)
+                    print("Number of results is smaller than number of folds for zone type ", query_type)
                     continue
 
                 cv = cross_validation.KFold(len(retrieval_results), n_folds=numfolds, shuffle=False, random_state=None)
@@ -312,12 +246,13 @@ class WeightTrainer(object):
                 else:
                     raise ValueError("Unkown class of results")
 
-                for method in weights[zone_type]:
-                    weights_baseline={x:1 for x in self.all_doc_methods[method]["runtime_parameters"]}
-                    scores=self.measurePrecomputedResolution(test_set, method, weights_baseline, zone_type)
+                for method in weights[query_type]:
+                    weights_baseline=addExtraWeights({x:1 for x in self.all_doc_methods[method]["runtime_parameters"]}, self.exp)
+
+                    scores=self.measurePrecomputedResolution(test_set, method, weights_baseline, query_type)
                     baseline_score=scores[0][self.exp["metric"]]
-        ##            print "Score for "+zone_type+" weights=1:", baseline_score
-                    result={"zone_type":zone_type,
+        ##            print "Score for "+query_type+" weights=1:", baseline_score
+                    result={"query_type":query_type,
                             "fold":split_fold,
                             "score":baseline_score,
                             "method":method,
@@ -327,18 +262,18 @@ class WeightTrainer(object):
                             "num_data_points":len(retrieval_results)}
                     for metric in metrics:
                         result[metric]=scores[0][metric]
-                    for weight in weights[zone_type][method]:
+                    for weight in weights[query_type][method]:
                         result[weight]=1
                     results.append(result)
 
-                    scores=self.measurePrecomputedResolution(test_set, method, weights[zone_type][method], zone_type)
+                    scores=self.measurePrecomputedResolution(test_set, method, weights[query_type][method], query_type)
                     this_score=scores[0][self.exp["metric"]]
         ##            print "Score with trained weights:",this_score
                     impro=this_score-baseline_score
                     pct_impro=100*(impro/baseline_score) if baseline_score !=0 else 0
                     improvements.append((impro*len(test_set))/len(retrieval_results))
 
-                    result={"zone_type":zone_type,
+                    result={"query_type":query_type,
                             "fold":split_fold,
                             "score":this_score,
                             "method":method,
@@ -347,13 +282,13 @@ class WeightTrainer(object):
                             "pct_improvement":pct_impro,
                             "num_data_points":len(retrieval_results)}
                     if impro > 0:
-                        better_zones.append(zone_type)
-                        better_zones_details.append((zone_type,pct_impro))
+                        better_zones.append(query_type)
+                        better_zones_details.append((query_type,pct_impro))
 
                     for metric in metrics:
                         result[metric]=scores[0][metric]
-                    for weight in weights[zone_type][method]:
-                        result[weight]=weights[zone_type][method][weight]
+                    for weight in weights[query_type][method]:
+                        result[weight]=weights[query_type][method][weight]
                     results.append(result)
 
             fold_result={"fold":split_fold,
@@ -377,12 +312,12 @@ class WeightTrainer(object):
         fold_data=pd.DataFrame(fold_results)
         fold_data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_folds_"+xtra+".csv")
 
-    def measurePrecomputedResolution(self, retrieval_results,method,parameters, citation_az="*"):
+    def measurePrecomputedResolution(self, retrieval_results, method, parameters, citation_az="*"):
         """
             This is kind of like measureCitationResolution:
             it takes a list of precomputed retrieval_results, then applies the new
             parameters to them. This is how we recompute what Lucene gives us,
-            avoiding having to call Lucene again.
+            avoiding having to call Lucene again and so speeding it up a lot.
 
             All we need to do is adjust the weights on the already available
             explanation formulas.

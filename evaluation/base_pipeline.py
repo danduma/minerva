@@ -16,6 +16,7 @@ from minerva.retrieval.base_retrieval import BaseRetrieval, MAX_RESULTS_RECALL
 import minerva.db.corpora as cp
 from minerva.proc.results_logging import ResultsLogger, ProgressIndicator
 from pipeline_functions import getDictOfTestingMethods
+from weight_functions import addExtraWeights
 
 def analyticalRandomChanceMRR(numinlinks):
     """
@@ -234,6 +235,9 @@ class BaseTestingPipeline(object):
 
         self.max_per_class_results=self.exp.get("max_per_class_results",self.max_per_class_results)
         self.per_class_count=defaultdict(lambda:0)
+        if self.exp.get("similiarity_tie_breaker",0):
+            for model in self.tfidfmodels.items():
+                model.tie_breaker=self.exp["similiarity_tie_breaker"]
 
         self.startLogging()
         self.initializePipeline()
@@ -283,10 +287,11 @@ class BaseTestingPipeline(object):
 ##                self.logger.logReport("Citation: "+precomputed_query["citation_id"]+"\n Query method:"+precomputed_query["query_method"]+" \nDoc method: "+doc_method +"\n")
 ##                self.logger.logReport(precomputed_query["query_text"]+"\n")
 
+
                 # ACTUAL RETRIEVAL HAPPENING - run query
                 retrieved=self.tfidfmodels[doc_method].runQuery(
                     precomputed_query,
-                    all_doc_methods[doc_method]["runtime_parameters"],
+                    addExtraWeights(all_doc_methods[doc_method]["runtime_parameters"], self.exp),
                     guid,
                     max_results=exp.get("max_results_recall",MAX_RESULTS_RECALL))
 

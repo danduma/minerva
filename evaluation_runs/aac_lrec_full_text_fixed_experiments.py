@@ -76,8 +76,7 @@ doc_methods={
 ##        "parameters":[250,350], "runtime_parameters":{"text":"1","inlink_context":"1"}},
 
     "az_annotated":{"type":"annotated_boost", "index":"az_annotated_aac_2010", "parameters":[1], "runtime_parameters":{
-          "full_text":["_full_text"]
-##        "AZ_ALL":AZ_ZONES_LIST,
+        "AZ_ALL":AZ_ZONES_LIST,
 ##        "CSC_ALL":CORESC_LIST,
         }},
 
@@ -167,7 +166,7 @@ qmethods={
 experiment={
     "name":"aac_lrec_experiments",
     "description":
-        """Compare using full text for retrieval for the AAC LREC experiments """,
+        """Re-run the LREC experiments with AZ instead of CoreSC, including _full_text for search""",
     # dict of bag-of-word document representations to prebuild
     "prebuild_bows":prebuild_bows,
     # dict of per-file indexes to prebuild
@@ -183,11 +182,11 @@ experiment={
     # SQL condition to automatically generate the list above
     "test_files_condition":"metadata.num_in_collection_references:>0 AND metadata.year:>2010",
     # This lets us pick just the first N files
-    "max_test_files":1500,
+    "max_test_files":1000,
     # Use Lucene DefaultSimilarity? As opposed to FieldAgnosticSimilarity
     "use_default_similarity":True,
     # Annotate sentences with AZ/CoreSC/etc?
-    "rhetorical_annotations":["az"],
+    "rhetorical_annotations":[],
     # Run annotators? If False, it is assumed the sentences are already annotated
     "run_rhetorical_annotators":False,
     # Separate queries by AZ/CSC, etc?
@@ -198,7 +197,9 @@ experiment={
     # use full-collection retrival? If False, it runs "citation resolution"
     "full_corpus":True,
     # "compute_once","train_weights"
-    "type":"compute_once",
+    "type":"train_weights",
+    # this allows adding extra runtime parameters keeping one or more weights always fixed
+    "fixed_runtime_parameters":{"_full_text":10},
     # If full_corpus, this is the cut-off year for including documents in the general index.
     # In this way we can separate test files and retrieval files.
     "index_max_year": 2010,
@@ -220,6 +221,8 @@ experiment={
     "add_random_control_result": False,
     "precomputed_queries_filename":"precomputed_queries.json",
     "files_dict_filename":"files_dict.json",
+    # this is a way to add in all the results for all the fields and not just take the best one
+##    "similarity_tie_breaker":0.3,
 }
 
 
@@ -227,9 +230,9 @@ options={
     "run_prebuild_bows":0, # should the whole BOW building process run?
     "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
     "rebuild_indexes":0,   # rebuild indices?
-    "overwrite_existing_queries":0,  # force rebuilding of queries too?
-    "run_precompute_retrieval":0,  # only applies if type == "train_weights"
-    "clear_existing_prr_results":False, # delete previous precomputed results? i.e. start from scratch
+    "overwrite_existing_queries":1,  # force rebuilding of queries too?
+    "run_precompute_retrieval":1,  # only applies if type == "train_weights"
+    "clear_existing_prr_results":1, # delete previous precomputed results? i.e. start from scratch
     "override_folds":4,
     "override_metric":"avg_ndcg",
 }

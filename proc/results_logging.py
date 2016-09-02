@@ -111,7 +111,7 @@ class ResultsLogger(ProgressIndicator):
         self.citations_extra_info=[]
         self.full_citation_id=""
         self.run_parameters=defaultdict(lambda:None)
-        self.csv_columns="file_guid citation_id doc_position query_method doc_method precision_score rank mrr_score ndcg_score az cfc match_guid first_result".split()
+        self.csv_columns="file_guid citation_id doc_position query_method doc_method precision_score rank mrr_score ndcg_score az csc_ctype match_guid first_result".split()
         self.dump_straight_to_disk=dump_straight_to_disk
         if dump_straight_to_disk:
             self.startResultsDump()

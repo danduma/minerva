@@ -10,9 +10,11 @@ from math import log
 
 from minerva.evaluation.precomputed_pipeline import PrecomputedPipeline
 from minerva.evaluation.experiment import Experiment
+from minerva.evaluation.query_generation import QueryGenerator
 
 def termScoresInFormula(part):
     """
+        Returnslist of all term matching elements in formula
 
         :param part: tuple, list or dict
         :returns: list of all term matching elements in formula
@@ -31,6 +33,7 @@ def termScoresInFormula(part):
 
 def getDictOfTermScores(formula):
     """
+        Returns the score of each term in the formula
     """
     term_scores=termScoresInFormula(formula)
     res={}
@@ -73,7 +76,16 @@ def getFormulaTermWeights(unique_result):
 
     return match_result
 
-class ContextGenerationPipeline(Experiment):
+class ContextExtractor(QueryGenerator):
+    """
+        Modified query generator for context
+    """
+
+    def __init__():
+
+
+
+class ContextAnnotationPipeline(Experiment):
     """
     """
 
@@ -123,9 +135,6 @@ class ContextGenerationPipeline(Experiment):
         if options.get("override_metric",None):
             self.exp["metric"]=options["override_metric"]
 
-
-        weight_trainer=WeightTrainer(self.exp, self.options)
-        weight_trainer.trainWeights()
 
 def main():
     pass

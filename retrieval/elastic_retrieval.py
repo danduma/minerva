@@ -43,6 +43,8 @@ class ElasticRetrieval(BaseRetrieval):
         self.last_query={}
         self.save_terms=save_terms
         self.default_field="text"
+        self.tie_breaker=0
+        self.multi_match_type="best_fields"
 
     def rewriteQueryAsDSL(self, structured_query, parameters):
         """
@@ -85,12 +87,14 @@ class ElasticRetrieval(BaseRetrieval):
         dsl_query={
           "multi_match" : {
             "query": lucene_query,
-            "type":  "best_fields",
+            "type":  self.multi_match_type,
             "fields": fields,
             "operator": "or",
-##            "tie_breaker": 0.3
           }
         }
+
+        if self.tie_breaker:
+            dsl_query["multi_match"]["tie_breaker"]=self.tie_breaker
 
         return dsl_query
 

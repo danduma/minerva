@@ -57,8 +57,9 @@ def prebuildMulti(method_name, parameters, function, doc, doctext, guid, overwri
             except:
                 logging.exception("Cannot load SciDoc")
 
-            for annotation in rhetorical_annotations:
-                cp.Corpus.annotateDoc(doc, annotation.upper())
+            # TODO make sure this doesn't affect anything. It doesn't make sense to annotate as BOWs are being build. Gotta do that before.
+##            for annotation in rhetorical_annotations:
+##                cp.Corpus.annotateDoc(doc, annotation.upper())
 
             doctext=doc.getFullDocumentText()
 
