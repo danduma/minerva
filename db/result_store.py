@@ -94,7 +94,7 @@ class ElasticResultStorer(object):
         """
             Deletes the result table and recreates it
         """
-##        self.deleteTable()
+        self.deleteTable()
         self.createTable()
 
     def addResult(self, result):

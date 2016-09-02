@@ -202,11 +202,11 @@ class Experiment(object):
         """
         if self.exp["type"] == "compute_once":
             pipeline=BaseTestingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
-            pipeline.runPipeline(self.exp)
+            pipeline.runPipeline(self.exp, self.options)
         elif self.exp["type"] == "train_weights":
             if self.options.get("run_precompute_retrieval", False):
                 pipeline=PrecomputedPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
-                pipeline.runPipeline(self.exp)
+                pipeline.runPipeline(self.exp, self.options)
             weight_trainer=WeightTrainer(self.exp, self.options)
             weight_trainer.trainWeights()
         elif self.exp["type"] in ["", "do_nothing"]:

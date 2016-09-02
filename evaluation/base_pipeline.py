@@ -36,8 +36,8 @@ class BaseTestingPipeline(object):
         self.retrieval_class=retrieval_class
         self.use_celery=use_celery
         self.tasks=[]
-        self.exp={}
-        self.options={}
+        self.exp=None
+        self.options=None
         self.precomputed_queries=[]
         self.tfidfmodels={}
         self.files_dict={}
@@ -224,7 +224,7 @@ class BaseTestingPipeline(object):
         self.logger.writeDataToCSV()
         self.logger.showFinalSummary()
 
-    def runPipeline(self, exp):
+    def runPipeline(self, exp, options):
         """
             Run the whole experiment pipeline, loading everything from
             precomputed json
@@ -232,6 +232,7 @@ class BaseTestingPipeline(object):
             :param exp: experiment dict
         """
         self.exp=exp
+        self.options=options
 
         self.max_per_class_results=self.exp.get("max_per_class_results",self.max_per_class_results)
         self.per_class_count=defaultdict(lambda:0)
