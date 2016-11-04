@@ -14,7 +14,7 @@ from minerva.evaluation.query_generation import QueryGenerator
 
 def termScoresInFormula(part):
     """
-        Returnslist of all term matching elements in formula
+        Returns list of all term matching elements in formula
 
         :param part: tuple, list or dict
         :returns: list of all term matching elements in formula
@@ -46,7 +46,7 @@ def getDictOfTermScores(formula):
 def getFormulaTermWeights(unique_result):
     """
         Computes a score for each matching keyword in the formula for the
-        matching
+        matching files in the index
     """
     idf_scores=defaultdict(0)
     max_scores=defaultdict(0)
@@ -82,11 +82,49 @@ class ContextExtractor(QueryGenerator):
     """
 
     def __init__():
-
+        pass
 
 
 class ContextAnnotationPipeline(Experiment):
     """
+        Runs like an experiment, at the point the weight training would. Goes
+        over a subset of all PRRs.
+
+        Needs the SciDocs augmented with all annotations first. Just like they get
+        POS tags and AZ and CSC labels, each sentence has to get parsed. Other features
+        like tfidf scores for each term I can learn later.
+
+        parameters
+            Phase 1: _full_text:1
+            Phase 2: using fields
+
+        Idea:
+            Phase 1:
+
+            For each "test" file, which for these purposes is a train file
+                For each resolvable citation
+                    Extract a block of text
+                    Use whole block to generate query
+                    Get results
+                    Find keywords that will give best score
+                    Annotate block of text with score for each word
+
+            Phase 2:
+
+            Annotate block of text with any and all features:
+
+                POS
+                Dependencies
+                Document-wide TFIDF scores
+                In_citation_sentence
+                Coreference: Path_to_citation?
+                Textual entailment? -- eventually
+
+            What format to use for each sentence?
+            Where to store all of this?
+            Idea: instead of annotating each block individually, annotate whole paper with all the features?
+                Not that crazy: can annotate all sentences and then
+
     """
 
     def bindAllExtractors(self):

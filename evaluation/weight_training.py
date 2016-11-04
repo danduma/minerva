@@ -307,7 +307,7 @@ class WeightTrainer(object):
 
         xtra="_".join(self.exp["train_weights_for"])
         data=pd.DataFrame(results)
-        data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_improvements"+xtra+".csv")
+        data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_improvements_"+xtra+".csv")
 
         fold_data=pd.DataFrame(fold_results)
         fold_data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_folds_"+xtra+".csv")

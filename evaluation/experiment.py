@@ -60,11 +60,14 @@ class Experiment(object):
         self.arguments=args.__dict__
 
         for arg in self.arguments:
-            for which in[self.exp, self.options]:
+            for which in [self.exp, self.options]:
                 if arg in which:
                     arg_val=self.arguments[arg]
                     if arg_val:
                         which[arg]=arg_val
+                        if arg == "train_weights_for":
+                            self.options["clear_existing_prr_results"]=False
+                            self.options["run_precompute_retrieval"]=False
 
     def experimentExists(self, filename):
         """

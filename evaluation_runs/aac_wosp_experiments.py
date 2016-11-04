@@ -1,6 +1,6 @@
-# Experiments with the ACL corpus like the ones for LREC'16
+# Experiments with the PMC corpus for WOSP
 #
-# Copyright:   (c) Daniel Duma 2016
+# Copyright:   (c) Daniel Duma 2015
 # Author: Daniel Duma <danielduma@gmail.com>
 
 # For license information, see LICENSE.TXT
@@ -18,8 +18,15 @@ prebuild_bows={
 ##"title_abstract":{"function":"getDocBOWTitleAbstract", "parameters":[1]},
 ##"passage":{"function":"getDocBOWpassagesMulti", "parameters":[150,175,200,250,300,350,400,450]},
 ##"inlink_context":{"function":"generateDocBOWInlinkContext", "parameters":[200] },
-##"ilc_AZ":{"function":"generateDocBOW_ILC_Annotated", "parameters":["paragraph","1up_1down","1up","1only"] },
+
+"ilc_annotated":{"function":"generateDocBOW_ILC_Annotated",
+    "parameters":
+        ["2up_2down",
+         "1up_1down",
+         "paragraph"] },
+
 "az_annotated":{"function":"getDocBOWannotated", "parameters":[1]},
+
 ##"section_annotated":{"function":"getDocBOWannotatedSections", "parameters":[1]},
 }
 
@@ -30,10 +37,10 @@ prebuild_indexes={
 ##    "passage":{"type":"standard_multi", "bow_name":"passage", "parameters":[150,175,200,250,300,350,400,450]},
 ##    "inlink_context":{"type":"standard_multi", "bow_name":"inlink_context", "parameters":[5, 10, 15, 20, 30, 40, 50]},
 ##    "inlink_context_year":{"type":"standard_multi", "bow_name":"inlink_context", "parameters":[5, 10, 15, 20, 30, 40, 50], "options":{"max_year":True}},
-    "az_annotated_aac_2010":{"type":"standard_multi",
-                             "bow_name":"az_annotated", # bow to load
-                             "parameters":[1], # parameter has to match a parameter of a prebuilt bow
-                             },
+##    "az_annotated_pmc_2014":{"type":"standard_multi",
+##                             "bow_name":"az_annotated", # bow to load
+##                             "parameters":["2up_2down", "1up_1down", "paragraph"], # parameter has to match a parameter of a prebuilt bow
+##                             },
 ##    "section_annotated":{"type":"standard_multi", "bow_methods":[("section_annotated",[1])], "parameters":[1]},
 
 ##    # this is just ilc but split by AZ
@@ -45,20 +52,34 @@ prebuild_indexes={
 ##    "ilc_passage":{"type":"ilc_mashup", "ilc_method":"inlink_context", "mashup_method":"passage","ilc_parameters":[5, 10, 20, 30, 40, 50], "parameters":[250,300,350]},
 
 # this is just normal az_annotated + normal ilc
-####    "ilc_az_annotated":{"type":"ilc_mashup", "ilc_method":"inlink_context",  "mashup_method":"az_annotated", "ilc_parameters":[5, 10,20,30, 40, 50], "parameters":[1]},
-##
-####    # this is az-annotated text + az-annotated ilc
-####    "az_ilc_az_":{"type":"ilc_mashup", "ilc_method":"ilc_AZ", "mashup_method":"az_annotated", "ilc_parameters":["paragraph","1up_1down","1up","1only"], "parameters":[1]},
+##    "ilc_az_annotated_pmc_2014":{"type":"ilc_mashup", "ilc_method":"inlink_context",  "mashup_method":"az_annotated", "ilc_parameters":[5, 10,20,30, 40, 50], "parameters":[1]},
+# this is az-annotated text + az-annotated ilc
+##    "az_ilc_az_pmc_2014":{"type":"ilc_mashup",
+##                          "ilc_method":"ilc_annotated",
+##                          "mashup_method":"az_annotated",
+##                          "ilc_parameters":["2up_2down","1up_1down","paragraph"],
+##                          "parameters":["ALL"]},
 }
 
 prebuild_general_indexes={
 ##    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "ilc_full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
-    "az_annotated_aac_2010":{"type":"standard_multi",
-                             "bow_name":"az_annotated", # bow to load
+
+##    "az_annotated_pmc_2014":{"type":"standard_multi",
+##                             "bow_name":"az_annotated", # bow to load
+##                             "parameters":[1], # parameter has to match a parameter of a prebuilt bow
+##                             "max_year":2014 # cut-off point for adding files to index
+##                             },
+
+    "az_ilc_az_annotated_aac_2010":{"type":"ilc_mashup",
+                             "bow_name":"ilc_annotated", # bow to load
+                             "ilc_method":"ilc_annotated", # bow to load
+                             "mashup_method":"az_annotated",
+                             "ilc_parameters":["paragraph"], # parameter has to match a parameter of a prebuilt bow
                              "parameters":[1], # parameter has to match a parameter of a prebuilt bow
                              "max_year":2010 # cut-off point for adding files to index
                              },
+
 }
 
 doc_methods={
@@ -75,11 +96,6 @@ doc_methods={
 ##    "ilc_passage":{"type":"ilc_mashup",  "index":"ilc_passage", "mashup_method":"passage","ilc_parameters":[10, 20, 30, 40, 50],
 ##        "parameters":[250,350], "runtime_parameters":{"text":"1","inlink_context":"1"}},
 
-    "az_annotated":{"type":"annotated_boost", "index":"az_annotated_aac_2010", "parameters":[1], "runtime_parameters":{
-        "AZ_ALL":AZ_ZONES_LIST,
-##        "CSC_ALL":CORESC_LIST,
-        }},
-
 ##    "section":{"type":"annotated_boost", "index":"section_annotated", "parameters":[1], "runtime_parameters":
 ##        {
 ##        "title_abstract":{"title":"1","abstract":"1"},
@@ -92,22 +108,39 @@ doc_methods={
 ##         "full_text":["title", "abstract","text","inlink_context"],
 ##        }},
 
+##    "az_annotated":{"type":"annotated_boost",
+##                    "index":"az_annotated_pmc_2014",
+##                    "parameters":[1],
+##                    "runtime_parameters":{
+##                ##        "AZ_ALL":AZ_ZONES_LIST,
+##                        "CSC_ALL":CORESC_LIST,
+##                        }},
+
     # this is normal ilc + az_annotated
 ##    "ilc_az_annotated":{"type":"ilc_annotated_boost", "index":"ilc_az_annotated", "parameters":[1], "ilc_parameters":[10, 20, 30, 40, 50], "runtime_parameters":
 ##        {"ALL":["AIM","BAS","BKG","CTR","OTH","OWN","TXT","inlink_context"],
 ##        }},
 
-    # this is sentence-based ILC, annotated with AZ and CSC
-##    "ilc_AZ":{"type":"annotated_boost", "index":"ilc_AZ", "parameters":["paragraph","1up_1down","1up","1only"], "runtime_parameters":
-##        {
-##        "ALL":["ilc_AZ_AIM","ilc_AZ_BAS","ilc_AZ_BKG","ilc_AZ_CTR","ilc_AZ_OTH","ilc_AZ_OWN","ilc_AZ_TXT"]
-##        }},
+    # this is sentence-based ILC, annotated with AZ/CSC
+##    "ilc_annotated":{"type":"annotated_boost",
+##                     "index":"az_ilc_az_annotated_pmc_2014_1",
+##                     "parameters":["paragraph"],
+##                     "runtime_parameters":
+##                        {
+####                        "AZ":["ilc_AZ_AIM","ilc_AZ_BAS","ilc_AZ_BKG","ilc_AZ_CTR","ilc_AZ_OTH","ilc_AZ_OWN","ilc_AZ_TXT"],
+##                        "CSC": ["ilc_CSC_"+zone for zone in CORESC_LIST],
+##                        }},
 
-##    "ilc_AZ":{"type":"annotated_boost", "index":"ilc_AZ", "parameters":["paragraph"], "runtime_parameters":
-##        {
-##        "AZ":["ilc_AZ_AIM","ilc_AZ_BAS","ilc_AZ_BKG","ilc_AZ_CTR","ilc_AZ_OTH","ilc_AZ_OWN","ilc_AZ_TXT"],
-##        "CSC": ["ilc_CSC_"+zone for zone in CORESC_LIST],
-##        }},
+    # this is sentence-based ILC, annotated with AZ/CSC
+    "full_ilc_annotated":{"type":"annotated_boost",
+                     "index":"az_ilc_az_annotated_pmc_2014_1",
+                     "parameters":["paragraph"],
+                     "runtime_parameters":
+                        {
+                        "AZ":["ilc_AZ_"+zone for zone in AZ_ZONES_LIST],
+##                        "CSC": ["ilc_CSC_"+zone for zone in CORESC_LIST],
+##                        "CSC": CORESC_LIST + ["ilc_CSC_"+zone for zone in CORESC_LIST],
+                        }},
 
     # this is sentence-based AZ and AZ-annotated document contents
 ##    "az_ilc_az":{"type":"ilc_annotated_boost", "index":"az_ilc_az", "parameters":[],
@@ -164,9 +197,9 @@ qmethods={
                 }
 
 experiment={
-    "name":"aac_lrec_experiments",
+    "name":"acl_wosp_experiments",
     "description":
-        """Re-run the LREC experiments with AZ instead of CoreSC, including _full_text for search""",
+        """Re-run the WOSP experiments with the AAC corpus and AZ""",
     # dict of bag-of-word document representations to prebuild
     "prebuild_bows":prebuild_bows,
     # dict of per-file indexes to prebuild
@@ -196,10 +229,6 @@ experiment={
 ##    "split_set":None,
     # use full-collection retrival? If False, it runs "citation resolution"
     "full_corpus":True,
-    # "compute_once","train_weights"
-    "type":"train_weights",
-    # this allows adding extra runtime parameters keeping one or more weights always fixed
-    "fixed_runtime_parameters":{"_full_text":1},
     # If full_corpus, this is the cut-off year for including documents in the general index.
     # In this way we can separate test files and retrieval files.
     "index_max_year": 2010,
@@ -221,35 +250,37 @@ experiment={
     "add_random_control_result": False,
     "precomputed_queries_filename":"precomputed_queries.json",
     "files_dict_filename":"files_dict.json",
-    # this is a way to add in all the results for all the fields and not just take the best one
-    "similarity_tie_breaker":0.1,
+    # maximum number of queries of the same AZ/CSC type to process
+    "max_per_class_results":1000,
+    # Type of experiment. "compute_once","train_weights" or "" to do nothing
+    "type":"train_weights",
 }
 
 
 options={
-    "run_prebuild_bows":0, # should the whole BOW building process run?
-    "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
-    "rebuild_indexes":0,   # rebuild indices?
-    "overwrite_existing_queries":0,  # force rebuilding of queries too?
-    "run_precompute_retrieval":0,  # only applies if type == "train_weights"
-    "clear_existing_prr_results":0, # delete previous precomputed results? i.e. start from scratch
+    "run_prebuild_bows":1, # should the whole BOW building process run?
+    "overwrite_existing_bows":1,   # if a BOW exists already, should we overwrite it?
+    "rebuild_indexes":1,   # rebuild indices?
+    "compute_queries":1,  # should we compute the queries?
+    "overwrite_existing_queries":1,  # force rebuilding of queries too?
+    "run_precompute_retrieval":1,  # only applies if type == "train_weights"
+    "clear_existing_prr_results":1, # delete previous precomputed results? i.e. start from scratch
     "override_folds":4,
     "override_metric":"avg_ndcg",
+##    "max_files_to_process":10
 }
 
+
+# usage: wosp16_experiments.py --w Mod
+
 def main():
-    from minerva.squad.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
+    from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     cp.Corpus.setCorpusFilter("AAC")
-##    experiment["test_files"]=["456f8c80-9807-46a9-8455-cd4a7e346f9d"]
 
     exp=Experiment(experiment, options, True)
     exp.run()
 
 if __name__ == '__main__':
     main()
-##    from minerva.proc.doc_representation import getDictOfLuceneIndeces
-##    from minerva.evaluation.base_pipeline import getDictOfTestingMethods
-##    print(getDictOfLuceneIndeces(prebuild_general_indexes))
-##    print(getDictOfTestingMethods(doc_methods))
