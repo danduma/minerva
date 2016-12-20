@@ -44,7 +44,7 @@ class PrecomputedPipeline(BaseTestingPipeline):
                 else:
                     must_process=False
                     # TODO this is redundant now. Merge this into base_pipeline.py?
-                    print("Too many queries of type %s already" % precomputed_query[zone_type])
+                    print(u"Too many queries of type {} already".format(precomputed_query[zone_type]))
 ##                  assert(False)
 
         if not must_process:
@@ -61,16 +61,6 @@ class PrecomputedPipeline(BaseTestingPipeline):
                                                  self.exp["experiment_id"],
                                                  self.exp["max_results_recall"]],
                                                  queue="precompute_formulas"))
-##            self.tasks.append(precomputeFormulasTask.subtask(args=[
-##                                                 precomputed_query,
-##                                                 doc_method,
-##                                                 doc_list,
-##                                                 self.tfidfmodels[doc_method].index_name,
-##                                                 self.exp["name"],
-##                                                 self.exp["experiment_id"],
-##                                                 self.exp["max_results_recall"]],
-##                                                 queue="precompute_formulas"))
-
         else:
             addPrecomputeExplainFormulas(precomputed_query,
                                          doc_method,

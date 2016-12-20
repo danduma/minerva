@@ -50,9 +50,11 @@ def createResultStorers(exp_name, exp_random_zoning=False, clear_existing_prr_re
     return writers
 
 class ElasticResultStorer(object):
+    """
+        Class to store results in Elasticsearch
+    """
     def __init__(self, namespace, table_name, endpoint={"host":"localhost", "port":9200}):
-        """
-        """
+
         assert isinstance(namespace, basestring)
         assert isinstance(table_name, basestring)
         assert namespace != ""

@@ -57,3 +57,4 @@ doc_visualization/*.json
 scraping
 libs
 update_git.bat
+.idea

@@ -24,7 +24,7 @@ prebuild_bows={
 }
 
 # bow_name is just about the name of the file containing the BOWs
-prebuild_indexes={
+prebuild_indeces={
 ##    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "title_abstract":{"type":"standard_multi", "bow_name":"title_abstract", "parameters":[1]},
 ##    "passage":{"type":"standard_multi", "bow_name":"passage", "parameters":[150,175,200,250,300,350,400,450]},
@@ -145,7 +145,7 @@ def main():
         "name":"w20_fulltext_fa",
         "description":"",
         "prebuild_bows":prebuild_bows,
-        "prebuild_indexes":prebuild_indexes,
+        "prebuild_indeces":prebuild_indeces,
         "prebuild_general_indexes":prebuild_general_indexes,
         "doc_methods":testing_methods,
         "qmethods":qmethods,

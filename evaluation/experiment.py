@@ -24,6 +24,7 @@ import minerva.proc.doc_representation as doc_representation
 import minerva.evaluation.athar_corpus as athar_corpus
 from minerva.proc.general_utils import ensureDirExists
 from weight_training import WeightTrainer
+from keyword_training import KeywordTrainer
 
 class Experiment(object):
     """
@@ -34,7 +35,7 @@ class Experiment(object):
         """
             :param experiment: either a dict or a file name to load
             :param use_celery: if true, tasks will not be executed automatically
-                but added to the celery queue. See squad.celery_py:app
+            but added to the celery queue. See squad.celery_py:app
         """
         self.use_celery=use_celery
         self.load(experiment, options)
@@ -149,8 +150,18 @@ class Experiment(object):
             self.exp["test_files"]=cp.Corpus.TEST_FILES
 
 
+    def setupExperimentDir(self):
+        """
+            Ensures dir exists, etc.
+        """
+        self.setupExperimentDir()
+        self.exp["exp_dir"]=os.path.normpath(os.path.join(cp.Corpus.paths.experiments,self.exp["name"])) + os.sep
+        ensureDirExists(self.exp["exp_dir"])
+
     def bindAllExtractors(self):
         """
+            Finds and links the functions (from doc_representation.py, to the "function" key) or extractor instance
+            (from query_extraction.EXTRACTOR_LIST to the "extractor" key)
         """
         for option in self.exp["prebuild_bows"]:
             function_name=self.exp["prebuild_bows"][option]["function"]
@@ -184,11 +195,12 @@ class Experiment(object):
             if self.options["rebuild_indexes"] and len(self.exp["prebuild_general_indexes"]) > 0:
                 self.indexer.buildGeneralIndex(self.exp, self.options)
         else:
-            if self.options["rebuild_indexes"] and len(self.exp["prebuild_indexes"]) > 0:
-                self.indexer.buildIndexes(cp.Corpus.TEST_FILES, self.exp["prebuild_indexes"], self.options)
+            if self.options["rebuild_indexes"] and len(self.exp["prebuild_indeces"]) > 0:
+                self.indexer.buildIndexes(cp.Corpus.TEST_FILES, self.exp["prebuild_indeces"], self.options)
 
     def computeQueries(self):
         """
+            Compute or load the queries
         """
         gc.collect()
         queries_file=os.path.join(self.exp["exp_dir"],self.exp["precomputed_queries_filename"])
@@ -202,6 +214,7 @@ class Experiment(object):
 
     def runTestingPipeline(self):
         """
+            Last step of self.run()
         """
         if self.exp["type"] == "compute_once":
             pipeline=BaseTestingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
@@ -212,18 +225,22 @@ class Experiment(object):
                 pipeline.runPipeline(self.exp, self.options)
             weight_trainer=WeightTrainer(self.exp, self.options)
             weight_trainer.trainWeights()
+        elif self.exp["type"] == "extract_kw":
+            if self.options.get("run_precompute_retrieval", False):
+                pipeline=PrecomputedPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
+                pipeline.runPipeline(self.exp, self.options)
+            keyword_trainer=KeywordTrainer(self.exp, self.options)
+            keyword_trainer.trainKeywords()
         elif self.exp["type"] in ["", "do_nothing"]:
             return
         else:
             raise NotImplementedError("Unkown experiment type")
 
-
     def run(self):
         """
             Loads an experiment and runs it all
         """
-        self.exp["exp_dir"]=os.path.normpath(os.path.join(cp.Corpus.paths.experiments,self.exp["name"])) + os.sep
-        ensureDirExists(self.exp["exp_dir"])
+        self.setupExperimentDir()
 
         # BIND EXTRACTORS
         self.bindAllExtractors()

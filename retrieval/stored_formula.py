@@ -121,22 +121,23 @@ class StoredFormula:
                 for new_detail in detail["details"]:
                     new_element["parts"].append(iterateDetail(new_detail))
             else:
-                field=re.match(r"weight\((.*?)\:",detail["description"],re.IGNORECASE)
+                field=re.match(r"weight\((.*?)\:(.*?)\sin",detail["description"],re.IGNORECASE)
                 if field:
                     field_name=str(field.group(1))
+                    term=str(field.group(2))
                     elem=detail["details"][0]
                     if elem["description"].startswith("fieldWeight"):
                         # if the queryWeight is 1, .explain() will not report it
 ##                        new_element={"type":"hit", "field":field_name, "qw": 1.0, "fw":elem["value"]}
-                        # (field_name,query_weight,field_weight)
+                        # (field_name,query_weight,field_weight,term)
                         if save_terms:
-                            new_element=(field_name, 1.0, elem["value"],"<term>")
+                            new_element=(field_name, 1.0, elem["value"], term)
                         else:
                             new_element=(field_name, 1.0, elem["value"])
                     else:
                         elements=elem["details"]
                         if save_terms:
-                            new_element=(field_name, elements[0]["value"], elements[1]["value"], "<term>")
+                            new_element=(field_name, elements[0]["value"], elements[1]["value"], term)
                         else:
                             new_element=(field_name, elements[0]["value"], elements[1]["value"])
 ##                        new_element={"type":"hit", "field":field_name, "qw": elements[0]["value"], "fw":elements[1]["value"]}
@@ -158,33 +159,40 @@ class StoredFormula:
 ##        computed_value=self.truncate(self.computeScore(self.formula,defaultdict(lambda:1)),self.round_to_decimal_places)
 ##        assert(computed_value == original_value)
 
-    def computeScore_old(self,parameters):
-        """
-            Simple recomputation of a Lucene explain formula using the values in
-            [parameters] as per-field query weights
-        """
-        match_sum=0.0
-        for match in self.formula["matches"]:
-##            match_sum+=(match["qw"]*parameters[match["field"]])*match["fw"]
-            match_sum+=(match[1]*parameters[match[0]])*match[2]
-        total=match_sum*self.formula["coord"]
-##        total=self.truncate(total, self.round_to_decimal_places) # x digits of precision
-        return total
-
-    def computeScore(self, part, parameters):
+    def computeScore(self, part=None, field_parameters=None, kw_parameters=None):
         """
             Recomputation of a Lucene explain formula using the values in
-            [parameters] as per-field query weights. Recursive. Call with
+            @field_parameters as per-field query weights and @kw_parameters as
+            per-keyword query weights.
+
+            Recursive. Call with None or
             formula.formula as parameter first, it will iterate from there.
 
             :param part: tuple, list or dict
             :returns: floating-point score
         """
+        if part is None:
+            part=self.formula
+
         if isinstance(part, tuple) or isinstance(part, list):
-            return part[1] * parameters[part[0]] * part[2] # qw * param * fw
+            if field_parameters:
+                field_multiplier=field_parameters[part[0]]
+            else:
+                field_multiplier=1
+
+            if kw_parameters:
+                if len(part) <= 3:
+                    raise ValueError("Record missing 4th parameter: <term>")
+                query_weight=kw_parameters.get(part[3], 0) * part[1] # part[3] should be the actual term string.
+                # NOTE: only matching exact terms. If kw not in dict, score of 0
+            else:
+                query_weight=part[1] # qw
+
+            return query_weight * field_multiplier * part[2] # qw * param * fw (tf * idf * fieldNorm)
+
         elif isinstance(part, dict):
             if part["type"] in ["*", "+", "max"]:
-                scores=[self.computeScore(sub_part, parameters) for sub_part in part["parts"]]
+                scores=[self.computeScore(sub_part, field_parameters, kw_parameters) for sub_part in part["parts"]]
                 if part["type"] == "*":
                     return reduce(lambda x, y: x*y, scores)
                 elif part["type"] == "+":
@@ -195,11 +203,14 @@ class StoredFormula:
                 assert(part["value"] is not None)
                 return part["value"]
 ##        elif part["type"] == "hit":
-##            return part["qw"] * parameters[part["field"]] * part["fw"]
+##            return part["qw"] * field_parameters[part["field"]] * part["fw"]
             else:
                 raise ValueError("Unexpected operation type: %s" % part["type"])
         else:
             raise ValueError("Unexpected type %s" % type(part))
+
+
+
 
 def main():
     pass

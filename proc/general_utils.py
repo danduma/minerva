@@ -53,6 +53,7 @@ def exists(filename):
     return os.path.isfile(filename)
 
 def ensureDirExists(dir):
+    # type: (basestring) -> None
     """
         Makes sure directory exists. If not, it creates it.
     """

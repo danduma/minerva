@@ -23,7 +23,7 @@ class ElasticRetrieval(BaseRetrieval):
     """
         Interfaces with the Elasticsearch API
     """
-    def __init__(self, index_name, method, logger=None, use_default_similarity=True, max_results=None, es_instance=None, save_terms=False):
+    def __init__(self, index_name, method, logger=None, use_default_similarity=True, max_results=None, es_instance=None, save_terms=True):
         self.index_name=index_name
         if es_instance:
             self.es=es_instance
@@ -76,8 +76,10 @@ class ElasticRetrieval(BaseRetrieval):
 
 ##            lucene_query+="%s%s" % (bool_val,token["token"])
             lucene_query+="%s%s" % (bool_val,token.token)
-            if boost != 1:
-                lucene_query+="^%s" %str(boost)
+##            if boost != 1:
+##                lucene_query+="^%s" %str(boost)
+            if boost > 1:
+                lucene_query= bool_val + (token.token * str(int(boost)))
             lucene_query+=" "
 
         fields=[]
@@ -97,6 +99,61 @@ class ElasticRetrieval(BaseRetrieval):
             dsl_query["multi_match"]["tie_breaker"]=self.tie_breaker
 
         return dsl_query
+
+    def rewriteQueryAsDSL_new(self, structured_query, parameters):
+        """
+            Creates a multi_match DSL query for elasticsearch.
+
+            :param structured_query: a StructuredQuery dict, optionally under the
+                key "structured_query"
+            :param parameters: dict of [field]=weight to replace in the query
+        """
+        if "structured_query" in structured_query:
+            structured_query=structured_query["structured_query"]
+
+        if not isinstance(structured_query,StructuredQuery):
+            structured_query=StructuredQuery(structured_query)
+
+        if not structured_query or len(structured_query) == 0:
+            return None
+
+        self.last_query=structured_query
+
+        lucene_query=""
+
+        for  token in structured_query:
+            # TODO proper computing of the boost formula. Different methods?
+##            boost=token["boost"]*token["count"]
+            boost=token.boost*token.count
+##            bool_val=token.get("bool", None) or ""
+            bool_val=token.bool or ""
+
+##            lucene_query+="%s%s" % (bool_val,token["token"])
+            lucene_query+="%s%s" % (bool_val,token.token)
+##            if boost != 1:
+##                lucene_query+="^%s" %str(boost)
+            if boost > 1:
+                lucene_query= bool_val + (token.token * str(int(boost)))
+            lucene_query+=" "
+
+        fields=[]
+        for param in parameters:
+            fields.append(param+"^"+str(parameters[param]))
+
+        dsl_query={
+          "multi_match" : {
+            "query": lucene_query,
+            "type":  self.multi_match_type,
+            "fields": fields,
+            "operator": "or",
+          }
+        }
+
+        if self.tie_breaker:
+            dsl_query["multi_match"]["tie_breaker"]=self.tie_breaker
+
+        return dsl_query
+
 
 
     def runQuery(self, structured_query, max_results=None):
@@ -248,6 +305,11 @@ def testExplanation():
     """
     """
     from minerva.proc.query_extraction import WindowQueryExtractor
+    import minerva.db.corpora as cp
+
+    cp.useElasticCorpus()
+    from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    cp.Corpus.connectCorpus(r"g:\nlp\phd\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 
     ext=WindowQueryExtractor()
 
@@ -279,8 +341,26 @@ def testExplanation():
                             'Obs^1',
                             'Mod^1'],
                  'operator': 'or',
-                 'query': u'strongly imaginative via^2 associated coupled communication^2 is^4 repetitive influence mutations one stereotypies as show are point in^3 accounting debate around novo developmental^3 evidence dimensions for centres much separate linked delay genetic^2 difficulties genetically over parental interests activities play loci risk on some genes contribute early independent mediated although^2 asd^5 regression^2 heritable considerable susceptibility^2 processes interaction de third language older whether many age children deficits prior range determined evident social^2 usually narrow whole characterized effects ',
+                 'query': u'strongly imaginative via associated coupled communication is repetitive influence mutations one stereotypies as show are point in accounting debate around novo developmental evidence dimensions for centres much separate linked delay genetic difficulties genetically over parental interests activities play loci risk on some genes contribute early independent mediated although asd regression heritable considerable susceptibility processes interaction de third language older whether many age children deficits prior range determined evident social usually narrow whole characterized effects ',
                  'type': 'best_fields'}}}
+
+##    q={"dsl_query":
+##        {"dis_max":}
+##        {'match': {'content': ['Obj^1',
+##                            'Res^1',
+##                            'Goa^1',
+##                            'Mot^1',
+##                            'Hyp^1',
+##                            'Met^1',
+##                            'Bac^1',
+##                            'Exp^1',
+##                            'Con^1',
+##                            'Obs^1',
+##                            'Mod^1'],
+##                 'operator': 'or',
+##                 'query': u'strongly imaginative via associated coupled communication is repetitive influence mutations one stereotypies as show are point in accounting debate around novo developmental evidence dimensions for centres much separate linked delay genetic difficulties genetically over parental interests activities play loci risk on some genes contribute early independent mediated although asd regression heritable considerable susceptibility processes interaction de third language older whether many age children deficits prior range determined evident social usually narrow whole characterized effects ',
+##                 'type': 'best_fields'}}}
+
 
     doc_ids=['559005ea-9288-4459-a8ef-8ae72ed1dc0f']
 
@@ -292,6 +372,11 @@ def testExplanation():
 
     formula=er.formulaFromExplanation(q, doc_ids[0])
     print(formula.formula)
+##    print(formula.computeScore(None, None, None))
+    print(formula.computeScore(None, None, {"susceptibility":20}))
+
+    from minerva.evaluation.best_keyword_selection import getFormulaTermWeights
+    print(getFormulaTermWeights({"match_guid":doc_ids[0],"formulas":[{"guid":doc_ids[0],"formula":formula.formula}]}))
 
 def main():
     testExplanation()

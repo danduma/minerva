@@ -1,4 +1,4 @@
-# Pipeline that uses the precomputed retrieval results/formulas to annotate citation contexts
+# Pipeline that uses retrieval results/formulas to annotate keywords to extract in citation contexts
 #
 # Copyright:   (c) Daniel Duma 2016
 # Author: Daniel Duma <danielduma@gmail.com>
@@ -7,81 +7,21 @@
 
 from collections import defaultdict
 from math import log
+import minerva.db.corpora as cp
 
+from minerva.db.result_store import ElasticResultStorer, ResultDiskReader
 from minerva.evaluation.precomputed_pipeline import PrecomputedPipeline
 from minerva.evaluation.experiment import Experiment
 from minerva.evaluation.query_generation import QueryGenerator
 
-def termScoresInFormula(part):
-    """
-        Returns list of all term matching elements in formula
 
-        :param part: tuple, list or dict
-        :returns: list of all term matching elements in formula
-    """
-    if isinstance(part, tuple) or isinstance(part, list):
-        return part
-    elif isinstance(part, dict):
-        scores=[termScoreInFormula(sub_part, parameters) for sub_part in part["parts"]]
-        result=[]
-        for score in scores:
-            if isinstance(score, list):
-                result.extend(score)
-            else:
-                result.append(score)
-        return result
-
-def getDictOfTermScores(formula):
-    """
-        Returns the score of each term in the formula
-    """
-    term_scores=termScoresInFormula(formula)
-    res={}
-    for score in term_scores:
-        # score=(field,qw,fw,term)
-        res[score[3]]=res.get(score[3],0)+(score[1]*score[2])
-    return res
-
-
-def getFormulaTermWeights(unique_result):
-    """
-        Computes a score for each matching keyword in the formula for the
-        matching files in the index
-    """
-    idf_scores=defaultdict(0)
-    max_scores=defaultdict(0)
-
-    formula_term_scores=[]
-    match_result=None
-
-    for formula in unique_result["formulas"]:
-        term_scores=getDictOfTermScores(formula["formula"])
-        formula_term_scores.append((formula,term_scores))
-        if formula["guid"] == unique_result["match_guid"]:
-            match_result=term_scores
-
-        for term in term_scores:
-            idf_scores[term]=idf_scores[term]+term_scores[term]
-            if term_scores[term] > max_scores[term]:
-                max_scores[term] = term_scores[term]
-
-    if not match_result:
-        return None
-
-    for term in idf_scores:
-        idf_scores[term] = log((max_scores[term] * len(unique_result["formulas"])) / (1 + idf_scores[term]), 2)
-
-    for term in match_result:
-        match_result[term] = match_result[term] * idf_scores[term]
-
-    return match_result
 
 class ContextExtractor(QueryGenerator):
     """
-        Modified query generator for context
+        Modified query generator for finding the keywords
     """
 
-    def __init__():
+    def __init__(self):
         pass
 
 
@@ -89,6 +29,10 @@ class ContextAnnotationPipeline(Experiment):
     """
         Runs like an experiment, at the point the weight training would. Goes
         over a subset of all PRRs.
+
+        **OR**
+
+        Does it use the PRRs or does it just get the explain() online?
 
         Needs the SciDocs augmented with all annotations first. Just like they get
         POS tags and AZ and CSC labels, each sentence has to get parsed. Other features
@@ -153,28 +97,37 @@ class ContextAnnotationPipeline(Experiment):
         """
         terms={}
 
+        # a commment
         term_weights=getFormulaTermWeights(unique_result)
         # TODO POS tagging, parsing, coreference resolution, etc.
 
 
     def runTestingPipeline(self):
         """
+            This method overrides the standard experiment one, just does the
+            annotation as it should.
         """
         if self.options.get("run_precompute_retrieval", False):
             pipeline=PrecomputedPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
             pipeline.save_terms=True
             pipeline.runPipeline(self.exp)
 
-        self.all_doc_methods=getDictOfTestingMethods(self.exp["doc_methods"])
+    def run(self):
+        """
 
-        if options.get("override_folds",None):
-            self.exp["cross_validation_folds"]=options["override_folds"]
-
-        if options.get("override_metric",None):
-            self.exp["metric"]=options["override_metric"]
-
+        :return: None
+        """
+        self.selectTrainFiles()
+        super(ContextAnnotationPipeline, self).run()
 
 def main():
+
+    from minerva.squad.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
+    cp.useElasticCorpus()
+    cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
+    cp.Corpus.setCorpusFilter("AAC")
+
+    # train_set=
     pass
 
 if __name__ == '__main__':

@@ -68,6 +68,10 @@ def runTestAZ(rebuild=False):
     print(cm.pp(sort_by_count=True, show_percents=True, truncate=9))
 
 def runKFoldCrossValidation(rebuild=False, folds=3):
+    """
+        Tests the classifier with K-fold cross-validation
+
+    """
     from sklearn import cross_validation
 
     if rebuild:
@@ -88,13 +92,10 @@ def runKFoldCrossValidation(rebuild=False, folds=3):
 ##        print traincv[0],":",traincv[-1]
 ##        print testcv[0],":",testcv[-1]
 
-        # oh-oh, apparently I was doing this wrong
-##        train_set=global_featureset[traincv[0]:traincv[-1]+1]
-##        test_set=global_featureset[testcv[0]:testcv[-1]+1]
-
         train_set=[global_featureset[i] for i in traincv]
         test_set=[global_featureset[i] for i in testcv]
 
+        # select type of classifier here
 ##        classifier = nltk.NaiveBayesClassifier.train(train_set)
         classifier = nltk.MaxentClassifier.train(global_featureset[traincv[0]:traincv[len(traincv)-1]], min_lldelta=MIN_LL_DELTA,max_iter=MAX_ITER)
 
