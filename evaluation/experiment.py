@@ -24,7 +24,7 @@ import minerva.proc.doc_representation as doc_representation
 import minerva.evaluation.athar_corpus as athar_corpus
 from minerva.proc.general_utils import ensureDirExists
 from weight_training import WeightTrainer
-from keyword_training import KeywordTrainer
+from keyword_training import KeywordTrainingPipeline
 
 class Experiment(object):
     """
@@ -251,11 +251,8 @@ class Experiment(object):
             weight_trainer=WeightTrainer(self.exp, self.options)
             weight_trainer.trainWeights()
         elif self.exp["type"] == "extract_kw":
-            if self.options.get("run_precompute_retrieval", False):
-                pipeline=PrecomputedPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
-                pipeline.runPipeline(self.exp, self.options)
-            keyword_trainer=KeywordTrainer(self.exp, self.options)
-            keyword_trainer.trainKeywords()
+            pipeline=KeywordTrainingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
+            pipeline.runPipeline(self.exp, self.options)
         elif self.exp["type"] in ["", "do_nothing"]:
             return
         else:

@@ -6,19 +6,20 @@
 # For license information, see LICENSE.TXT
 
 
-
 class BaseKeywordExtractor(object):
     """
+        Base class for the keyword extractors
     """
     def __init__(self):
         """
         """
         pass
 
-    def train(self, doc, cit, best_kw):
+    def train(self, train_set):
         """
         """
-        pass
+        for unique_result in train_set:
+            best_kw=selectBestKeywordsForDocument(unique_result)
 
     def extract(self, doc, cit):
         """
@@ -27,11 +28,15 @@ class BaseKeywordExtractor(object):
 
 class TFIDFKeywordExtractor(BaseKeywordExtractor):
     """
+        Simple tfidf keyword extractor
     """
+
 
     def extract():
         """
+
         """
+
 
 def main():
     pass

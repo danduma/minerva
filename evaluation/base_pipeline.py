@@ -9,12 +9,12 @@ from __future__ import print_function
 
 import os, sys, json
 from copy import deepcopy
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 
 from minerva.retrieval.base_retrieval import BaseRetrieval, MAX_RESULTS_RECALL
 
 import minerva.db.corpora as cp
-from minerva.proc.results_logging import ResultsLogger, ProgressIndicator
+from minerva.proc.results_logging import ResultsLogger
 from pipeline_functions import getDictOfTestingMethods
 from weight_functions import addExtraWeights
 
@@ -205,16 +205,15 @@ class BaseTestingPipeline(object):
 ##        rank_per_method[result["doc_method"]].append(result["rank"])
 ##        precision_per_method[result["doc_method"]].append(result["precision_score"])
 
-    def logTextAndReferences(self, doctext, queries, qmethod):
-        """
-            Extra logging, not used right now
-        """
-        pre_selection_text=doctext[queries[qmethod]["left_start"]-300:queries[qmethod]["left_start"]]
-        draft_text=doctext[queries[qmethod]["left_start"]:queries[qmethod]["right_end"]]
-        post_selection_text=doctext[queries[qmethod]["right_end"]:queries[qmethod]["left_start"]+300]
-        draft_text=u"<span class=document_text>{}</span> <span class=selected_text>{}</span> <span class=document_text>{}</span>".format(pre_selection_text, draft_text, post_selection_text)
+##    def logTextAndReferences(self, doctext, queries, qmethod):
+##        """
+##            Extra logging, not used right now
+##        """
+##        pre_selection_text=doctext[queries[qmethod]["left_start"]-300:queries[qmethod]["left_start"]]
+##        draft_text=doctext[queries[qmethod]["left_start"]:queries[qmethod]["right_end"]]
+##        post_selection_text=doctext[queries[qmethod]["right_end"]:queries[qmethod]["left_start"]+300]
+##        draft_text=u"<span class=document_text>{}</span> <span class=selected_text>{}</span> <span class=document_text>{}</span>".format(pre_selection_text, draft_text, post_selection_text)
 ##        print(draft_text)
-
 
     def saveResultsAndCleanUp(self):
         """
@@ -223,6 +222,64 @@ class BaseTestingPipeline(object):
         """
         self.logger.writeDataToCSV()
         self.logger.showFinalSummary()
+
+    def processOneQuery(self,precomputed_query):
+        """
+            Runs the retrieval and evaluation for a single query
+        """
+        if self.exp.get("queries_classification","") not in ["", None]:
+            q_type=precomputed_query[self.exp.get("queries_classification")]
+            if self.per_class_count[q_type] < self.max_per_class_results:
+                self.per_class_count[q_type] += 1
+            else:
+                print("Too many queries of type %s already" % q_type)
+                return
+
+        guid=precomputed_query["file_guid"]
+        self.logger.total_citations+=self.files_dict[guid]["resolvable_citations"]
+
+        all_doc_methods=deepcopy(self.main_all_doc_methods)
+
+        # If we're running per-file resolution and we are now on a different file, load its model
+        if not self.exp["full_corpus"] and guid != self.previous_guid:
+            self.previous_guid=guid
+            self.loadModel(guid)
+
+        # create a dict where every field gets a weight of 1
+        for method in self.main_all_doc_methods:
+            all_doc_methods[method]["runtime_parameters"]={x:1 for x in self.main_all_doc_methods[method]["runtime_parameters"]}
+
+        self.current_all_doc_methods=all_doc_methods
+
+        # for every method used for extracting BOWs
+        for doc_method in all_doc_methods:
+            # Log everything if the logger is enabled
+##                self.logger.logReport("Citation: "+precomputed_query["citation_id"]+"\n Query method:"+precomputed_query["query_method"]+" \nDoc method: "+doc_method +"\n")
+##                self.logger.logReport(precomputed_query["query_text"]+"\n")
+
+            # ACTUAL RETRIEVAL HAPPENING - run query
+            retrieved=self.tfidfmodels[doc_method].runQuery(
+                precomputed_query,
+                addExtraWeights(all_doc_methods[doc_method]["runtime_parameters"], self.exp),
+                guid,
+                max_results=exp.get("max_results_recall",MAX_RESULTS_RECALL))
+
+            if not retrieved:    # the query was empty or something
+                self.addEmptyResult(guid, precomputed_query, doc_method)
+            else:
+                self.addResult(guid, precomputed_query, doc_method, retrieved)
+
+        if self.exp.get("add_random_control_result", False):
+            self.addRandomControlResult(guid, precomputed_query)
+
+        self.logger.showProgressReport(guid) # prints out info on how it's going
+
+    def processAllQueries(self):
+        """
+            MAIN LOOP over all precomputed queries
+        """
+        for precomputed_query in self.precomputed_queries:
+            self.processOneQuery(precomputed_query)
 
     def runPipeline(self, exp, options):
         """
@@ -246,65 +303,10 @@ class BaseTestingPipeline(object):
         self.logger.setNumItems(len(self.precomputed_queries))
         self.populateMethods()
 
-##        methods_overlap=0
-##        total_overlap_points=0
-##        rank_differences=[]
-##        rank_per_method=defaultdict(lambda:[])
-##        precision_per_method=defaultdict(lambda:[])
+        self.previous_guid=""
 
-        previous_guid=""
-
-        #=======================================
-        # MAIN LOOP over all precomputed queries
-        #=======================================
-        for precomputed_query in self.precomputed_queries:
-            if self.exp.get("queries_classification","") != "":
-                q_type=precomputed_query[self.exp.get("queries_classification")]
-                if self.per_class_count[q_type] < self.max_per_class_results:
-                    self.per_class_count[q_type] += 1
-                else:
-                    print("Too many queries of type %s already" % q_type)
-                    continue
-
-            guid=precomputed_query["file_guid"]
-            self.logger.total_citations+=self.files_dict[guid]["resolvable_citations"]
-
-            all_doc_methods=deepcopy(self.main_all_doc_methods)
-
-            # If we're running per-file resolution and we are now on a different file, load its model
-            if not exp["full_corpus"] and guid != previous_guid:
-                previous_guid=guid
-                self.loadModel(guid)
-
-            # create a dict where every field gets a weight of 1
-            for method in self.main_all_doc_methods:
-                all_doc_methods[method]["runtime_parameters"]={x:1 for x in self.main_all_doc_methods[method]["runtime_parameters"]}
-
-            self.current_all_doc_methods=all_doc_methods
-
-            # for every method used for extracting BOWs
-            for doc_method in all_doc_methods:
-                # Log everything if the logger is enabled
-##                self.logger.logReport("Citation: "+precomputed_query["citation_id"]+"\n Query method:"+precomputed_query["query_method"]+" \nDoc method: "+doc_method +"\n")
-##                self.logger.logReport(precomputed_query["query_text"]+"\n")
-
-
-                # ACTUAL RETRIEVAL HAPPENING - run query
-                retrieved=self.tfidfmodels[doc_method].runQuery(
-                    precomputed_query,
-                    addExtraWeights(all_doc_methods[doc_method]["runtime_parameters"], self.exp),
-                    guid,
-                    max_results=exp.get("max_results_recall",MAX_RESULTS_RECALL))
-
-                if not retrieved:    # the query was empty or something
-                    self.addEmptyResult(guid, precomputed_query, doc_method)
-                else:
-                    self.addResult(guid, precomputed_query, doc_method, retrieved)
-
-            if self.exp.get("add_random_control_result", False):
-                self.addRandomControlResult(guid, precomputed_query)
-
-            self.logger.showProgressReport(guid) # prints out info on how it's going
+         # MAIN LOOP over all precomputed queries
+        self.processAllQueries()
 
         self.saveResultsAndCleanUp()
 
@@ -319,7 +321,7 @@ class CompareExplainPipeline(BaseTestingPipeline):
     def populateMethods(self):
         """
         """
-        super(LuceneTestingPipeline, self).populateMethods()
+        super(BaseTestingPipeline, self).populateMethods()
 
         if self.exp.get("compare_explain",False):
             for method in self.main_all_doc_methods:

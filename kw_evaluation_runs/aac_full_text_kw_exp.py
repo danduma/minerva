@@ -51,6 +51,7 @@ prebuild_indeces={
 ####    "az_ilc_az_":{"type":"ilc_mashup", "ilc_method":"ilc_AZ", "mashup_method":"az_annotated", "ilc_parameters":["paragraph","1up_1down","1up","1only"], "parameters":[1]},
 }
 
+# the name of the index is important, should be unique
 prebuild_general_indexes={
     "full_text_aac_2010":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "ilc_full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
@@ -208,8 +209,8 @@ experiment={
     "output_filename":"results.csv",
     "pivot_table":"",
     "max_results_recall":200,
-    # should queries be classified based on some rhetorical class of the sentence: "az", "csc_type"
-    "queries_classification":"az",
+    # should queries be classified based on some rhetorical class of the sentence: "az", "csc_type", "" or None
+    "queries_classification":"",
     # do not process more than this number of queries of the same type (type on line above)
     "max_per_class_results" : 1000,
     # of all precomputed queries, which classes should be processed/evaluated?
@@ -224,7 +225,7 @@ experiment={
 
 
 options={
-    "run_prebuild_bows":0, # should the whole BOW building process run?
+    "run_prebuild_bows":1, # should the whole BOW building process run?
     "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
     "rebuild_indexes":0,   # rebuild indices?
     "overwrite_existing_queries":0,  # force rebuilding of queries too?
