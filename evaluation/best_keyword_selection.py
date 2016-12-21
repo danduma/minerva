@@ -88,6 +88,15 @@ def getFormulaTermWeights(unique_result):
     return match_result
 
 
+def selectBestKeywordsForDocument(unique_result):
+    """
+        Returns a selection of matching keywords for the document that should
+        maximize its score
+
+        TODO do it proper, for now a stub
+    """
+    return getFormulaTermWeights(unique_result)
+
 def main():
     pass
 

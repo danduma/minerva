@@ -88,82 +88,13 @@ class KeywordTrainer(object):
         print("Training for %d/%d citations " % (len(train_set),len(retrieval_results)))
         for method in all_doc_methods:
             res={}
-
             # what to do with the runtime_parameters?
 ##            all_doc_methods[method]["runtime_parameters"]=weights
-            print("Computing baseline score...")
-            # baseline score could be all matching keywords to 1, after all, this is the query that was run originally
-            scores=self.measurePrecomputedResolution(train_set, method, addExtraWeights(weights, self.exp), query_type)
-
-            score_baseline=scores[0][self.exp["metric"]]
-            previous_score=score_baseline
-            first_baseline=score_baseline
-            score_progression=[score_baseline]
-
-            global GLOBAL_FILE_COUNTER
-
-            GLOBAL_FILE_COUNTER+=1
-
-            overall_improvement = score_baseline
-            passes=0
-
-            print("Finding best weights...")
-            while passes < 3 or overall_improvement > 0:
-                for direction in self.exp["movements"]: # [-1,6,-2]
-                    print("Direction: ", direction)
-                    for index in range(len(weights)):
-##                                print("Weight: ", index)
-                        weight_name=weights.keys()[index]
-                        prev_weight=weights[weight_name]
-                        # hard lower limit of 0 for weights
-                        weights[weight_name]=max(MIN_WEIGHT,weights[weight_name]+direction)
-
-                        scores=self.measurePrecomputedResolution(train_set,method,addExtraWeights(weights, self.exp), query_type)
-                        this_score=scores[0][self.exp["metric"]]
-
-                        if this_score <= previous_score:
-                            weights[weight_name]=prev_weight
-                        else:
-                            previous_score=this_score
-
-                overall_improvement=this_score-score_baseline
-                score_baseline=this_score
-                score_progression.append(this_score)
-
-                GLOBAL_FILE_COUNTER+=1
-
-                passes+=1
-
-            scores=self.measurePrecomputedResolution(train_set, method, addExtraWeights(weights, self.exp), query_type)
-            this_score=scores[0][self.exp["metric"]]
-
-            improvement=100*((this_score-first_baseline)/float(first_baseline)) if first_baseline > 0 else 0
-            print ("   Weights found, with score: {:.5f}".format(this_score)," Improvement: {:.2f}%".format(improvement))
-            best_weights[query_type][method]=addExtraWeights(weights, self.exp)
-            print ("   ",weights.values())
-
-            if self.exp.get("smooth_weights",None):
-                # this is to smooth a bit the weights in case they're too crazy
-                for weight in best_weights[query_type][method]:
-                    amount=abs(min(1,best_weights[query_type][method][weight]) / float(3))
-                    if best_weights[query_type][method][weight] > 1:
-                        best_weights[query_type][method][weight] -= amount
-                    elif best_weights[query_type][method][weight] < 1:
-                        best_weights[query_type][method][weight] += amount
-
-            res[weight_initalization]=this_score
-
-        results_compare.append(res)
+            for unique_result in train_set:
+                best_kw=selectBestKeywordsForDocument(unique_result)
 
 
-        for init_method in initialization_methods:
-            if len(results_compare) > 0:
-                avg=sum([res[init_method] for res in results_compare])/float(len(results_compare))
-            else:
-                avg=0
-            print("Avg for ",init_method,":",avg)
-
-        return best_weights
+        return trained_model
 
 
 

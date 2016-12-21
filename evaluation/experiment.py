@@ -53,9 +53,8 @@ class Experiment(object):
                            help='Experiment directory, i.e. where to store cache files and output')
         parser.add_argument("-w", "--train_weights_for", type=str, nargs='+', dest='train_weights_for', default=None,
                            help='List of query classes that we should train weights for, if the experiment is of type weight_training')
-        parser.add_argument("-r", "--running_stage", type=int, nargs='+', dest='running_stage', default=None,
+        parser.add_argument("-s", "--running_stage", type=int, nargs=1, dest='running_stage', default=None,
                            help='Running stage')
-
 
         args = parser.parse_args()
         self.arguments=args.__dict__
@@ -69,6 +68,32 @@ class Experiment(object):
                         if arg == "train_weights_for":
                             self.options["clear_existing_prr_results"]=False
                             self.options["run_precompute_retrieval"]=False
+
+        if self.arguments["running_stage"]:
+            if self.arguments["running_stage"]==1:              # stage 1: Build BOWs
+                self.options["run_prebuild_bows"]=True
+                self.options["overwrite_existing_bows"]=True
+                self.options["rebuild_indexes"]=False
+                self.options["overwrite_existing_queries"]=False
+                self.options["run_precompute_retrieval"]=False
+            elif self.arguments["running_stage"]==2:            # stage 2: build the indeces
+                self.options["run_prebuild_bows"]=False
+                self.options["overwrite_existing_bows"]=False
+                self.options["rebuild_indexes"]=True
+                self.options["overwrite_existing_queries"]=False
+                self.options["run_precompute_retrieval"]=False
+            elif self.arguments["running_stage"]==3:            # stage 3: build the queries
+                self.options["run_prebuild_bows"]=False
+                self.options["overwrite_existing_bows"]=False
+                self.options["rebuild_indexes"]=False
+                self.options["overwrite_existing_queries"]=True
+                self.options["run_precompute_retrieval"]=False
+            elif self.arguments["running_stage"]==4:            # stage 4: precompute retrieval
+                self.options["run_prebuild_bows"]=False
+                self.options["overwrite_existing_bows"]=False
+                self.options["rebuild_indexes"]=False
+                self.options["overwrite_existing_queries"]=False
+                self.options["run_precompute_retrieval"]=True
 
     def experimentExists(self, filename):
         """
