@@ -5,11 +5,17 @@
 
 # For license information, see LICENSE.TXT
 
-from precomputed_pipeline import PrecomputedPipeline
+from __future__ import print_function
+
+import time
+from celery.result import ResultSet
+
+import minerva.db.corpora as cp
+from minerva.evaluation.keyword_functions import annotateKeywords
+from minerva.db.result_store import ElasticResultStorer
 from minerva.retrieval.base_retrieval import BaseRetrieval
 from minerva.squad.tasks import annotateKeywordsTask
-
-from minerva.evaluation.keyword_functions import annotateKeywords
+from precomputed_pipeline import PrecomputedPipeline
 
 class KeywordTrainingPipeline(PrecomputedPipeline):
     """
@@ -21,8 +27,9 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
             kws to extract with weights
     """
     def __init__(self, retrieval_class=BaseRetrieval, use_celery=False):
-        super(self.__class__, self).__init__(retrieval_class=retrieval_class, use_celery=use_celery)
-        self.writers={}
+        super(KeywordTrainingPipeline, self).__init__(retrieval_class=retrieval_class, use_celery=use_celery)
+        self.current_guid=""
+        self.current_doc=None
 
     def createWriterInstances(self):
         """
@@ -50,6 +57,10 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
 ##        if not must_process:
 ##            return
 
+        if self.current_guid != guid:
+            self.current_guid=guid
+            self.current_doc=cp.Corpus.loadSciDoc(guid)
+
         if self.use_celery:
             print("Adding subtask to queue...")
             self.tasks.append(annotateKeywordsTask.apply_async(args=[
@@ -59,15 +70,22 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
                                                  self.tfidfmodels[doc_method].index_name,
                                                  self.exp["name"],
                                                  self.exp["experiment_id"],
+                                                 self.exp["context_extraction"],
+                                                 self.exp["context_extraction_parameter"],
+                                                 self.exp["keyword_selection_method"],
                                                  self.exp["max_results_recall"]],
                                                  queue="annotate_keywords"))
         else:
             annotateKeywords(precomputed_query,
+                             self.current_doc,
                              doc_method,
                              doc_list,
                              self.tfidfmodels[doc_method],
                              self.writers,
                              self.exp["experiment_id"],
+                             self.exp["context_extraction"],
+                             self.exp["context_extraction_parameter"],
+                             self.exp["keyword_selection_method"],
                              )
 
 

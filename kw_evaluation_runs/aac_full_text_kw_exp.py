@@ -216,11 +216,18 @@ experiment={
     # of all precomputed queries, which classes should be processed/evaluated?
     "queries_to_process":["ALL"],
     # what "zones" to try to train weights for
-    "train_weights_for": AZ_ZONES_LIST, #["Bac"], ["Hyp","Mot","Bac","Goa","Obj","Met","Exp","Mod","Obs","Res","Con"]
+    "train_weights_for": [], #["Bac"], ["Hyp","Mot","Bac","Goa","Obj","Met","Exp","Mod","Obs","Res","Con"]
     # add another doc_method showing the score based on analytical random chance?
     "add_random_control_result": False,
     "precomputed_queries_filename":"precomputed_queries.json",
     "files_dict_filename":"files_dict.json",
+
+    # what to extract as a citation's context
+    "context_extraction":"sentence",
+    "context_extraction_parameter":"2up_2down",
+
+    # how to choose the top keywords for a citation
+    "keyword_selection_method":"selectKeywordsNBest",
 }
 
 
@@ -243,7 +250,7 @@ def main():
     cp.Corpus.setCorpusFilter("AAC")
 ##    experiment["test_files"]=["456f8c80-9807-46a9-8455-cd4a7e346f9d"]
 
-    exp=Experiment(experiment, options, True)
+    exp=Experiment(experiment, options, False)
     exp.run()
 
 if __name__ == '__main__':

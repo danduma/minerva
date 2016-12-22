@@ -5,46 +5,59 @@
 
 # For license information, see LICENSE.TXT
 
-from copy import deepcopy
+##from copy import deepcopy
+##import minerva.db.corpora as cp
 
-import minerva.db.corpora as cp
 import keyword_selection
+from minerva.proc.nlp_functions import selectSentencesToAdd
 
-def annotateKeywords(precomputed_query, doc_method, doc_list, retrieval_model, writers, experiment_id, selection_method="selectKeywordsNBest"):
+def annotateKeywords(precomputed_query,
+                     docfrom,
+                     doc_method,
+                     doc_list,
+                     retrieval_model,
+                     writers,
+                     experiment_id,
+                     context_extraction,
+                     extraction_parameter,
+                     keyword_selection_method):
     """
-        Runs a precomputed query using the retrieval_model, computes the formula
-        for each result
+        Creates an annotated context.
 
-        Uses formulas to
+        1. Extracts the citation's context, annotated with features.
+        2. Runs a precomputed query using the retrieval_model, computes the formula for each result.
+        3. Uses formulas to choose the top keywords for that context
+        4. Packages it all together
     """
     # !TODO remove this, it's a temporary fix
 ##    if precomputed_query.get("csc_type","Bac") in ["Bac"]:
 ##        print("Ignoring query of type %s" % precomputed_query.get("csc_type",""))
 ##        return
 
-    context={}
+    cit=docfrom.citation_by_id[precomputed_query["citation_id"]]
+
+    # for now, the context is made up of sentences. Maybe change this in future.
+    if context_extraction=="sentence":
+        to_add=selectSentencesToAdd(docfrom, cit, extraction_parameter)
+        context=[docfrom.element_by_id[x] for x in to_add]
 
     kw_data={
             "match_guid":precomputed_query["match_guid"],
             "doc_method":doc_method,
-
+            "context":context,
+            "parent_s":cit["parent_s"],
+            "parent":cit["parent"],
+            "cit_id":cit["id"],
+            "experiment_id":experiment_id
             }
 
     formulas=precomputeFormulas(retrieval_model, precomputed_query, doc_list)
+##    kw_data["formulas"]=formulas
 
-    kw_data["formulas"]=formulas
-
-    func=getattr(keyword_selection, selection_method, None)
+    func=getattr(keyword_selection, keyword_selection_method, None)
     assert(func)
 
-    best_kws=func(formulas)
-
-    for remove_key in ["dsl_query", "lucene_query"]:
-        if remove_key in kw_data:
-            del kw_data[remove_key]
-
-    kw_data["experiment_id"]=experiment_id
-
+    kw_data["best_kws"]=func(formulas)
     writers["ALL"].addResult(kw_data)
 
 

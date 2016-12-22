@@ -241,7 +241,8 @@ class SciDoc(object):
         if parent is None:
             parent="root"
         newElement={"type":"section", "header":header, "content":[], "parent":parent}
-        if header_id: newElement["header_id"]=header_id
+        if header_id:
+            newElement["header_id"]=header_id
         return self.addElement(newElement)
 
     def addParagraph(self,parent):
@@ -381,30 +382,6 @@ class SciDoc(object):
         for s in self.allsentences:
             s["wordlen"]=num_words_in_line(s["text"])
 
-    # TODO: enable printing other citation styles than APA
-    def prettyPrintSentence(self, s, citation_style="APA"):
-        """
-            Pretty-prints the sentence in plain text, fills in the <cit>
-            placeholders in the text of a sentence with a nice APA representation
-            of each reference
-        """
-        text=s["text"]
-        for count in range(2):
-            # add commas in between citation tokens
-            text=re.sub(r"(<cit.*?/>)\s*?(<cit.*?/>)",r"\1, \2",text,0,re.IGNORECASE|re.DOTALL)
-
-        for cit_id in s.get("citations",[]):
-            match=self.matchReferenceByCitationId(cit_id)
-            if match:
-                sub=formatCitation(match, citation_style)
-            else:
-                # TODO add optional formatting function for missing references
-                sub="[MISSING REFERENCE "+cit_id+")] "
-
-            text=re.sub(r"<cit\sid="+str(cit_id)+r"\s*?/>",sub,text, flags=re.DOTALL|re.IGNORECASE)
-        return text
-
-
     def getParagraphText(self,p):
         """
             Returns the plain text representation of a paragraph
@@ -428,7 +405,7 @@ class SciDoc(object):
             element=self.element_by_id[element_id]
             if self.isSection(element):
                 text+=self.getSectionText(element, headers)
-            elif isParagraph(element):
+            elif self.isParagraph(element):
                 text+=self.getParagraphText(element)+"\n"
 
         return text

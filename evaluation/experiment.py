@@ -79,7 +79,7 @@ class Experiment(object):
                 self.options["compute_queries"]=False
                 self.options["overwrite_existing_queries"]=False
                 self.options["run_precompute_retrieval"]=False
-                self.exp["type"]="do_nothing"
+                self.options["run_experiment"]=False
             elif self.arguments["running_stage"]==2:            # stage 2: build the indeces only
                 self.options["run_prebuild_bows"]=False
                 self.options["overwrite_existing_bows"]=False
@@ -87,7 +87,7 @@ class Experiment(object):
                 self.options["compute_queries"]=False
                 self.options["overwrite_existing_queries"]=False
                 self.options["run_precompute_retrieval"]=False
-                self.exp["type"]="do_nothing"
+                self.options["run_experiment"]=False
             elif self.arguments["running_stage"]==3:            # stage 3: build the queries only
                 self.options["run_prebuild_bows"]=False
                 self.options["overwrite_existing_bows"]=False
@@ -95,7 +95,7 @@ class Experiment(object):
                 self.options["compute_queries"]=True
                 self.options["overwrite_existing_queries"]=True
                 self.options["run_precompute_retrieval"]=False
-                self.exp["type"]="do_nothing"
+                self.options["run_experiment"]=False
             elif self.arguments["running_stage"]==4:            # stage 4: precompute retrieval only
                 self.options["run_prebuild_bows"]=False
                 self.options["overwrite_existing_bows"]=False
@@ -103,7 +103,7 @@ class Experiment(object):
                 self.options["compute_queries"]=False
                 self.options["overwrite_existing_queries"]=False
                 self.options["run_precompute_retrieval"]=True
-                self.exp["type"]="do_nothing"
+                self.options["run_experiment"]=False
             elif self.arguments["running_stage"]==5:            # stage 5: run pipeline only
                 self.options["run_prebuild_bows"]=False
                 self.options["overwrite_existing_bows"]=False
@@ -111,7 +111,7 @@ class Experiment(object):
                 self.options["compute_queries"]=False
                 self.options["overwrite_existing_queries"]=False
                 self.options["run_precompute_retrieval"]=False
-
+                self.options["run_experiment"]=True
 
     def experimentExists(self, filename):
         """
@@ -259,20 +259,23 @@ class Experiment(object):
             Last step of self.run()
         """
         if self.exp["type"] == "compute_once":
-            pipeline=BaseTestingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
-            pipeline.runPipeline(self.exp, self.options)
+            if self.options.get("run_experiment", True):
+                pipeline=BaseTestingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
+                pipeline.runPipeline(self.exp, self.options)
         elif self.exp["type"] == "train_weights":
             if self.options.get("run_precompute_retrieval", False):
                 pipeline=PrecomputedPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
                 pipeline.runPipeline(self.exp, self.options)
-            weight_trainer=WeightTrainer(self.exp, self.options)
-            weight_trainer.trainWeights()
+            if self.options.get("run_experiment", True):
+                weight_trainer=WeightTrainer(self.exp, self.options)
+                weight_trainer.trainWeights()
         elif self.exp["type"] == "extract_kw":
             if self.options.get("run_precompute_retrieval", False):
                 pipeline=KeywordTrainingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
                 pipeline.runPipeline(self.exp, self.options)
-            kw_trainer=KeywordTrainer(self.exp, self.options)
-            kw_trainer.trainKeywords()
+            if self.options.get("run_experiment", True):
+                kw_trainer=KeywordTrainer(self.exp, self.options)
+                kw_trainer.trainKeywords()
 
         elif self.exp["type"] in ["", "do_nothing"]:
             return

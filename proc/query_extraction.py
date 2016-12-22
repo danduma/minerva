@@ -12,8 +12,9 @@ import re
 
 from nlp_functions import (tokenizeText, tokenizeTextAndRemoveStopwords, stopwords,
 CITATION_PLACEHOLDER, unTokenize, ESTIMATED_AVERAGE_WORD_LENGTH, removeCitations,
-PAR_MARKER, CIT_MARKER, BR_MARKER, AZ_ZONES_LIST, CORESC_LIST, formatSentenceForIndexing,
+AZ_ZONES_LIST, CORESC_LIST, formatSentenceForIndexing,
 getDictOfTokenCounts, removeStopwords, selectSentencesToAdd)
+##from nlp_functions import PAR_MARKER, CIT_MARKER, BR_MARKER
 
 from general_utils import removeSymbols
 from structured_query import StructuredQuery
@@ -80,7 +81,6 @@ class BaseQueryExtractor(object):
             Returns:
                 intermediate_query: a list of token data
         """
-        original_query=query_text
         query_text=self.cleanupQuery(query_text)
         if query_text=="":
             return None

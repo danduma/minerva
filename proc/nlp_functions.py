@@ -1,23 +1,20 @@
-#-------------------------------------------------------------------------------
-# Name:        module1
-# Purpose:
+# various NLP related functions
 #
-# Author:      dd
-#
-# Created:     24/04/2015
-# Copyright:   (c) dd 2015
-# Licence:     <your licence>
-#-------------------------------------------------------------------------------
+# Copyright:   (c) Daniel Duma 2014
+# Author: Daniel Duma <danielduma@gmail.com>
+
+# For license information, see LICENSE.TXT
+
+import re
+from string import punctuation
+from nltk import word_tokenize, sent_tokenize
+from nltk.stem.snowball import SnowballStemmer
 
 AZ_ZONES_LIST=["AIM","BAS","BKG","CTR","OTH","OWN","TXT"]
 CORESC_LIST=["Hyp","Mot","Bac","Goa","Obj","Met","Exp","Mod","Obs","Res","Con"]
 RANDOM_ZONES_7=["RND7_"+str(x) for x in range(7)]
 RANDOM_ZONES_11=["RND11_"+str(x) for x in range(11)]
 
-from nltk import word_tokenize, sent_tokenize
-from nltk.stem.snowball import SnowballStemmer
-from string import punctuation
-import re
 
 basic_stopwords="a an and or not the that for with on in off after over".split()
 
@@ -164,12 +161,13 @@ def formatSentenceForIndexing(s, no_stemming=False):
 
 def selectSentencesToAdd(docfrom,cit,param):
     """
-        Returns a list of sentences to include based on the [param]
+        Returns a list of sentence IDs (strings) to include based on the [param]
 
-        Args:
-            docfrom: SciDoc we are extracting from
-            cit: citation dict
-            param: ["paragraph", "1only", "[n]up_[n]down[_crosspar]"]
+        :param docfrom: SciDoc we are extracting from
+        :param cit: citation dict
+        :param param: ["paragraph", "1only", "[n]up_[n]down[_crosspar]"]
+        :returns list of sentence IDs
+        :rtpye list
     """
     sent=docfrom.element_by_id[cit["parent_s"]]
     para=docfrom.element_by_id[sent["parent"]]

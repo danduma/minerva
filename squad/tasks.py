@@ -147,15 +147,24 @@ def computeAnnotationStatisticsTask(self, guid):
         self.retry(countdown=120, max_retries=4)
 
 @app.task(ignore_result=True, bind=True)
-def annotateKeywordsTask(self, precomputed_query, doc_method, doc_list, index_name, exp_name, experiment_id, max_results):
+def annotateKeywordsTask(self, precomputed_query,
+                               doc_method,
+                               doc_list,
+                               index_name,
+                               exp_name,
+                               experiment_id,
+                               context_extraction,
+                               extraction_parameter,
+                               keyword_selection_method,
+                               max_results):
     """
         Runs one precomputed query, extracts explain formulas and from them
         picks best keywords for the citation/query, stores the keyword-annotated context
     """
     try:
         model=ElasticRetrieval(index_name, doc_method, max_results=max_results, es_instance=cp.Corpus.es)
-        writers=createResultStorers(exp_name)
-        annotateKeywords(precomputed_query, doc_method, doc_list, model, writers, experiment_id)
+        writers={"ALL":ElasticResultStorer(self.exp["name"],"kw_data", endpoint=cp.Corpus.endpoint)}
+        annotateKeywords(precomputed_query, doc_method, doc_list, model, writers, experiment_id, context_extraction, extraction_parameter, keyword_selection_method)
     except:
         logging.exception("Error running annotateKeywords")
         self.retry(countdown=120, max_retries=4)
