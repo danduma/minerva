@@ -228,6 +228,7 @@ options={
     "run_prebuild_bows":1, # should the whole BOW building process run?
     "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
     "rebuild_indexes":0,   # rebuild indices?
+    "compute_queries":0,   # precompute the queries?
     "overwrite_existing_queries":0,  # force rebuilding of queries too?
     "run_precompute_retrieval":0,  # only applies if type == "train_weights"
     "clear_existing_prr_results":False, # delete previous precomputed results? i.e. start from scratch
@@ -242,7 +243,7 @@ def main():
     cp.Corpus.setCorpusFilter("AAC")
 ##    experiment["test_files"]=["456f8c80-9807-46a9-8455-cd4a7e346f9d"]
 
-    exp=Experiment(experiment, options, False)
+    exp=Experiment(experiment, options, True)
     exp.run()
 
 if __name__ == '__main__':

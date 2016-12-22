@@ -34,7 +34,7 @@ def termScoresInFormula(part):
     return []
 
 
-def getDictOfTermScores(formula):
+def getDictOfTermScores(formula, op="max"):
     """
         Returns the score of each term in the formula as a dict
 
@@ -45,9 +45,14 @@ def getDictOfTermScores(formula):
     res={}
     for score in term_scores:
         # score=(field,qw,fw,term)
-        res[score[3]]=res.get(score[3],0)+(score[1]*score[2])
-    return res
+        old_score=res.get(score[3],0)
+        new_score=(score[1]*score[2])
+        if op=="add":
+            res[score[3]]=old_score+new_score
+        elif op=="max":
+            res[score[3]]=max(old_score,new_score)
 
+    return res
 
 def getFormulaTermWeights(unique_result):
     """
@@ -66,7 +71,8 @@ def getFormulaTermWeights(unique_result):
     match_result=None
 
     for formula in unique_result["formulas"]:
-        term_scores=getDictOfTermScores(formula["formula"])
+        term_scores=getDictOfTermScores(formula["formula"],"max")
+
         formula_term_scores.append((formula,term_scores))
         if formula["guid"] == unique_result["match_guid"]:
             match_result=term_scores
@@ -88,14 +94,22 @@ def getFormulaTermWeights(unique_result):
     return match_result
 
 
-def selectBestKeywordsForDocument(unique_result):
+def selectKeywordsNBest(match_guid, formulas, N=10):
     """
         Returns a selection of matching keywords for the document that should
         maximize its score
 
         TODO do it proper, for now a stub
     """
-    return getFormulaTermWeights(unique_result)
+    res=[]
+
+    for formula in formulas:
+        if formula["guid"]==match_guid:
+            term_scores=getDictOfTermScores(formula["formula"],"max")
+            terms=sorted(term_scores.iteritems(),key=lambda x:x[1], reverse=True)
+            return terms[:N]
+
+    raise ValueError("match_guid not found in formulas")
 
 def main():
     pass

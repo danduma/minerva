@@ -17,6 +17,8 @@ from base_prebuild import BasePrebuilder
 from minerva.evaluation.query_generation import QueryGenerator
 from minerva.evaluation.base_pipeline import BaseTestingPipeline
 from minerva.evaluation.precomputed_pipeline import PrecomputedPipeline
+from minerva.evaluation.keyword_pipeline import KeywordTrainingPipeline
+
 from minerva.proc.query_extraction import EXTRACTOR_LIST
 
 ##from results_analysis import saveGraphForResults, makeAllGraphsForExperiment
@@ -24,7 +26,7 @@ import minerva.proc.doc_representation as doc_representation
 import minerva.evaluation.athar_corpus as athar_corpus
 from minerva.proc.general_utils import ensureDirExists
 from weight_training import WeightTrainer
-from keyword_training import KeywordTrainingPipeline
+from keyword_training import KeywordTrainer
 
 class Experiment(object):
     """
@@ -53,7 +55,7 @@ class Experiment(object):
                            help='Experiment directory, i.e. where to store cache files and output')
         parser.add_argument("-w", "--train_weights_for", type=str, nargs='+', dest='train_weights_for', default=None,
                            help='List of query classes that we should train weights for, if the experiment is of type weight_training')
-        parser.add_argument("-s", "--running_stage", type=int, nargs=1, dest='running_stage', default=None,
+        parser.add_argument("-s", "--running_stage", type=int, dest='running_stage', default=None,
                            help='Running stage')
 
         args = parser.parse_args()
@@ -70,30 +72,46 @@ class Experiment(object):
                             self.options["run_precompute_retrieval"]=False
 
         if self.arguments["running_stage"]:
-            if self.arguments["running_stage"]==1:              # stage 1: Build BOWs
+            if self.arguments["running_stage"]==1:              # stage 1: Build BOWs only
                 self.options["run_prebuild_bows"]=True
                 self.options["overwrite_existing_bows"]=True
                 self.options["rebuild_indexes"]=False
+                self.options["compute_queries"]=False
                 self.options["overwrite_existing_queries"]=False
                 self.options["run_precompute_retrieval"]=False
-            elif self.arguments["running_stage"]==2:            # stage 2: build the indeces
+                self.exp["type"]="do_nothing"
+            elif self.arguments["running_stage"]==2:            # stage 2: build the indeces only
                 self.options["run_prebuild_bows"]=False
                 self.options["overwrite_existing_bows"]=False
                 self.options["rebuild_indexes"]=True
+                self.options["compute_queries"]=False
                 self.options["overwrite_existing_queries"]=False
                 self.options["run_precompute_retrieval"]=False
-            elif self.arguments["running_stage"]==3:            # stage 3: build the queries
+                self.exp["type"]="do_nothing"
+            elif self.arguments["running_stage"]==3:            # stage 3: build the queries only
                 self.options["run_prebuild_bows"]=False
                 self.options["overwrite_existing_bows"]=False
                 self.options["rebuild_indexes"]=False
+                self.options["compute_queries"]=True
                 self.options["overwrite_existing_queries"]=True
                 self.options["run_precompute_retrieval"]=False
-            elif self.arguments["running_stage"]==4:            # stage 4: precompute retrieval
+                self.exp["type"]="do_nothing"
+            elif self.arguments["running_stage"]==4:            # stage 4: precompute retrieval only
                 self.options["run_prebuild_bows"]=False
                 self.options["overwrite_existing_bows"]=False
                 self.options["rebuild_indexes"]=False
+                self.options["compute_queries"]=False
                 self.options["overwrite_existing_queries"]=False
                 self.options["run_precompute_retrieval"]=True
+                self.exp["type"]="do_nothing"
+            elif self.arguments["running_stage"]==5:            # stage 5: run pipeline only
+                self.options["run_prebuild_bows"]=False
+                self.options["overwrite_existing_bows"]=False
+                self.options["rebuild_indexes"]=False
+                self.options["compute_queries"]=False
+                self.options["overwrite_existing_queries"]=False
+                self.options["run_precompute_retrieval"]=False
+
 
     def experimentExists(self, filename):
         """
@@ -179,7 +197,6 @@ class Experiment(object):
         """
             Ensures dir exists, etc.
         """
-        self.setupExperimentDir()
         self.exp["exp_dir"]=os.path.normpath(os.path.join(cp.Corpus.paths.experiments,self.exp["name"])) + os.sep
         ensureDirExists(self.exp["exp_dir"])
 
@@ -251,8 +268,12 @@ class Experiment(object):
             weight_trainer=WeightTrainer(self.exp, self.options)
             weight_trainer.trainWeights()
         elif self.exp["type"] == "extract_kw":
-            pipeline=KeywordTrainingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
-            pipeline.runPipeline(self.exp, self.options)
+            if self.options.get("run_precompute_retrieval", False):
+                pipeline=KeywordTrainingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
+                pipeline.runPipeline(self.exp, self.options)
+            kw_trainer=KeywordTrainer(self.exp, self.options)
+            kw_trainer.trainKeywords()
+
         elif self.exp["type"] in ["", "do_nothing"]:
             return
         else:

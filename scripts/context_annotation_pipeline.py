@@ -14,7 +14,9 @@ from minerva.evaluation.precomputed_pipeline import PrecomputedPipeline
 from minerva.evaluation.experiment import Experiment
 from minerva.evaluation.query_generation import QueryGenerator
 
-
+#
+# DEPRECATED - Move to KeywordPipeline and KeywordTrainer
+#
 
 class ContextExtractor(QueryGenerator):
     """

@@ -39,6 +39,7 @@ app.conf.update(
         Queue('add_to_index', Exchange('add_to_index'), routing_key='add_to_index'),
         Queue('precompute_formulas', Exchange('precompute_formulas'), routing_key='precompute_formulas'),
         Queue('compute_statistics', Exchange('compute_statistics'), routing_key='compute_statistics'),
+        Queue('annotate_keywords', Exchange('annotate_keywords'), routing_key='annotate_keywords'),
     ),
 
     CELERY_ROUTES = {
@@ -48,6 +49,7 @@ app.conf.update(
         'addToIndexTask': {'queue': 'add_to_index', 'routing_key': 'add_to_index'},
         'precomputeFormulasTask': {'queue': 'precompute_formulas', 'routing_key': 'precompute_formulas'},
         'computeAnnotationStatisticsTask': {'queue': 'compute_statistics', 'routing_key': 'compute_statistics'},
+        'annotateKeywordsTask': {'queue': 'annotate_keywords', 'routing_key': 'annotate_keywords'},
     }
 )
 

@@ -59,7 +59,10 @@ def ensureDirExists(dir):
     """
     dir=os.path.normpath(dir)
     if not os.path.isdir(dir):
-        os.makedirs(dir)
+        try:
+            os.makedirs(dir)
+        except:
+            print("Failed to create directory %s" % dir)
 
 def deleteFiles(path,file_list):
     """

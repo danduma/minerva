@@ -29,6 +29,7 @@ from minerva.evaluation.precompute_functions import addPrecomputeExplainFormulas
 from minerva.db.result_store import createResultStorers
 from minerva.retrieval.index_functions import addBOWsToIndex
 from minerva.evaluation.statistics_functions import computeAnnotationStatistics
+from minerva.evaluation.keyword_functions import annotateKeywords
 
 import celery_app
 from celery_app import app
@@ -144,5 +145,20 @@ def computeAnnotationStatisticsTask(self, guid):
     except:
         logging.exception("Error running computeAnnotationStatisticsTask")
         self.retry(countdown=120, max_retries=4)
+
+@app.task(ignore_result=True, bind=True)
+def annotateKeywordsTask(self, precomputed_query, doc_method, doc_list, index_name, exp_name, experiment_id, max_results):
+    """
+        Runs one precomputed query, extracts explain formulas and from them
+        picks best keywords for the citation/query, stores the keyword-annotated context
+    """
+    try:
+        model=ElasticRetrieval(index_name, doc_method, max_results=max_results, es_instance=cp.Corpus.es)
+        writers=createResultStorers(exp_name)
+        annotateKeywords(precomputed_query, doc_method, doc_list, model, writers, experiment_id)
+    except:
+        logging.exception("Error running annotateKeywords")
+        self.retry(countdown=120, max_retries=4)
+
 
 checkCorpusConnection()

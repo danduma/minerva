@@ -15,6 +15,50 @@ from pandas import DataFrame
 from general_utils import (reportTimeLeft, ensureDirExists, writeDictToCSV, getSafeFilename)
 import minerva.db.corpora as cp
 
+def measureScores(guids, match_guid, result_dict, citation_multi=1):
+    """
+        Method that measures the retrieval score in all the metrics
+    """
+    mrr_score=ndcg_score=precision_score=rank=0
+    found_at_index=None
+
+
+    for index, guid in enumerate(guids):
+        rank=None
+        found_at_index=index
+        if guid==match_guid:
+            if citation_multi and citation_multi > 1:
+                if index+1 <= citation_multi:
+                    ndcg_score=1
+                    precision_score=1
+                    mrr_score=1
+                    rank=1
+                    break
+                else:
+                    ndcg_score=1/ math.log(index+2)
+                    precision_score=0
+                    mrr_score=1/ float(index+1)
+                    rank=index+1
+                    break
+            else:
+                precision_score=1 if index==0 else 0
+                ndcg_score=1/ math.log(index+2)
+                mrr_score=1/ float(index+1)
+                rank=index+1
+                break
+
+    if rank is None:
+        rank=-1
+        precision_score=0
+        mrr_score=0
+        ndcg_score=0
+
+    result_dict["mrr_score"]=mrr_score
+    result_dict["precision_score"]=precision_score
+    result_dict["ndcg_score"]=ndcg_score
+    result_dict["rank"]=rank
+
+
 class ProgressIndicator(object):
     """
         Shows a basic progress indicator of items processed, left to process and
@@ -244,47 +288,10 @@ class ResultsLogger(ProgressIndicator):
             if guid not in guids:
                 guids.append(guid)
 
-        mrr_score=ndcg_score=precision_score=0
-        found_at_index=None
-        citation_multi=1
-        rank=0
+        measureScores(guids, result_dict["match_guid"], result_dict)
 
-        for index, guid in enumerate(guids):
-            rank=None
-            found_at_index=index
-            if guid==result_dict["match_guid"]:
-                if citation_multi and citation_multi > 1:
-                    if index+1 <= citation_multi:
-                        ndcg_score=1
-                        precision_score=1
-                        mrr_score=1
-                        rank=1
-                        break
-                    else:
-                        ndcg_score=1/ math.log(index+2)
-                        precision_score=0
-                        mrr_score=1/ float(index+1)
-                        rank=index+1
-                        break
-                else:
-                    precision_score=1 if index==0 else 0
-                    ndcg_score=1/ math.log(index+2)
-                    mrr_score=1/ float(index+1)
-                    rank=index+1
-                    break
-
-        if rank is None:
-            rank=-1
-            precision_score=0
-            mrr_score=0
-            ndcg_score=0
-
-        self.logReport("Rank: "+str(found_at_index))
+        self.logReport("Rank: "+result_dict["rank"])
         self.logReport("Correct: "+result_dict["match_guid"]+" Retrieved: "+guids[0])
-        result_dict["mrr_score"]=mrr_score
-        result_dict["precision_score"]=precision_score
-        result_dict["ndcg_score"]=ndcg_score
-        result_dict["rank"]=rank
         result_dict["first_result"]=guids[0]
         self.addResolutionResultDict(result_dict)
         return result_dict

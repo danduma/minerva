@@ -101,6 +101,9 @@ class BaseIndexer(object):
         elif index_data["type"] in ["standard_multi"]:
             if index_data["method"] in ["az_annotated", "ilc_annotated"]:
                 return CORESC_LIST + ["ilc_CSC_"+zone for zone in CORESC_LIST]
+            else:
+                # this is the standard BOW name
+                return ["text"]
             pass
 
 

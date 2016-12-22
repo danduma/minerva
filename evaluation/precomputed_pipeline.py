@@ -71,6 +71,15 @@ class PrecomputedPipeline(BaseTestingPipeline):
                                          )
 
 
+    def createWriterInstances(self):
+        """
+            Initializes the writer instances.
+        """
+        self.writers=createResultStorers(self.exp["name"],
+                                   self.exp.get("random_zoning", False),
+                                   self.options.get("clear_existing_prr_results", False))
+
+
     def loadQueriesAndFileList(self):
         """
             Loads the precomputed queries and the list of test files to process.
@@ -96,10 +105,7 @@ class PrecomputedPipeline(BaseTestingPipeline):
         self.files_dict["ALL_FILES"]={}
 
         assert self.exp["name"] != "", "Experiment needs a name!"
-
-        self.writers=createResultStorers(self.exp["name"],
-                                   self.exp.get("random_zoning", False),
-                                   self.options.get("clear_existing_prr_results", False))
+        self.createWriterInstances()
 
     def saveResultsAndCleanUp(self):
         """
