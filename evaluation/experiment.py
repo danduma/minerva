@@ -102,6 +102,7 @@ class Experiment(object):
                 self.options["rebuild_indexes"]=False
                 self.options["compute_queries"]=False
                 self.options["overwrite_existing_queries"]=False
+                self.options["clear_existing_prr_results"]=True
                 self.options["run_precompute_retrieval"]=True
                 self.options["run_experiment"]=False
             elif self.arguments["running_stage"]==5:            # stage 5: run pipeline only
@@ -112,6 +113,15 @@ class Experiment(object):
                 self.options["overwrite_existing_queries"]=False
                 self.options["run_precompute_retrieval"]=False
                 self.options["run_experiment"]=True
+            elif self.arguments["running_stage"]==9:              # stage 9: annotate documents and run precompute retrieval
+                self.options["run_feature_annotation"]=True           # (this stage is in fact separate, can be run before the others)
+                self.options["run_prebuild_bows"]=False
+                self.options["overwrite_existing_bows"]=False
+                self.options["rebuild_indexes"]=False
+                self.options["compute_queries"]=False
+                self.options["overwrite_existing_queries"]=False
+                self.options["run_precompute_retrieval"]=True
+                self.options["run_experiment"]=False
 
     def experimentExists(self, filename):
         """

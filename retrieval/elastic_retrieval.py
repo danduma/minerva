@@ -67,7 +67,7 @@ class ElasticRetrieval(BaseRetrieval):
 
         lucene_query=""
 
-        for  token in structured_query:
+        for token in structured_query:
             # TODO proper computing of the boost formula. Different methods?
 ##            boost=token["boost"]*token["count"]
             boost=token.boost*token.count
@@ -75,13 +75,17 @@ class ElasticRetrieval(BaseRetrieval):
             bool_val=token.bool or ""
 
 ##            lucene_query+="%s%s" % (bool_val,token["token"])
-            lucene_query+="%s%s" % (bool_val,token.token)
+            lucene_query+="%s%s " % (bool_val,token.token)
 ##            if boost != 1:
 ##                lucene_query+="^%s" %str(boost)
             if boost > 1:
                 token_str=token.token+" "
-                lucene_query= bool_val + (token_str * str(int(boost))).strip()
+                lucene_query+=bool_val + (token_str * int(boost-1))
+
+            lucene_query=lucene_query.strip()
             lucene_query+=" "
+
+        lucene_query=lucene_query.replace("  "," ")
 
         fields=[]
         for param in parameters:
@@ -96,65 +100,12 @@ class ElasticRetrieval(BaseRetrieval):
           }
         }
 
-        if self.tie_breaker:
-            dsl_query["multi_match"]["tie_breaker"]=self.tie_breaker
-
-        return dsl_query
-
-    def rewriteQueryAsDSL_new(self, structured_query, parameters):
-        """
-            Creates a multi_match DSL query for elasticsearch.
-
-            :param structured_query: a StructuredQuery dict, optionally under the
-                key "structured_query"
-            :param parameters: dict of [field]=weight to replace in the query
-        """
-        if "structured_query" in structured_query:
-            structured_query=structured_query["structured_query"]
-
-        if not isinstance(structured_query,StructuredQuery):
-            structured_query=StructuredQuery(structured_query)
-
-        if not structured_query or len(structured_query) == 0:
-            return None
-
-        self.last_query=structured_query
-
-        lucene_query=""
-
-        for  token in structured_query:
-            # TODO proper computing of the boost formula. Different methods?
-##            boost=token["boost"]*token["count"]
-            boost=token.boost*token.count
-##            bool_val=token.get("bool", None) or ""
-            bool_val=token.bool or ""
-
-##            lucene_query+="%s%s" % (bool_val,token["token"])
-            lucene_query+="%s%s" % (bool_val,token.token)
-##            if boost != 1:
-##                lucene_query+="^%s" %str(boost)
-            if boost > 1:
-                lucene_query= bool_val + (token.token * str(int(boost)))
-            lucene_query+=" "
-
-        fields=[]
-        for param in parameters:
-            fields.append(param+"^"+str(parameters[param]))
-
-        dsl_query={
-          "multi_match" : {
-            "query": lucene_query,
-            "type":  self.multi_match_type,
-            "fields": fields,
-            "operator": "or",
-          }
-        }
+##        print(dsl_query)
 
         if self.tie_breaker:
             dsl_query["multi_match"]["tie_breaker"]=self.tie_breaker
 
         return dsl_query
-
 
 
     def runQuery(self, structured_query, max_results=None):

@@ -50,7 +50,6 @@ class WeightTrainer(object):
         best_weights={}
 
         numfolds=self.exp.get("cross_validation_folds",2)
-    ##    counter=weightCounterList(exp["weight_values"])
 
         print("Processing zones ",self.exp["train_weights_for"])
 

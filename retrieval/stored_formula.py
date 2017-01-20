@@ -124,7 +124,7 @@ class StoredFormula:
                 field=re.match(r"weight\((.*?)\:(.*?)\sin",detail["description"],re.IGNORECASE)
                 if field:
                     field_name=str(field.group(1))
-                    term=str(field.group(2))
+                    term=unicode(field.group(2))
                     elem=detail["details"][0]
                     if elem["description"].startswith("fieldWeight"):
                         # if the queryWeight is 1, .explain() will not report it

@@ -1,10 +1,12 @@
-# <description>
+# These are the trained models for keyword extraction
 #
 # Copyright:   (c) Daniel Duma 2016
 # Author: Daniel Duma <danielduma@gmail.com>
 
 # For license information, see LICENSE.TXT
 
+##from sklearn
+from minerva.proc.nlp_functions import removeStopwords
 
 class BaseKeywordExtractor(object):
     """
@@ -18,10 +20,8 @@ class BaseKeywordExtractor(object):
     def train(self, train_set):
         """
         """
-        for unique_result in train_set:
-            best_kw=selectBestKeywordsForDocument(unique_result)
 
-    def extract(self, doc, cit):
+    def extract(self, doc, cit, params={}):
         """
         """
         pass
@@ -31,11 +31,22 @@ class TFIDFKeywordExtractor(BaseKeywordExtractor):
         Simple tfidf keyword extractor
     """
 
-
-    def extract():
+    def train(self, train_set, params):
+        """
         """
 
+##        all_kws={x[0]:x[1] for x in kw_data["best_kws"]}
+##        for sent in docfrom.allsentences:
+##            for token in sent["token_features"]:
+##                if token["text"] in all_kws:
+##                    token["extract"]=True
+##                    token["weight"]=all_kws[token["text"]]
+
+    def extract(self, doc, cit, params={}):
         """
+        """
+        doctext=doc.getFullDocumentText(True, False)
+
 
 
 def main():

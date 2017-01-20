@@ -106,11 +106,10 @@ class KeywordTrainer(object):
         return trained_models
 
 
-    def measureScoresOfKeywords(self, best_keywords):
+    def measureScoresOfKeywords(self, trained_extractors):
         """
             Using precomputed keywords from another split set, apply and report score
         """
-
         numfolds=self.exp.get("cross_validation_folds",2)
 
         results=[]
@@ -122,12 +121,14 @@ class KeywordTrainer(object):
         print("Weight movements:",self.exp.get("movements",None))
 
         for split_fold in range(numfolds):
-            keywords=best_keywords[split_fold]
+            extractor=trained_extractors[split_fold]
             improvements=[]
             better_zones=[]
             better_zones_details=[]
 
-            retrieval_results=self.loadPrecomputedFormulas()
+
+            # Need to run retrieval and measure scores again, using the keywords it extracts
+
             if len(retrieval_results) == 0:
                 continue
 
@@ -283,7 +284,7 @@ class KeywordTrainer(object):
         options=self.options
         self.all_doc_methods=getDictOfTestingMethods(self.exp["doc_methods"])
 
-        best_keywords={}
+        trained_extractors={}
         if options.get("override_folds",None):
             self.exp["cross_validation_folds"]=options["override_folds"]
 
@@ -300,7 +301,7 @@ class KeywordTrainer(object):
 
         # Then we actually test them against the
         print("Now applying and testing keywords...\n")
-        self.measureScoresOfKeywords(best_keywords)
+        self.measureScoresOfKeywords(trained_extractors)
 
 
 

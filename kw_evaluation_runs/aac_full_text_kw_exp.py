@@ -187,15 +187,14 @@ experiment={
     "max_test_files":1000,
     # Use Lucene DefaultSimilarity? As opposed to FieldAgnosticSimilarity
     "use_default_similarity":True,
+
     # Annotate sentences with AZ/CoreSC/etc?
     "rhetorical_annotations":[],
     # Run annotators? If False, it is assumed the sentences are already annotated
     "run_rhetorical_annotators":False,
     # Separate queries by AZ/CSC, etc?
     "use_rhetorical_annotation":False,
-    "weight_values":[],
-    # ?
-##    "split_set":None,
+##    "weight_values":[],
     # use full-collection retrival? If False, it runs "citation resolution"
     "full_corpus":True,
     # "compute_once", "train_weights", "extract_kw"
@@ -241,12 +240,14 @@ options={
     "clear_existing_prr_results":False, # delete previous precomputed results? i.e. start from scratch
     "override_folds":4,
     "override_metric":"avg_ndcg",
+
+##    "run_feature_annotation":True,    # annotate documents with features for keyword extraction? By default, False
 }
 
 def main():
     from minerva.squad.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
-    cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
+    cp.Corpus.connectCorpus("c:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     cp.Corpus.setCorpusFilter("AAC")
 ##    experiment["test_files"]=["456f8c80-9807-46a9-8455-cd4a7e346f9d"]
 

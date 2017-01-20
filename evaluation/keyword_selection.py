@@ -8,7 +8,6 @@
 from collections import defaultdict
 from math import log
 
-
 def termScoresInFormula(part):
     """
         Returns list of all term matching elements in formula
@@ -19,6 +18,8 @@ def termScoresInFormula(part):
     if isinstance(part, tuple) or isinstance(part, list):
         return part
     elif isinstance(part, dict):
+        if "type" not in part:
+            return None
         if part["type"] in ["*", "+", "max"]:
             scores=[termScoresInFormula(sub_part) for sub_part in part["parts"]]
             result=[]
@@ -33,7 +34,6 @@ def termScoresInFormula(part):
 
     return []
 
-
 def getDictOfTermScores(formula, op="max"):
     """
         Returns the score of each term in the formula as a dict
@@ -43,6 +43,9 @@ def getDictOfTermScores(formula, op="max"):
     """
     term_scores=termScoresInFormula(formula)
     res={}
+    if not term_scores:
+        return res
+
     for score in term_scores:
         # score=(field,qw,fw,term)
         old_score=res.get(score[3],0)
@@ -94,20 +97,22 @@ def getFormulaTermWeights(unique_result):
     return match_result
 
 
-def selectKeywordsNBest(match_guid, formulas, N=10):
+def selectKeywordsNBest(precomputed_query, doc_list, retrieval_model, N=10):
     """
         Returns a selection of matching keywords for the document that should
         maximize its score
 
-        TODO do it proper, for now a stub
+        Simplest implementation: take N-best keywords from the explanation for
+        that paper
     """
     res=[]
 
-    for formula in formulas:
-        if formula["guid"]==match_guid:
-            term_scores=getDictOfTermScores(formula["formula"],"max")
-            terms=sorted(term_scores.iteritems(),key=lambda x:x[1], reverse=True)
-            return terms[:N]
+    # currently using only the document
+    formula=retrieval_model.formulaFromExplanation(precomputed_query, precomputed_query["match_guid"])
+
+    term_scores=getDictOfTermScores(formula.formula,"max")
+    terms=sorted(term_scores.iteritems(),key=lambda x:x[1], reverse=True)
+    return terms[:N]
 
     raise ValueError("match_guid not found in formulas")
 

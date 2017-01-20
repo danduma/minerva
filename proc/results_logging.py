@@ -22,7 +22,6 @@ def measureScores(guids, match_guid, result_dict, citation_multi=1):
     mrr_score=ndcg_score=precision_score=rank=0
     found_at_index=None
 
-
     for index, guid in enumerate(guids):
         rank=None
         found_at_index=index

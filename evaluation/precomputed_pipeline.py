@@ -25,11 +25,11 @@ class PrecomputedPipeline(BaseTestingPipeline):
     """
 
     def __init__(self, retrieval_class=BaseRetrieval, use_celery=False):
-        super(self.__class__, self).__init__(retrieval_class=retrieval_class, use_celery=use_celery)
+        super(PrecomputedPipeline, self).__init__(retrieval_class=retrieval_class, use_celery=use_celery)
         self.writers={}
 
 
-    def addResult(self, guid, precomputed_query, doc_method, retrieved_results):
+    def addResult(self, file_guid, precomputed_query, doc_method, retrieved_results):
         """
             Overrides BaseTestingPipeline.addResult so that for each retrieval result
             we actually run .explain() on each item and we store the precomputed

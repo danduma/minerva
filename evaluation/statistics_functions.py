@@ -90,7 +90,7 @@ def computeAnnotationStatistics(guid):
 
 def main():
     import json
-    cp.useElasticCorpus()
+##    cp.useElasticCorpus()
     from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.Corpus.connectCorpus("",endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 ##    doc=cp.Corpus.loadSciDoc("957e1fcf-d5b4-41dc-af32-7db08f1d2ded")

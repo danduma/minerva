@@ -16,6 +16,10 @@ from minerva.db.result_store import ElasticResultStorer
 from minerva.retrieval.base_retrieval import BaseRetrieval
 from minerva.squad.tasks import annotateKeywordsTask
 from precomputed_pipeline import PrecomputedPipeline
+from minerva.proc.document_features import DocumentFeaturesAnnotator
+from minerva.proc.results_logging import ProgressIndicator
+
+from keyword_functions import MISSING_FILES
 
 class KeywordTrainingPipeline(PrecomputedPipeline):
     """
@@ -30,14 +34,37 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
         super(KeywordTrainingPipeline, self).__init__(retrieval_class=retrieval_class, use_celery=use_celery)
         self.current_guid=""
         self.current_doc=None
+        self.save_terms=True
 
     def createWriterInstances(self):
         """
             Initializes the writer instances.
         """
         self.writers["ALL"]=ElasticResultStorer(self.exp["name"],"kw_data", endpoint=cp.Corpus.endpoint)
+        if self.options.get("clear_existing_prr_results",False):
+            self.writers["ALL"].clearResults()
 
-    def addResult(self, guid, precomputed_query, doc_method, retrieved_results):
+    def annotateDocuments(self):
+        """
+            If "run_feature_annotation" in .options is True, it runs the DocumentFeaturesAnnotator
+            on each document from which a query was extracted
+        """
+        if self.options.get("run_feature_annotation",False):
+
+            annotator=DocumentFeaturesAnnotator()
+            all_guids=set()
+            for query in self.precomputed_queries:
+                all_guids.add(query["file_guid"])
+
+            progress=ProgressIndicator(True,len(all_guids),True)
+
+            for guid in all_guids:
+                doc=cp.Corpus.loadSciDoc(guid)
+                annotator.annotate(doc)
+                cp.Corpus.saveSciDoc(doc)
+                progress.showProgressReport("Annotating documents")
+
+    def addResult(self, file_guid, precomputed_query, doc_method, retrieved_results):
         """
             Overrides BaseTestingPipeline.addResult so that for each retrieval result
             we actually run .explain() on each item and we store the precomputed
@@ -57,9 +84,12 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
 ##        if not must_process:
 ##            return
 
-        if self.current_guid != guid:
-            self.current_guid=guid
-            self.current_doc=cp.Corpus.loadSciDoc(guid)
+        if self.current_guid != file_guid:
+            self.current_guid=file_guid
+            self.current_doc=cp.Corpus.loadSciDoc(file_guid)
+
+        if precomputed_query["match_guid"] not in doc_list:
+            doc_list.append(precomputed_query["match_guid"])
 
         if self.use_celery:
             print("Adding subtask to queue...")
@@ -95,6 +125,21 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
 
             Should the results be saved?
         """
+
+        with open(r"C:\NLP\PhD\aac\output\missing_files.csv", "w", ) as f:
+            f.write("file_guid,match_guid,query,match_title,match_year,in_papers\n")
+            for mfile in MISSING_FILES:
+                for index,item in enumerate(mfile):
+                    try:
+                        f.write("\"" + unicode(item).replace("\"","") + "\"")
+                    except:
+                        f.write(u"<unicode error>")
+
+                    if index < len(mfile)-1:
+                        f.write(",")
+                    else:
+                        f.write("\n")
+
         if self.use_celery:
             print("Waiting for tasks to complete...")
             res=ResultSet(self.tasks)

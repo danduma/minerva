@@ -58,6 +58,12 @@ def annotate_one(guid):
     print "done"
 
 
+def annotateSciDocs(doc_list):
+    """
+    """
+    annotator=DocumentFeaturesAnnotator()
+
+
 def main():
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("", endpoint={"host":ES_SERVER, "port":9200})

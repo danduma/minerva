@@ -5,11 +5,29 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import print_function
 ##from copy import deepcopy
-##import minerva.db.corpora as cp
+import minerva.db.corpora as cp
 
 import keyword_selection
 from minerva.proc.nlp_functions import selectSentencesToAdd
+from minerva.proc.results_logging import measureScores
+
+MISSING_FILES=[]
+
+def addMissingFile(docfrom,precomputed_query,cit):
+    print("Explanation returned empty: no matching terms. Query:",
+          precomputed_query["dsl_query"], " Match_guid: ",precomputed_query["match_guid"])
+    found=cp.Corpus.getMetadataByGUID(precomputed_query["match_guid"])
+
+    mfile=[docfrom.metadata["guid"],
+           precomputed_query["match_guid"],
+           precomputed_query["dsl_query"]["multi_match"]["query"],
+           docfrom.reference_by_id[cit["ref_id"]]["title"],
+           docfrom.reference_by_id[cit["ref_id"]]["year"],
+           (found is not None)
+           ]
+    MISSING_FILES.append(mfile)
 
 def annotateKeywords(precomputed_query,
                      docfrom,
@@ -46,18 +64,30 @@ def annotateKeywords(precomputed_query,
             "doc_method":doc_method,
             "context":context,
             "parent_s":cit["parent_s"],
-            "parent":cit["parent"],
             "cit_id":cit["id"],
             "experiment_id":experiment_id
             }
 
-    formulas=precomputeFormulas(retrieval_model, precomputed_query, doc_list)
-##    kw_data["formulas"]=formulas
+    measureScores(doc_list, precomputed_query["match_guid"], kw_data, cit.get("multi",1))
 
     func=getattr(keyword_selection, keyword_selection_method, None)
     assert(func)
 
-    kw_data["best_kws"]=func(formulas)
+    kw_data["best_kws"]=func(precomputed_query, doc_list, retrieval_model)
+    if len(kw_data["best_kws"])==0:
+        addMissingFile(docfrom,precomputed_query,cit)
+        return
+
+    all_kws={x[0]:x[1] for x in kw_data["best_kws"]}
+
+    for sent in docfrom.allsentences:
+        for token in sent["token_features"]:
+            if token["text"] in all_kws:
+                token["extract"]=True
+                token["weight"]=all_kws[token["text"]]
+##    print(kw_data["best_kws"])
+##    print("\n")
+
     writers["ALL"].addResult(kw_data)
 
 

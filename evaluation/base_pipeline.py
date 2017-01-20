@@ -45,6 +45,8 @@ class BaseTestingPipeline(object):
         self.current_all_doc_methods={}
         self.save_terms=False
         self.max_per_class_results=1000
+        self.previous_guid=""
+        self.per_class_count=0
 
     def loadModel(self, guid):
         """
@@ -196,11 +198,11 @@ class BaseTestingPipeline(object):
         result_dict["first_result"]=""
         self.logger.addResolutionResultDict(result_dict)
 
-    def addResult(self, guid, precomputed_query, doc_method, retrieved_results):
+    def addResult(self, file_guid, precomputed_query, doc_method, retrieved_results):
         """
             Adds a normal (successful) result to the result log.
         """
-        result_dict=self.newResultDict(guid, precomputed_query, doc_method)
+        result_dict=self.newResultDict(file_guid, precomputed_query, doc_method)
         self.logger.measureScoreAndLog(retrieved_results, precomputed_query["citation_multi"], result_dict)
 ##        rank_per_method[result["doc_method"]].append(result["rank"])
 ##        precision_per_method[result["doc_method"]].append(result["precision_score"])
@@ -262,7 +264,7 @@ class BaseTestingPipeline(object):
                 precomputed_query,
                 addExtraWeights(all_doc_methods[doc_method]["runtime_parameters"], self.exp),
                 guid,
-                max_results=exp.get("max_results_recall",MAX_RESULTS_RECALL))
+                max_results=self.exp.get("max_results_recall",MAX_RESULTS_RECALL))
 
             if not retrieved:    # the query was empty or something
                 self.addEmptyResult(guid, precomputed_query, doc_method)
@@ -280,6 +282,13 @@ class BaseTestingPipeline(object):
         """
         for precomputed_query in self.precomputed_queries:
             self.processOneQuery(precomputed_query)
+
+    def annotateDocuments(self):
+        """
+            To be overriden by descendant classes: run annotators on documents
+            if needed
+        """
+        pass
 
     def runPipeline(self, exp, options):
         """
@@ -300,6 +309,7 @@ class BaseTestingPipeline(object):
         self.startLogging()
         self.initializePipeline()
         self.loadQueriesAndFileList()
+        self.annotateDocuments()
         self.logger.setNumItems(len(self.precomputed_queries))
         self.populateMethods()
 
@@ -309,37 +319,6 @@ class BaseTestingPipeline(object):
         self.processAllQueries()
 
         self.saveResultsAndCleanUp()
-
-class CompareExplainPipeline(BaseTestingPipeline):
-    """
-        This compared the results of the default similarity with those of the
-        explain pipeline. Deprecated and to be discontinued.
-    """
-    def __init__(self):
-        pass
-
-    def populateMethods(self):
-        """
-        """
-        super(BaseTestingPipeline, self).populateMethods()
-
-        if self.exp.get("compare_explain",False):
-            for method in self.main_all_doc_methods:
-                self.main_all_doc_methods[method+"_EXPLAIN"]=self.main_all_doc_methods[method]
-
-    def loadModel(self, model, exp):
-        """
-            Overrides the default loadModel to add explain models.
-        """
-        super(self.__class__, self).loadModel(model, exp)
-
-        # this is to compare bulkScorer and .explain() on their overlap
-        self.tfidfmodels[model["method"]+"_EXPLAIN"]=self.retrieval_class(
-            model["actual_dir"],
-            model["method"],
-            logger=None,
-            use_default_similarity=exp["use_default_similarity"])
-        self.tfidfmodels[model["method"]+"_EXPLAIN"].useExplainQuery=True
 
 def main():
     pass

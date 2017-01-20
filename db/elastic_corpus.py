@@ -12,6 +12,7 @@ import sys, json, datetime, re, copy
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionTimeout, ConnectionError, TransportError
 import requests
+import urllib
 
 from minerva.proc.general_utils import ensureTrailingBackslash
 from minerva.scidoc.scidoc import SciDoc
@@ -307,7 +308,8 @@ class ElasticCorpus(BaseCorpus):
             :param query: SQL query
             :type query: string
         """
-        uri="http://%s:%s/_sql/_explain?sql=%s" % (self.endpoint["host"],self.endpoint["port"],query)
+        url_query=urllib.quote(query.encode('utf8'))
+        uri="http://%s:%s/_sql/_explain?sql=%s" % (self.endpoint["host"],self.endpoint["port"],url_query)
         response = requests.get(uri)
         dsl_query = json.loads(response.text)
 

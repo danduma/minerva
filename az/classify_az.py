@@ -5,6 +5,8 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import print_function
+
 from minerva.scidoc.scidoc import SciDoc
 from minerva.scidoc.xmlformats.azscixml import *
 
@@ -12,7 +14,7 @@ import collections, random, nltk
 import nltk.classify.util, nltk.metrics
 from nltk.classify import NaiveBayesClassifier, MaxentClassifier
 
-##from az_features import
+from az_features import buildAZFeatureSetForDoc
 
 import glob
 import os
@@ -49,7 +51,7 @@ input_mask=drive+r":\nlp\phd\raz\converted_scidoc_files\*.json"
 
 def runTestAZ(rebuild=False):
     if rebuild:
-        print "Rebuilding global featureset"
+        print("Rebuilding global featureset")
         global_featureset=buildGlobalFeatureset(input_mask,global_featureset_filename)
     else:
         global_featureset=cPickle.load(file(global_featureset_filename))
@@ -57,10 +59,10 @@ def runTestAZ(rebuild=False):
     train_set=global_featureset[:len(global_featureset)/10]
     test_set=global_featureset[len(global_featureset)/10:]
 
-    print "Training classifier"
+    print("Training classifier")
     classifier = nltk.MaxentClassifier.train(train_set, min_lldelta=MIN_LL_DELTA,max_iter=MAX_ITER)
 ##    classifier = nltk.NaiveBayesClassifier.train(train_set)
-    print "Accuracy:",nltk.classify.accuracy(classifier, test_set)
+    print("Accuracy:",nltk.classify.accuracy(classifier, test_set))
 
     classified=[classifier.classify(x[0]) for x in test_set]
 
@@ -75,7 +77,7 @@ def runKFoldCrossValidation(rebuild=False, folds=3):
     from sklearn import cross_validation
 
     if rebuild:
-        print "Rebuilding global featureset"
+        print("Rebuilding global featureset")
         global_featureset=buildGlobalFeatureset(input_mask,global_featureset_filename)
     else:
         global_featureset=cPickle.load(file(global_featureset_filename))
@@ -84,7 +86,7 @@ def runKFoldCrossValidation(rebuild=False, folds=3):
 
     accuracies=[]
 
-    print "Beginning",folds,"-fold cross-validation"
+    print("Beginning",folds,"-fold cross-validation")
 
     for traincv, testcv in cv:
 ##        print "Training classifier"
@@ -100,13 +102,13 @@ def runKFoldCrossValidation(rebuild=False, folds=3):
         classifier = nltk.MaxentClassifier.train(global_featureset[traincv[0]:traincv[len(traincv)-1]], min_lldelta=MIN_LL_DELTA,max_iter=MAX_ITER)
 
         accuracy=nltk.classify.util.accuracy(classifier, test_set)
-        print 'accuracy:', accuracy
+        print('accuracy:', accuracy)
         accuracies.append(accuracy)
         classified=[classifier.classify(x[0]) for x in test_set]
         cm = nltk.ConfusionMatrix([x[1] for x in test_set], classified)
         print(cm.pp(sort_by_count=True, show_percents=True, truncate=9))
 
-    print "average accuracy:",sum(accuracies)/float(len(accuracies))
+    print ("average accuracy:",sum(accuracies)/float(len(accuracies)))
 
 
 
@@ -115,7 +117,7 @@ def trainAZfullCorpus(filename,rebuild=False):
         Trains and saves an AZ classifier for the full corpus, saves it in filename
     """
     if rebuild:
-        print "Rebuilding global featureset"
+        print("Rebuilding global featureset")
         global_featureset=buildGlobalFeatureset(input_mask,global_featureset_filename)
     else:
         global_featureset=cPickle.load(file(global_featureset_filename))

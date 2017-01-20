@@ -88,6 +88,7 @@ def testExplanation():
 
 
 def main():
+    connectToElastic()
     testExplanation()
     pass
 
