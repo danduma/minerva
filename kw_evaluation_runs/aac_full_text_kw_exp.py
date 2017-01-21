@@ -227,21 +227,23 @@ experiment={
 
     # how to choose the top keywords for a citation
     "keyword_selection_method":"selectKeywordsNBest",
+    # name of index to use for extracting idf scores etc. for document feature annotation
+    "features_index_name":"full_text_aac_2010"
 }
 
 
 options={
-    "run_prebuild_bows":1, # should the whole BOW building process run?
+    "run_prebuild_bows":0, # should the whole BOW building process run?
     "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
     "rebuild_indexes":0,   # rebuild indices?
     "compute_queries":0,   # precompute the queries?
     "overwrite_existing_queries":0,  # force rebuilding of queries too?
-    "run_precompute_retrieval":0,  # only applies if type == "train_weights"
+    "run_precompute_retrieval":1,  # only applies if type == "train_weights"
     "clear_existing_prr_results":False, # delete previous precomputed results? i.e. start from scratch
     "override_folds":4,
     "override_metric":"avg_ndcg",
 
-##    "run_feature_annotation":True,    # annotate documents with features for keyword extraction? By default, False
+    "run_feature_annotation":True,    # annotate documents with features for keyword extraction? By default, False
 }
 
 def main():

@@ -56,7 +56,7 @@ class KeywordTrainer(object):
         """
             Loads the previously computed retrieval results, including query, etc.
         """
-        prr=ElasticResultStorer(self.exp["name"],"prr_"+self.exp["queries_classification"]+"_"+query_type, cp.Corpus.endpoint)
+        prr=ElasticResultStorer(self.exp["name"],"prr_"+self.exp["queries_classification"], cp.Corpus.endpoint)
         reader=ResultDiskReader(prr, cache_dir=os.path.join(self.exp["exp_dir"], "cache"), max_results=self.exp.get("max_per_class_results",1000))
         reader.bufsize=30
         return reader
@@ -149,9 +149,12 @@ class KeywordTrainer(object):
             for method in keywords:
                 keywords_baseline=addExtrakeywords({x:1 for x in self.all_doc_methods[method]["runtime_parameters"]}, self.exp)
 
+                query_type=None # TODO extract query_type from stored precomputed query
+
                 scores=self.measurePrecomputedResolution(test_set, method, keywords_baseline, query_type)
                 baseline_score=scores[0][self.exp["metric"]]
     ##            print "Score for "+query_type+" keywords=1:", baseline_score
+
                 result={"query_type":query_type,
                         "fold":split_fold,
                         "score":baseline_score,
@@ -162,8 +165,6 @@ class KeywordTrainer(object):
                         "num_data_points":len(retrieval_results)}
                 for metric in metrics:
                     result[metric]=scores[0][metric]
-                for weight in keywords[query_type][method]:
-                    result[weight]=1
                 results.append(result)
 
                 scores=self.measurePrecomputedResolution(test_set, method, keywords[query_type][method], query_type)
@@ -212,17 +213,19 @@ class KeywordTrainer(object):
         fold_data=pd.DataFrame(fold_results)
         fold_data.to_csv(self.exp["exp_dir"]+self.exp["name"]+"_folds_"+xtra+".csv")
 
-    def measurePrecomputedResolution(self, retrieval_results, method, keywords, citation_az="*"):
+    def measurePrecomputedResolution(self, retrieval_results, doc_method, keywords, citation_az="*"):
         """
             This is kind of like measureCitationResolution:
             it takes a list of precomputed retrieval_results, then applies the new
-            parameters to them. This is how we recompute what Lucene gives us,
-            avoiding having to call Lucene again and so speeding it up a lot.
+            parameters to them.
 
             All we need to do is adjust the keywords on the already available
             explanation formulas.
 
             :param keywords: dict
+            :param retrieval_results: list of all result dicts
+            :param doc_method: doc method we are measuring for
+
         """
         logger=ResultsLogger(False, dump_straight_to_disk=False) # init all the logging/counting
         logger.startCounting() # for timing the process, start now
@@ -243,13 +246,13 @@ class KeywordTrainer(object):
                          "citation_id":result["citation_id"],
                          "doc_position":result["doc_position"],
                          "query_method":result["query_method"],
-                         "doc_method":method,
+                         "doc_method":doc_method,
                          "az":result["az"],
                          "cfc":result["cfc"],
                          "match_guid":result["match_guid"]}
 
             if not retrieved or len(retrieved)==0:    # the query was empty or something
-##                print "Error: ", doc_method , qmethod,tfidfmodels[method].indexDir
+##                print "Error: ", doc_method , qmethod,tfidfmodels[doc_method].indexDir
 ##                logger.addResolutionResult(guid,m,doc_position,qmethod,doc_method ,0,0,0)
                 result_dict["mrr_score"]=0
                 result_dict["precision_score"]=0

@@ -5,17 +5,20 @@
 
 # For license information, see LICENSE.TXT
 
-##import ConfigParser
-##config = ConfigParser.ConfigParser()
-##config.readfp(open(os.path.dirname(__file__)))
+import os
+import ConfigParser
+
+config = ConfigParser.ConfigParser()
+config_file_path=os.path.abspath(os.path.join(os.path.dirname( __file__ ), "..","config.ini"))
+config.readfp(open(config_file_path,"r"))
 
 WORKSTATION_IP="129.215.197.73"
 SERVER_IP="129.215.197.75"
 ##SERVER_IP="129.215.90.202"
 ##SERVER_IP="localhost"
 
-ES_USER="root"
-ES_PASS="emperifollaramos"
+ES_USER=config.get("Elasticsearch","user")
+ES_PASS=config.get("Elasticsearch","password")
 ##MINERVA_FILE_SERVER_URL="http://%s:5599" % WORKSTATION_IP
 MINERVA_FILE_SERVER_URL="http://%s:5599" % WORKSTATION_IP
 MINERVA_AMQP_SERVER_URL="amqp://minerva:minerva@%s:5672//" % SERVER_IP

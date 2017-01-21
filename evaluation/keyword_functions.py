@@ -58,6 +58,8 @@ def annotateKeywords(precomputed_query,
     if context_extraction=="sentence":
         to_add=selectSentencesToAdd(docfrom, cit, extraction_parameter)
         context=[docfrom.element_by_id[x] for x in to_add]
+    else:
+        raise ValueError("Unkown type of context_extraction %s" % context_extraction)
 
     kw_data={
             "match_guid":precomputed_query["match_guid"],

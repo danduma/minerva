@@ -51,7 +51,7 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
         """
         if self.options.get("run_feature_annotation",False):
 
-            annotator=DocumentFeaturesAnnotator()
+            annotator=DocumentFeaturesAnnotator(self.exp["features_index_name"])
             all_guids=set()
             for query in self.precomputed_queries:
                 all_guids.add(query["file_guid"])

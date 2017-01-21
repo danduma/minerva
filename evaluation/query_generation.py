@@ -55,7 +55,7 @@ class QueryGenerator(object):
                     queries_by["rz7"][random.choice(RANDOM_ZONES_7)].append(precomputed_query)
                     queries_by["rz11"][random.choice(RANDOM_ZONES_11)].append(precomputed_query)
 
-        json.dump(self.files_dict,open(self.exp["exp_dir"]+"files_dict.json","w"))
+        json.dump(self.files_dict,open(self.exp["exp_dir"]+self.exp.get("files_dict_filename","files_dict.json"),"w"))
         if self.exp.get("use_rhetorical_annotation", False):
             for annot_type in annot_types:
                 json.dump(queries_by[annot_type],open(os.path.join(self.exp["exp_dir"],"queries_by_%s.json" % annot_type),"w"))

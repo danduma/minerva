@@ -49,11 +49,14 @@ def getElasticTermScores(token_string, index_name, field_names, doc_type="doc"):
         :field_names: a list of fields to query for
         :returns: a dict[field][token]{
     """
-    url="http://%s:%d/%s/%s/_termvectors" % (cp.Corpus.endpoint["host"],
-                                             cp.Corpus.endpoint["port"],
-                                             index_name,
-                                             doc_type
-                                             )
+    if isinstance(cp.Corpus.endpoint, basestring):
+        url=cp.Corpus.endpoint+index_name+"/"+doc_type+"/_termvectors"
+    else:
+        url="http://%s:%d/%s/%s/_termvectors" % (cp.Corpus.endpoint["host"],
+                                                 cp.Corpus.endpoint["port"],
+                                                 index_name,
+                                                 doc_type
+                                                 )
 
     doc={field_name:token_string for field_name in field_names}
     request={
@@ -77,11 +80,11 @@ def getElasticTermScores(token_string, index_name, field_names, doc_type="doc"):
 ##                del res[field][token]["term_freq"]
     return res
 
-class DocumentFeaturesAnnotator(object, index_name):
+class DocumentFeaturesAnnotator(object):
     """
         Pre-annotates all features in a scidoc to be used for keyword extraction
     """
-    def __init__(self):
+    def __init__(self, index_name):
         self.index_name=index_name
 
     def annotate_section(self, section):
@@ -151,6 +154,11 @@ class DocumentFeaturesAnnotator(object, index_name):
 ##                          "csc_type":sent.get("csc_type",""),
 ##                          "az":sent.get("az",""),
                           }
+
+                token_features.append(features)
+            sent["token_features"]=token_features
+
+        return doc
 
 def main():
     pass

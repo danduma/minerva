@@ -202,6 +202,10 @@ class Experiment(object):
                 cp.Corpus.TEST_FILES=cp.Corpus.TEST_FILES[:self.exp["max_test_files"]]
             self.exp["test_files"]=cp.Corpus.TEST_FILES
 
+        with file(os.path.join(self.exp["exp_dir"],"test_guids.txt"),"w") as f:
+            for fname in self.exp["test_files"]:
+                f.write(fname)
+                f.write("\n")
 
     def setupExperimentDir(self):
         """
