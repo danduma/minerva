@@ -219,7 +219,7 @@ def connectToCorpus():
     """
     """
     cp.useElasticCorpus()
-    from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.Corpus.connectCorpus(r"g:\nlp\phd\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 
 def main():

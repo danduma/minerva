@@ -274,7 +274,7 @@ options={
 # usage: wosp16_experiments.py --w Mod
 
 def main():
-    from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     cp.Corpus.setCorpusFilter("AAC")

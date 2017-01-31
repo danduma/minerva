@@ -235,7 +235,7 @@ options={
 }
 
 def main():
-    from minerva.squad.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
+    from minerva.multi.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     cp.Corpus.setCorpusFilter("AAC")

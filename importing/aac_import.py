@@ -176,7 +176,7 @@ def import_aac_corpus():
     """
         Do the importing of the AAC corpus
     """
-    from minerva.squad.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
+    from minerva.multi.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
     importer=CorpusImporter(reader=PaperXMLReader())
     importer.collection_id="AAC"
     importer.import_id="initial"

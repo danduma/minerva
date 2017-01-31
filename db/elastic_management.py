@@ -8,7 +8,7 @@
 from elastic_corpus import ElasticCorpus
 
 ec=ElasticCorpus()
-from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
+from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
 ec.connectCorpus("",endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 ##
 ##ec.deleteIndex("wosp16_experiments_prr_*")

@@ -11,9 +11,10 @@ import re
 ##from collections import defaultdict, OrderedDict
 
 from nlp_functions import (tokenizeText, tokenizeTextAndRemoveStopwords, stopwords,
-CITATION_PLACEHOLDER, unTokenize, ESTIMATED_AVERAGE_WORD_LENGTH, removeCitations,
+unTokenize, ESTIMATED_AVERAGE_WORD_LENGTH, removeCitations,
 AZ_ZONES_LIST, CORESC_LIST, formatSentenceForIndexing,
-getDictOfTokenCounts, removeStopwords, selectSentencesToAdd)
+getDictOfTokenCounts, removeStopwords, selectSentencesToAdd,
+replaceCitationsWithPlaceholders)
 ##from nlp_functions import PAR_MARKER, CIT_MARKER, BR_MARKER
 
 from general_utils import removeSymbols
@@ -158,7 +159,7 @@ class WindowQueryExtractor(BaseQueryExtractor):
         allwords.extend(rightwords)
         allwords=[token for token in allwords if token.lower() not in stopwords]
         # Always convert in-text citations to placeholders
-        extract_dict["text"]=re.sub(r"<CIT ID=(.*?)\s?/>",CITATION_PLACEHOLDER, unTokenize(allwords))
+        extract_dict["text"]=replaceCitationsWithPlaceholders(unTokenize(allwords))
         return extract_dict
 
     def selectTokensFromContext(self, context, params):

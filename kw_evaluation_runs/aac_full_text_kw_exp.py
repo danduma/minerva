@@ -227,8 +227,10 @@ experiment={
 
     # how to choose the top keywords for a citation
     "keyword_selection_method":"selectKeywordsNBest",
-    # name of index to use for extracting idf scores etc. for document feature annotation
-    "features_index_name":"full_text_aac_2010"
+    # parameters to keyword selection method
+    "keyword_selection_parameters":{"N":10},
+    # exact name of index to use for extracting idf scores etc. for document feature annotation
+    "features_index_name":"idx_full_text_aac_2010_1"
 }
 
 
@@ -238,16 +240,17 @@ options={
     "rebuild_indexes":0,   # rebuild indices?
     "compute_queries":0,   # precompute the queries?
     "overwrite_existing_queries":0,  # force rebuilding of queries too?
-    "run_precompute_retrieval":1,  # only applies if type == "train_weights"
     "clear_existing_prr_results":False, # delete previous precomputed results? i.e. start from scratch
     "override_folds":4,
     "override_metric":"avg_ndcg",
 
-    "run_feature_annotation":True,    # annotate documents with features for keyword extraction? By default, False
+    "run_experiment":0,
+    "run_precompute_retrieval":1,  # only applies if type == "train_weights" or "extract_kw". This is necessary for annotation! And this is because each pipeline may do different annotation
+    "run_feature_annotation":1,    # annotate documents with features for keyword extraction? By default, False
 }
 
 def main():
-    from minerva.squad.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
+    from minerva.multi.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("c:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     cp.Corpus.setCorpusFilter("AAC")

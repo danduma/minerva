@@ -97,13 +97,18 @@ def getFormulaTermWeights(unique_result):
     return match_result
 
 
-def selectKeywordsNBest(precomputed_query, doc_list, retrieval_model, N=10):
+def selectKeywordsNBest(precomputed_query, doc_list, retrieval_model, parameters):
     """
         Returns a selection of matching keywords for the document that should
         maximize its score
 
         Simplest implementation: take N-best keywords from the explanation for
         that paper
+
+        :param precomputed_query: dict with the citation/doc details plus the structured_query
+        :param doc_list: list of retrieval results
+        :param retrieval_model: retrieval model we can use to get explanations from
+        :param parameters: dict with {"N": <number>} for N-best
     """
     res=[]
 
@@ -112,9 +117,17 @@ def selectKeywordsNBest(precomputed_query, doc_list, retrieval_model, N=10):
 
     term_scores=getDictOfTermScores(formula.formula,"max")
     terms=sorted(term_scores.iteritems(),key=lambda x:x[1], reverse=True)
-    return terms[:N]
+    return terms[:parameters["N"]]
 
-    raise ValueError("match_guid not found in formulas")
+##    raise ValueError("match_guid not found in formulas")
+
+
+def evaluateKeywordSelection(precomputed_queries):
+    """
+        Get the batch scores and averages of a set of queries
+    """
+    pass
+
 
 def main():
     pass

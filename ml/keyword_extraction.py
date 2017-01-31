@@ -28,7 +28,8 @@ class BaseKeywordExtractor(object):
 
 class TFIDFKeywordExtractor(BaseKeywordExtractor):
     """
-        Simple tfidf keyword extractor
+        Simple tfidf keyword extractor. Picks the top terms (individually) by
+        TFIDF score. Score is already annotated on each token.
     """
 
     def train(self, train_set, params):

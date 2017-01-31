@@ -7,7 +7,7 @@
 
 import minerva.db.corpora as cp
 from minerva.scidoc.scidoc import SciDoc
-from minerva.proc.document_features import DocumentFeaturesAnnotator, en_nlp
+from minerva.ml.document_features import DocumentFeaturesAnnotator, en_nlp
 
 import spacy
 import json

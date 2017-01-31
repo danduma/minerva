@@ -12,7 +12,7 @@ import os, sys, json
 import minerva.db.corpora as cp
 from minerva.proc.results_logging import ProgressIndicator
 from minerva.evaluation.statistics_functions import computeAnnotationStatistics
-from minerva.squad.tasks import computeAnnotationStatisticsTask
+from minerva.multi.tasks import computeAnnotationStatisticsTask
 
 
 def add_statistics_to_all_files(use_celery=False, conditions=None, max_files=sys.maxint):
@@ -95,7 +95,7 @@ def fix_collection_id():
 
 
 def main():
-    from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 ##    cp.Corpus.setCorpusFilter(collection_id="PMC_CSC")

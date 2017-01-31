@@ -230,12 +230,14 @@ class BaseTestingPipeline(object):
             Runs the retrieval and evaluation for a single query
         """
         if self.exp.get("queries_classification","") not in ["", None]:
-            q_type=precomputed_query[self.exp.get("queries_classification")]
-            if self.per_class_count[q_type] < self.max_per_class_results:
-                self.per_class_count[q_type] += 1
-            else:
-                print("Too many queries of type %s already" % q_type)
-                return
+            query_class=self.exp.get("queries_classification",None)
+            if query_class:
+                q_type=precomputed_query[query_class]
+                if self.per_class_count[q_type] < self.max_per_class_results:
+                    self.per_class_count[q_type] += 1
+                else:
+                    print("Too many queries of type %s already" % q_type)
+                    return
 
         guid=precomputed_query["file_guid"]
         self.logger.total_citations+=self.files_dict[guid]["resolvable_citations"]

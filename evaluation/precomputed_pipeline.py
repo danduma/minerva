@@ -16,7 +16,7 @@ from celery.result import ResultSet
 
 from minerva.db.result_store import createResultStorers
 from precompute_functions import addPrecomputeExplainFormulas
-from minerva.squad.tasks import precomputeFormulasTask
+from minerva.multi.tasks import precomputeFormulasTask
 
 class PrecomputedPipeline(BaseTestingPipeline):
     """

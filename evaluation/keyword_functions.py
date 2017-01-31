@@ -1,4 +1,4 @@
-# Functions decoupled from PrecomputedPipeline in order to run them
+# Functions decoupled from PrecomputedPipeline in order to run them in parallel
 #
 # Copyright:   (c) Daniel Duma 2016
 # Author: Daniel Duma <danielduma@gmail.com>
@@ -70,18 +70,26 @@ def annotateKeywords(precomputed_query,
             "experiment_id":experiment_id
             }
 
+    # these are the default scores that you get by just using the whole bag of words as a query
     measureScores(doc_list, precomputed_query["match_guid"], kw_data, cit.get("multi",1))
 
-    func=getattr(keyword_selection, keyword_selection_method, None)
-    assert(func)
+    keyword_selection_method=getattr(keyword_selection, self.exp["keyword_selection_method"], None)
+    assert(keyword_selection_method)
 
-    kw_data["best_kws"]=func(precomputed_query, doc_list, retrieval_model)
+    selected_keywords=keyword_selection_method(precomputed_query,
+                                               doc_list,
+                                               retrieval_model,
+                                               self.exp["keyword_selection_parameters"]
+                                               )
+
+    kw_data["best_kws"]=selected_keywords
     if len(kw_data["best_kws"])==0:
-        addMissingFile(docfrom,precomputed_query,cit)
+        addMissingFile(docfrom,precomputed_query,cit) # for debugging purposes, keep a list of missing files
         return
 
     all_kws={x[0]:x[1] for x in kw_data["best_kws"]}
 
+    # need to annotate this per token?
     for sent in docfrom.allsentences:
         for token in sent["token_features"]:
             if token["text"] in all_kws:

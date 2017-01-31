@@ -29,7 +29,7 @@ def import_sapienta_pmc_corpus():
     """
         Do the importing of the Sapienta-annotated PMC corpus
     """
-    from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
     importer=CorpusImporter(reader=SapientaJATSXMLReader())
     importer.collection_id="PMC_CSC"
     importer.import_id="initial"
@@ -83,7 +83,7 @@ def fix_broken_scidocs():
         their scidoc. If KeyError occurs, it loads the XML again
     """
     cp.useElasticCorpus()
-    import minerva.squad.celery_app as celery_app
+    import minerva.multi.celery_app as celery_app
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc",
             endpoint={"host":celery_app.MINERVA_ELASTICSEARCH_SERVER_IP,
             "port":celery_app.MINERVA_ELASTICSEARCH_SERVER_PORT})

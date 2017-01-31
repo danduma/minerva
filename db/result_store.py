@@ -269,6 +269,7 @@ class ElasticResultStorer(object):
 
 class ResultIncrementalReader(object):
     """
+        Can loop over results using a cache, faster than retrieving results one by one
     """
     def __init__(self, result_storer, res_ids=None, max_results=sys.maxint):
         """
@@ -290,8 +291,8 @@ class ResultIncrementalReader(object):
 
     def fillBuffer(self, key):
         """
+            retrieves enough items to fill the buffer up to the given key
         """
-##        print("fillBuffer", key)
         self.ids_held={}
         if int(key) < len(self.res_ids):
             for cnt in range(min(len(self.res_ids)-int(key),self.bufsize)):
@@ -299,8 +300,8 @@ class ResultIncrementalReader(object):
 
     def __getitem__(self, key):
         """
+
         """
-##        print("getitem",key)
         if key not in self.ids_held:
             self.fillBuffer(key)
             return self.ids_held[key]
@@ -361,6 +362,11 @@ class ResultDiskReader(ResultIncrementalReader):
         new=ResultDiskReader(self.result_storer, self.cache_dir, res_ids=[self.res_ids[i] for i in items])
         return new
 
+    def cacheAllItems(self):
+        """
+            Forces to download and locally cache all of the items
+        """
+        self.fillBuffer(len(self.res_ids)-1)
 
 def basicTest():
     """

@@ -9,7 +9,7 @@ from __future__ import print_function
 import sys
 
 from prebuild_functions import prebuildMulti
-from minerva.squad.tasks import prebuildBOWTask
+from minerva.multi.tasks import prebuildBOWTask
 
 import minerva.db.corpora as cp
 from minerva.proc.results_logging import ProgressIndicator

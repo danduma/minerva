@@ -17,7 +17,7 @@ from minerva.proc.results_logging import ProgressIndicator
 import minerva.db.corpora as cp
 
 from importing_functions import (convertXMLAndAddToCorpus, updatePaperInCollectionReferences)
-from minerva.squad.tasks import (importXMLTask, updateReferencesTask)
+from minerva.multi.tasks import (importXMLTask, updateReferencesTask)
 
 FILES_TO_PROCESS_FROM=0
 FILES_TO_PROCESS_TO=sys.maxint

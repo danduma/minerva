@@ -9,7 +9,13 @@ from copy import deepcopy
 
 import minerva.db.corpora as cp
 
-def addPrecomputeExplainFormulas(precomputed_query, doc_method, doc_list, retrieval_model, writers, experiment_id, exp_random_zoning=False):
+def addPrecomputeExplainFormulas(precomputed_query,
+                                 doc_method,
+                                 doc_list,
+                                 retrieval_model,
+                                 writers,
+                                 experiment_id,
+                                 exp_random_zoning=False):
     """
         Runs a precomputed query using the retrieval_model, computes the formula
         for each result

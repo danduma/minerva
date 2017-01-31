@@ -147,6 +147,37 @@ def tokenizeTextAndRemoveStopwords(text, stopwords=stopwords):
     tokens = removeStopwords(tokens, stopwords)
     return tokens
 
+def replaceCitationsWithPlaceholders(text):
+    """
+        Substitutes all <CIT> elements in the sentence with __cit__
+    """
+    return re.sub(r"<CIT ID=(.*?)\s?/>",CITATION_PLACEHOLDER, text)
+
+def replaceCitationTokensForParsing(text):
+    """
+        Substitutes all <CIT> elements in the sentence with __cit__
+    """
+    return re.sub(r"<CIT ID=(.*?)\s?/>",r"__cit\1__", text)
+
+
+def getCitationNumberFromToken(text):
+    """
+        Returns the citation number from a single-token citation
+    """
+    match=re.search(r"__cit(\d+)__",text,flags=re.IGNORECASE)
+    if not match:
+        return None
+    return int(match.group(1))
+
+def getFirstNumberFromString(text):
+    """
+        Returns any number found in a string
+    """
+    match=re.search(r"(\d+)",text,flags=re.IGNORECASE)
+    if not match:
+        return None
+    return int(match.group(1))
+
 def formatSentenceForIndexing(s, no_stemming=False):
     """
         Fixes all the contents of the sentence, returns a sentence that's easy

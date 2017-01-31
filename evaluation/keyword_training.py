@@ -14,12 +14,14 @@ from sklearn import cross_validation
 import pandas as pd
 
 import minerva.db.corpora as cp
-from minerva.proc.results_logging import ResultsLogger
-##from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
-from base_pipeline import getDictOfTestingMethods
-from weight_functions import runPrecomputedQuery
 from minerva.db.result_store import ElasticResultStorer, ResultIncrementalReader, ResultDiskReader
+from minerva.evaluation.base_pipeline import getDictOfTestingMethods
+from minerva.evaluation.precompute_functions import precomputeFormulas
+from minerva.evaluation.weight_functions import runPrecomputedQuery
+from minerva.ml.keyword_extraction import TFIDFKeywordExtractor
+from minerva.proc.results_logging import ResultsLogger
 
+##from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
 
 GLOBAL_FILE_COUNTER=0
 
@@ -45,22 +47,24 @@ class KeywordTrainer(object):
         This class encapsulates the training and testing of a keyword extractor,
         using k-fold cross-validation
     """
-    def __init__(self, exp, options):
+    def __init__(self, exp, options, precomputed_queries):
         """
         """
         self.exp=exp
         self.options=options
         self.all_doc_methods={}
+        self.precomputed_queries=precomputed_queries
+        # TODO add here: choosing a different Extractor in exp
+        self.extractor_class=TFIDFKeywordExtractor
 
-    def loadPrecomputedFormulas(self):
-        """
-            Loads the previously computed retrieval results, including query, etc.
-        """
-        prr=ElasticResultStorer(self.exp["name"],"prr_"+self.exp["queries_classification"], cp.Corpus.endpoint)
-        reader=ResultDiskReader(prr, cache_dir=os.path.join(self.exp["exp_dir"], "cache"), max_results=self.exp.get("max_per_class_results",1000))
-        reader.bufsize=30
-        return reader
-
+##    def loadPrecomputedFormulas(self):
+##        """
+##            Loads the previously computed retrieval results, including query, etc.
+##        """
+##        prr=ElasticResultStorer(self.exp["name"],"prr_"+self.exp["queries_classification"], cp.Corpus.endpoint)
+##        reader=ResultDiskReader(prr, cache_dir=os.path.join(self.exp["exp_dir"], "cache"), max_results=self.exp.get("max_per_class_results",1000))
+##        reader.bufsize=30
+##        return reader
 
     def trainExtractor(self, split_fold):
         """
@@ -96,17 +100,38 @@ class KeywordTrainer(object):
 
         print("Training for %d/%d citations " % (len(train_set),len(retrieval_results)))
         trained_models={}
-        for method in all_doc_methods:
-            res={}
-            # what to do with the runtime_parameters?
+
+        res={}
+        # what to do with the runtime_parameters?
 ##            all_doc_methods[method]["runtime_parameters"]=weights
-            trained_models[method]=TFIDFKeywordExtractor()
-            trained_models[method].train(train_set)
+        trained_model=self.extractor_class()
+        trained_model.train(train_set)
 
-        return trained_models
+        return trained_model
 
+    def generateRetrievalResults(self):
+        """
+            Returns the equivalent of loadPrecomputedFormulas but generates those
+            formulas on the fly
+        """
+        for precomputed_query in self.precomputed_queries:
+            retrieval_result=deepcopy(precomputed_query)
+            retrieval_result["doc_method"]=doc_method
 
-    def measureScoresOfKeywords(self, trained_extractors):
+            del retrieval_result["query_text"]
+
+            formulas=precomputeFormulas(retrieval_model, precomputed_query, doc_list)
+            retrieval_result["formulas"]=formulas
+
+            for remove_key in ["dsl_query", "lucene_query"]:
+                if remove_key in retrieval_result:
+                    del retrieval_result[remove_key]
+
+            retrieval_result["experiment_id"]=self.exp["experiment_id"]
+
+            yield retrieval_result
+
+    def measureScoresOfExtractors(self, trained_extractors):
         """
             Using precomputed keywords from another split set, apply and report score
         """
@@ -126,8 +151,12 @@ class KeywordTrainer(object):
             better_zones=[]
             better_zones_details=[]
 
-
-            # Need to run retrieval and measure scores again, using the keywords it extracts
+            # ###################
+            # INSERT CODE HERE
+            # Need to run retrieval and measure scores again, using the keywords it extract
+            # ###################
+            # load precomputed_queries
+            retrieval_results=self.generateRetrievalResults()
 
             if len(retrieval_results) == 0:
                 continue
@@ -304,9 +333,7 @@ class KeywordTrainer(object):
 
         # Then we actually test them against the
         print("Now applying and testing keywords...\n")
-        self.measureScoresOfKeywords(trained_extractors)
-
-
+        self.measureScoresOfExtractors(trained_extractors)
 
 
 def main():

@@ -1,4 +1,4 @@
-# <description>
+# Pipeline that generates annotated contexts with the selected keywords to extract
 #
 # Copyright:   (c) Daniel Duma 2016
 # Author: Daniel Duma <danielduma@gmail.com>
@@ -14,15 +14,18 @@ import minerva.db.corpora as cp
 from minerva.evaluation.keyword_functions import annotateKeywords
 from minerva.db.result_store import ElasticResultStorer
 from minerva.retrieval.base_retrieval import BaseRetrieval
-from minerva.squad.tasks import annotateKeywordsTask
-from precomputed_pipeline import PrecomputedPipeline
-from minerva.proc.document_features import DocumentFeaturesAnnotator
+from minerva.multi.tasks import annotateKeywordsTask
+from minerva.evaluation.precomputed_pipeline import PrecomputedPipeline
+from minerva.ml.document_features import DocumentFeaturesAnnotator
 from minerva.proc.results_logging import ProgressIndicator
-
-from keyword_functions import MISSING_FILES
+import minerva.evaluation.keyword_selection
+from minerva.evaluation.keyword_functions import MISSING_FILES
 
 class KeywordTrainingPipeline(PrecomputedPipeline):
     """
+        Pipeline that generates the annotated data for training/testing keyword
+        extractors
+
         Modifies PrecomputedPipeline to change what is stored for each precomputed
         result, as all we need to store is:
             query,
@@ -66,13 +69,22 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
 
     def addResult(self, file_guid, precomputed_query, doc_method, retrieved_results):
         """
-            Overrides BaseTestingPipeline.addResult so that for each retrieval result
-            we actually run .explain() on each item and we store the precomputed
-            formula.
+            This is where we select the top keywords for a query/citation based on
+            the retrieved results and the score of keywords for the document's match
         """
         doc_list=[hit[1]["guid"] for hit in retrieved_results]
 
         # TODO restrict by query types?
+        keyword_selection_method=getattr(keyword_selection, self.exp["keyword_selection_method"], None)
+        assert(keyword_selection_method)
+
+        selected_keywords=keyword_selection_method(precomputed_query,
+                                                   doc_list,
+                                                   self.tfidfmodels[doc_method],
+                                                   self.exp["keyword_selection_parameters"]
+                                                   )
+##        precomputed_query, doc_list, retrieval_model, N=10)
+
 ##        for zone_type in ["csc_type", "az"]:
 ##            if precomputed_query.get(zone_type,"") != "":
 ##                if self.writers[zone_type+"_"+precomputed_query[zone_type].strip()].getResultCount() < self.max_per_class_results:

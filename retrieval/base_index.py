@@ -23,7 +23,7 @@ from index_functions import addBOWsToIndex
 
 from minerva.proc.nlp_functions import CORESC_LIST
 
-from minerva.squad.tasks import addToindexTask
+from minerva.multi.tasks import addToindexTask
 
 ES_TYPE_DOC="doc"
 

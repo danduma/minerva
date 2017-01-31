@@ -284,11 +284,18 @@ class Experiment(object):
                 weight_trainer=WeightTrainer(self.exp, self.options)
                 weight_trainer.trainWeights()
         elif self.exp["type"] == "extract_kw":
+            precomputed_queries=None
             if self.options.get("run_precompute_retrieval", False):
                 pipeline=KeywordTrainingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
                 pipeline.runPipeline(self.exp, self.options)
+                precomputed_queries=pipeline.precomputed_queries
             if self.options.get("run_experiment", True):
-                kw_trainer=KeywordTrainer(self.exp, self.options)
+                if not precomputed_queries:
+                    precomputed_queries_file_path=self.exp.get("precomputed_queries_file_path",None)
+                    if not precomputed_queries_file_path:
+                        precomputed_queries_file_path=os.path.join(self.exp["exp_dir"],self.exp.get("precomputed_queries_filename","precomputed_queries.json"))
+                    precomputed_queries=json.load(open(precomputed_queries_file_path,"r"))
+                kw_trainer=KeywordTrainer(self.exp, self.options, precomputed_queries)
                 kw_trainer.trainKeywords()
 
         elif self.exp["type"] in ["", "do_nothing"]:
