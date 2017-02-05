@@ -346,7 +346,7 @@ class WeightTrainer(object):
                          "match_guid":result["match_guid"]}
 
             if not retrieved or len(retrieved)==0:    # the query was empty or something
-##                print "Error: ", doc_method , qmethod,tfidfmodels[method].indexDir
+##                print "Error: ", doc_method , qmethod,retrieval_models[method].indexDir
 ##                logger.addResolutionResult(guid,m,doc_position,qmethod,doc_method ,0,0,0)
                 result_dict["mrr_score"]=0
                 result_dict["precision_score"]=0

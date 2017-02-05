@@ -28,49 +28,6 @@ class PrecomputedPipeline(BaseTestingPipeline):
         super(PrecomputedPipeline, self).__init__(retrieval_class=retrieval_class, use_celery=use_celery)
         self.writers={}
 
-
-    def addResult(self, file_guid, precomputed_query, doc_method, retrieved_results):
-        """
-            Overrides BaseTestingPipeline.addResult so that for each retrieval result
-            we actually run .explain() on each item and we store the precomputed
-            formula.
-        """
-        doc_list=[hit[1]["guid"] for hit in retrieved_results]
-
-        for zone_type in ["csc_type", "az"]:
-            if precomputed_query.get(zone_type,"") != "":
-                if self.writers[zone_type+"_"+precomputed_query[zone_type].strip()].getResultCount() < self.max_per_class_results:
-                    must_process=True
-                else:
-                    must_process=False
-                    # TODO this is redundant now. Merge this into base_pipeline.py?
-                    print(u"Too many queries of type {} already".format(precomputed_query[zone_type]))
-##                  assert(False)
-
-        if not must_process:
-            return
-
-        if self.use_celery:
-            print("Adding subtask to queue...")
-            self.tasks.append(precomputeFormulasTask.apply_async(args=[
-                                                 precomputed_query,
-                                                 doc_method,
-                                                 doc_list,
-                                                 self.tfidfmodels[doc_method].index_name,
-                                                 self.exp["name"],
-                                                 self.exp["experiment_id"],
-                                                 self.exp["max_results_recall"]],
-                                                 queue="precompute_formulas"))
-        else:
-            addPrecomputeExplainFormulas(precomputed_query,
-                                         doc_method,
-                                         doc_list,
-                                         self.tfidfmodels[doc_method],
-                                         self.writers,
-                                         self.exp["experiment_id"],
-                                         )
-
-
     def createWriterInstances(self):
         """
             Initializes the writer instances.
@@ -106,6 +63,49 @@ class PrecomputedPipeline(BaseTestingPipeline):
 
         assert self.exp["name"] != "", "Experiment needs a name!"
         self.createWriterInstances()
+
+
+    def addResult(self, file_guid, precomputed_query, doc_method, retrieved_results):
+        """
+            Overrides BaseTestingPipeline.addResult so that for each retrieval result
+            we actually run .explain() on each item and we store the precomputed
+            formula.
+        """
+        doc_list=[hit[1]["guid"] for hit in retrieved_results]
+
+        for zone_type in ["csc_type", "az"]:
+            if precomputed_query.get(zone_type,"") != "":
+                if self.writers[zone_type+"_"+precomputed_query[zone_type].strip()].getResultCount() < self.max_per_class_results:
+                    must_process=True
+                else:
+                    must_process=False
+                    # TODO this is redundant now. Merge this into base_pipeline.py?
+                    print(u"Too many queries of type {} already".format(precomputed_query[zone_type]))
+##                  assert(False)
+
+        if not must_process:
+            return
+
+        if self.use_celery:
+            print("Adding subtask to queue...")
+            self.tasks.append(precomputeFormulasTask.apply_async(args=[
+                                                 precomputed_query,
+                                                 doc_method,
+                                                 doc_list,
+                                                 self.retrieval_models[doc_method].index_name,
+                                                 self.exp["name"],
+                                                 self.exp["experiment_id"],
+                                                 self.exp["max_results_recall"]],
+                                                 queue="precompute_formulas"))
+        else:
+            addPrecomputeExplainFormulas(precomputed_query,
+                                         doc_method,
+                                         doc_list,
+                                         self.retrieval_models[doc_method],
+                                         self.writers,
+                                         self.exp["experiment_id"],
+                                         )
+
 
     def saveResultsAndCleanUp(self):
         """

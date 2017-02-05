@@ -97,36 +97,56 @@ def getFormulaTermWeights(unique_result):
     return match_result
 
 
-def selectKeywordsNBest(precomputed_query, doc_list, retrieval_model, parameters):
+class BaseKeywordSelector(object):
     """
-        Returns a selection of matching keywords for the document that should
-        maximize its score
-
-        Simplest implementation: take N-best keywords from the explanation for
-        that paper
-
-        :param precomputed_query: dict with the citation/doc details plus the structured_query
-        :param doc_list: list of retrieval results
-        :param retrieval_model: retrieval model we can use to get explanations from
-        :param parameters: dict with {"N": <number>} for N-best
     """
-    res=[]
+    def __init__(self):
+        """
+        """
 
-    # currently using only the document
-    formula=retrieval_model.formulaFromExplanation(precomputed_query, precomputed_query["match_guid"])
+    def selectKeywords(self, precomputed_query, doc_list, retrieval_model, parameters):
+        """
+        """
+        pass
 
-    term_scores=getDictOfTermScores(formula.formula,"max")
-    terms=sorted(term_scores.iteritems(),key=lambda x:x[1], reverse=True)
-    return terms[:parameters["N"]]
+class NBestSelector(BaseKeywordSelector):
+    """
+        Selects just the general top scoring keywords from the query
+    """
+    def __init__(self):
+        """
+        """
 
-##    raise ValueError("match_guid not found in formulas")
+    def selectKeywords(self, precomputed_query, doc_list, retrieval_model, parameters):
+        """
+            Returns a selection of matching keywords for the document that should
+            maximize its score
+
+            Simplest implementation: take N-best keywords from the explanation for
+            that paper
+
+            :param precomputed_query: dict with the citation/doc details plus the structured_query
+            :param doc_list: list of retrieval results
+            :param retrieval_model: retrieval model we can use to get explanations from
+            :param parameters: dict with {"N": <number>} for N-best
+        """
+        res=[]
+
+        # currently using only the document
+        formula=retrieval_model.formulaFromExplanation(precomputed_query, precomputed_query["match_guid"])
+
+        term_scores=getDictOfTermScores(formula.formula,"max")
+        terms=sorted(term_scores.iteritems(),key=lambda x:x[1], reverse=True)
+        return terms[:parameters["N"]]
+
+    ##    raise ValueError("match_guid not found in formulas")
 
 
-def evaluateKeywordSelection(precomputed_queries):
+def evaluateKeywordSelection(precomputed_queries, extracted_keywords):
     """
         Get the batch scores and averages of a set of queries
     """
-    pass
+
 
 
 def main():

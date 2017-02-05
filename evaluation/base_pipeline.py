@@ -39,7 +39,7 @@ class BaseTestingPipeline(object):
         self.exp=None
         self.options=None
         self.precomputed_queries=[]
-        self.tfidfmodels={}
+        self.retrieval_models={}
         self.files_dict={}
         self.main_all_doc_methods={}
         self.current_all_doc_methods={}
@@ -54,7 +54,7 @@ class BaseTestingPipeline(object):
         """
         for model in self.files_dict[guid]["tfidf_models"]:
             # create a search instance for each method
-            self.tfidfmodels[model["method"]]=self.retrieval_class(
+            self.retrieval_models[model["method"]]=self.retrieval_class(
                 model["actual_dir"],
                 model["method"],
                 logger=None,
@@ -140,7 +140,7 @@ class BaseTestingPipeline(object):
             Fills dict with all the test methods, parameters and options, including
             the retrieval instances
         """
-        self.tfidfmodels={}
+        self.retrieval_models={}
         all_doc_methods=None
 
         if self.exp.get("doc_methods", None):
@@ -159,7 +159,7 @@ class BaseTestingPipeline(object):
         if self.exp["full_corpus"]:
             for model in self.files_dict["ALL_FILES"]["tfidf_models"]:
                 # create a search instance for each method
-                self.tfidfmodels[model["method"]]=self.retrieval_class(
+                self.retrieval_models[model["method"]]=self.retrieval_class(
                         model["actual_dir"],
                         model["method"],
                         logger=None,
@@ -262,7 +262,7 @@ class BaseTestingPipeline(object):
 ##                self.logger.logReport(precomputed_query["query_text"]+"\n")
 
             # ACTUAL RETRIEVAL HAPPENING - run query
-            retrieved=self.tfidfmodels[doc_method].runQuery(
+            retrieved=self.retrieval_models[doc_method].runQuery(
                 precomputed_query,
                 addExtraWeights(all_doc_methods[doc_method]["runtime_parameters"], self.exp),
                 guid,
@@ -305,7 +305,7 @@ class BaseTestingPipeline(object):
         self.max_per_class_results=self.exp.get("max_per_class_results",self.max_per_class_results)
         self.per_class_count=defaultdict(lambda:0)
         if self.exp.get("similiarity_tie_breaker",0):
-            for model in self.tfidfmodels.items():
+            for model in self.retrieval_models.items():
                 model.tie_breaker=self.exp["similiarity_tie_breaker"]
 
         self.startLogging()

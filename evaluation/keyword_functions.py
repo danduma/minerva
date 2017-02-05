@@ -38,7 +38,8 @@ def annotateKeywords(precomputed_query,
                      experiment_id,
                      context_extraction,
                      extraction_parameter,
-                     keyword_selection_method):
+                     keyword_selector_class,
+                     keyword_selection_parameters):
     """
         Creates an annotated context.
 
@@ -73,14 +74,16 @@ def annotateKeywords(precomputed_query,
     # these are the default scores that you get by just using the whole bag of words as a query
     measureScores(doc_list, precomputed_query["match_guid"], kw_data, cit.get("multi",1))
 
-    keyword_selection_method=getattr(keyword_selection, self.exp["keyword_selection_method"], None)
-    assert(keyword_selection_method)
+    keyword_selector_class=getattr(keyword_selection, keyword_selector_class, None)
+    assert(keyword_selector_class)
 
-    selected_keywords=keyword_selection_method(precomputed_query,
-                                               doc_list,
-                                               retrieval_model,
-                                               self.exp["keyword_selection_parameters"]
-                                               )
+    keyword_selector=keyword_selector_class()
+
+    selected_keywords=keyword_selector.selectKeywords(precomputed_query,
+                                                       doc_list,
+                                                       retrieval_model,
+                                                       keyword_selection_parameters
+                                                       )
 
     kw_data["best_kws"]=selected_keywords
     if len(kw_data["best_kws"])==0:
@@ -90,11 +93,11 @@ def annotateKeywords(precomputed_query,
     all_kws={x[0]:x[1] for x in kw_data["best_kws"]}
 
     # need to annotate this per token?
-    for sent in docfrom.allsentences:
-        for token in sent["token_features"]:
-            if token["text"] in all_kws:
-                token["extract"]=True
-                token["weight"]=all_kws[token["text"]]
+##    for sent in docfrom.allsentences:
+##        for token in sent["token_features"]:
+##            if token["text"] in all_kws:
+##                token["extract"]=True
+##                token["weight"]=all_kws[token["text"]]
 ##    print(kw_data["best_kws"])
 ##    print("\n")
 

@@ -7,7 +7,7 @@
 
 from __future__ import print_function
 
-import json, sys, time, os
+import json, sys, time, os, glob
 
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionTimeout, ConnectionError, TransportError
@@ -68,7 +68,7 @@ class ElasticResultStorer(object):
         self.connect()
         self.createTable()
 
-    def connect(self, ):
+    def connect(self):
         """
             Connect to elasticsearch server
         """
@@ -298,15 +298,17 @@ class ResultIncrementalReader(object):
             for cnt in range(min(len(self.res_ids)-int(key),self.bufsize)):
                 self.ids_held[key+cnt]=self.retrieveItem(self.res_ids[key+cnt])
 
-    def __getitem__(self, key):
+    def __getitem__(self, index):
         """
+            If there is an element at [index], return it
+        """
+        if index >= len(self.res_ids):
+            raise ValueError("No element at index %d" % index)
 
-        """
-        if key not in self.ids_held:
-            self.fillBuffer(key)
-            return self.ids_held[key]
-        else:
-            return self.ids_held[key]
+        if index not in self.ids_held:
+            self.fillBuffer(index)
+
+        return self.ids_held[index]
 
     def __iter__(self):
         """
@@ -343,8 +345,16 @@ class ResultDiskReader(ResultIncrementalReader):
         ensureDirExists(cache_dir)
         ensureDirExists(self.own_dir)
 
+    def __getitem__(self, index):
+        """
+            Calls retrieveItem
+        """
+        return self.retrieveItem(self.res_ids[index])
+
     def retrieveItem(self, res_id):
         """
+            Reads the item from disk if it exists, otherwise it downloads and
+            stores it, then returns it
         """
         res_path=os.path.join(self.own_dir,res_id+".json")
         if os.path.exists(res_path):
@@ -362,11 +372,86 @@ class ResultDiskReader(ResultIncrementalReader):
         new=ResultDiskReader(self.result_storer, self.cache_dir, res_ids=[self.res_ids[i] for i in items])
         return new
 
+    def emptyCache(self):
+        """
+            Deletes all files in the cache directory
+        """
+        for file_name in os.listdir(self.own_dir):
+            file_path = os.path.join(self.own_dir, file_name)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+            except Exception as e:
+                print(e)
+
     def cacheAllItems(self):
         """
             Forces to download and locally cache all of the items
         """
-        self.fillBuffer(len(self.res_ids)-1)
+        for res_id in self.res_ids:
+            res_path=os.path.join(self.own_dir,res_id+".json")
+            if not os.path.exists(res_path):
+                res=self.result_storer.getResult(res_id)
+                json.dump(res,file(res_path,"w"))
+
+class OfflineResultReader(ResultIncrementalReader):
+    """
+        A reader that assumes all items have been saved offline
+    """
+    def __init__(self, table_name, cache_dir, res_ids=None, max_results=sys.maxint):
+        """
+            Creates cache directory if it doesn't exist
+        """
+        if res_ids:
+            self.res_ids=res_ids
+        else:
+            self.res_ids=[]
+
+        self.cache_dir=cache_dir
+        self.table_name=table_name
+        self.own_dir=os.path.join(cache_dir, table_name)
+        ensureDirExists(cache_dir)
+        ensureDirExists(self.own_dir)
+        self.getResultList()
+
+    def getResultList(self):
+        """
+            Loads all ids_held from
+        """
+##        all_files = [f for f in listdir(self.own_dir) if isfile(join(self.own_dir, f))]
+        all_files=glob.glob(os.path.join(self.own_dir,"*.json"))
+        self.res_ids=[]
+        for filename in all_files:
+            file_id=os.path.splitext(os.path.basename(filename))[0]
+            self.res_ids.append(file_id)
+
+    def __getitem__(self, key):
+        """
+
+        """
+        return self.retrieveItem(self.res_ids[key])
+
+
+    def retrieveItem(self, res_id):
+        """
+            Reads the item from disk if it exists, raises exception otherwise
+        """
+        res_path=os.path.join(self.own_dir,res_id+".json")
+        if os.path.exists(res_path):
+            return json.load(file(res_path,"r"))
+        else:
+            raise ValueError("Res_id %s not found" % res_id)
+
+    def __len__(self):
+        return len(self.res_ids)
+
+    def subset(self, items):
+        """
+            Selects a subset of the items it holds, returns a new instance with
+            those
+        """
+        new=OfflineResultReader(self.table_name, self.cache_dir, res_ids=[self.res_ids[i] for i in items])
+        return new
 
 def basicTest():
     """

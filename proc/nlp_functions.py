@@ -80,7 +80,7 @@ stopwords_list=["a","able","about","above","according","accordingly","across",
 
 stopwords=["~", "the", "and", "or", "not", "of", "to", "from", "by", "with", "a", "an"]
 stopwords.extend(punctuation)
-CIT_MARKER="__cit__"
+CIT_MARKER="__cit"
 PAR_MARKER="__par__"
 BR_MARKER="__br__"
 
@@ -157,14 +157,14 @@ def replaceCitationTokensForParsing(text):
     """
         Substitutes all <CIT> elements in the sentence with __cit__
     """
-    return re.sub(r"<CIT ID=(.*?)\s?/>",r"__cit\1__", text)
+    return re.sub(r"<CIT ID=\w*?(\d+)\s?/>",r"__cit\1", text)
 
 
 def getCitationNumberFromToken(text):
     """
         Returns the citation number from a single-token citation
     """
-    match=re.search(r"__cit(\d+)__",text,flags=re.IGNORECASE)
+    match=re.search(r"__cit(\d+)",text,flags=re.IGNORECASE)
     if not match:
         return None
     return int(match.group(1))

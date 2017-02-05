@@ -7,12 +7,12 @@
 
 from __future__ import print_function
 
-import time
+import time, os
 from celery.result import ResultSet
 
 import minerva.db.corpora as cp
 from minerva.evaluation.keyword_functions import annotateKeywords
-from minerva.db.result_store import ElasticResultStorer
+from minerva.db.result_store import ElasticResultStorer, ResultDiskReader
 from minerva.retrieval.base_retrieval import BaseRetrieval
 from minerva.multi.tasks import annotateKeywordsTask
 from minerva.evaluation.precomputed_pipeline import PrecomputedPipeline
@@ -53,12 +53,12 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
             on each document from which a query was extracted
         """
         if self.options.get("run_feature_annotation",False):
-
-            annotator=DocumentFeaturesAnnotator(self.exp["features_index_name"])
+            annotator=DocumentFeaturesAnnotator(self.exp["features_index_name"], field_name=self.exp.get("features_field_name","text"))
             all_guids=set()
             for query in self.precomputed_queries:
                 all_guids.add(query["file_guid"])
 
+            print("Annotating %d documents" % len(all_guids))
             progress=ProgressIndicator(True,len(all_guids),True)
 
             for guid in all_guids:
@@ -75,26 +75,6 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
         doc_list=[hit[1]["guid"] for hit in retrieved_results]
 
         # TODO restrict by query types?
-        keyword_selection_method=getattr(keyword_selection, self.exp["keyword_selection_method"], None)
-        assert(keyword_selection_method)
-
-        selected_keywords=keyword_selection_method(precomputed_query,
-                                                   doc_list,
-                                                   self.tfidfmodels[doc_method],
-                                                   self.exp["keyword_selection_parameters"]
-                                                   )
-##        precomputed_query, doc_list, retrieval_model, N=10)
-
-##        for zone_type in ["csc_type", "az"]:
-##            if precomputed_query.get(zone_type,"") != "":
-##                if self.writers[zone_type+"_"+precomputed_query[zone_type].strip()].getResultCount() < self.max_per_class_results:
-##                    must_process=True
-##                else:
-##                    must_process=False
-##                    # TODO this is redundant now. Merge this into base_pipeline.py?
-##                    print(u"Too many queries of type {} already".format(precomputed_query[zone_type]))
-##        if not must_process:
-##            return
 
         if self.current_guid != file_guid:
             self.current_guid=file_guid
@@ -109,12 +89,13 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
                                                  precomputed_query,
                                                  doc_method,
                                                  doc_list,
-                                                 self.tfidfmodels[doc_method].index_name,
+                                                 self.retrieval_models[doc_method].index_name,
                                                  self.exp["name"],
                                                  self.exp["experiment_id"],
                                                  self.exp["context_extraction"],
                                                  self.exp["context_extraction_parameter"],
-                                                 self.exp["keyword_selection_method"],
+                                                 self.exp["keyword_selector"],
+                                                 self.exp["keyword_selection_parameters"],
                                                  self.exp["max_results_recall"]],
                                                  queue="annotate_keywords"))
         else:
@@ -122,22 +103,19 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
                              self.current_doc,
                              doc_method,
                              doc_list,
-                             self.tfidfmodels[doc_method],
+                             self.retrieval_models[doc_method],
                              self.writers,
                              self.exp["experiment_id"],
                              self.exp["context_extraction"],
                              self.exp["context_extraction_parameter"],
-                             self.exp["keyword_selection_method"],
+                             self.exp["keyword_selector"],
+                             self.exp["keyword_selection_parameters"],
                              )
 
-
-    def saveResultsAndCleanUp(self):
+    def saveMissingFiles(self):
         """
-            Executes after the retrieval is done.
-
-            Should the results be saved?
+            Saves a list of all missing files in the output directory
         """
-
         with open(r"C:\NLP\PhD\aac\output\missing_files.csv", "w", ) as f:
             f.write("file_guid,match_guid,query,match_title,match_year,in_papers\n")
             for mfile in MISSING_FILES:
@@ -152,6 +130,17 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
                     else:
                         f.write("\n")
 
+
+    def saveResultsAndCleanUp(self):
+        """
+            Executes after the retrieval is done.
+
+            Should the results be saved?
+        """
+        reader=ResultDiskReader(self.writers["ALL"],os.path.join(self.exp["exp_dir"], "cache"))
+        reader.emptyCache()
+        reader.cacheAllItems()
+
         if self.use_celery:
             print("Waiting for tasks to complete...")
             res=ResultSet(self.tasks)
@@ -163,11 +152,11 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
                     break
             print("All tasks finished.")
 
+        if self.options.get("list_missing_files",False):
+            self.saveMissingFiles()
+
 ##        for writer in self.writers:
 ##            self.writers[writer].saveAsJSON(os.path.join(self.exp["exp_dir"],self.writers[writer].table_name+".json"))
-
-
-
 
 def main():
     pass

@@ -197,7 +197,7 @@ experiment={
 ##    "weight_values":[],
     # use full-collection retrival? If False, it runs "citation resolution"
     "full_corpus":True,
-    # "compute_once", "train_weights", "extract_kw"
+    # "compute_once", "train_weights", "test_selectors", "extract_kw"
     "type":"extract_kw",
     # If full_corpus, this is the cut-off year for including documents in the general index.
     # In this way we can separate test files and retrieval files.
@@ -226,11 +226,15 @@ experiment={
     "context_extraction_parameter":"2up_2down",
 
     # how to choose the top keywords for a citation
-    "keyword_selection_method":"selectKeywordsNBest",
+    "keyword_selector":"NBestSelector",
     # parameters to keyword selection method
     "keyword_selection_parameters":{"N":10},
     # exact name of index to use for extracting idf scores etc. for document feature annotation
-    "features_index_name":"idx_full_text_aac_2010_1"
+    "features_index_name":"idx_full_text_aac_2010_1",
+    # this is the classifier type we are training
+    "keyword_extractor_class": "SVMKeywordExtractor",
+    # parameters for the extractor
+    "keyword_extractor_parameters": {},
 }
 
 
@@ -240,13 +244,14 @@ options={
     "rebuild_indexes":0,   # rebuild indices?
     "compute_queries":0,   # precompute the queries?
     "overwrite_existing_queries":0,  # force rebuilding of queries too?
-    "clear_existing_prr_results":False, # delete previous precomputed results? i.e. start from scratch
+    "clear_existing_prr_results":0, # delete previous precomputed results? i.e. start from scratch
     "override_folds":4,
     "override_metric":"avg_ndcg",
 
-    "run_experiment":0,
-    "run_precompute_retrieval":1,  # only applies if type == "train_weights" or "extract_kw". This is necessary for annotation! And this is because each pipeline may do different annotation
-    "run_feature_annotation":1,    # annotate documents with features for keyword extraction? By default, False
+    "run_experiment":1,
+    "run_precompute_retrieval":0,  # only applies if type == "train_weights" or "extract_kw". This is necessary for annotation! And this is because each pipeline may do different annotation
+##    "run_feature_annotation":1,    # annotate documents with features for keyword extraction? By default, False
+    "run_package_features":0, # should we read the cache and repackage all feature information, or use it if it exists already?
 }
 
 def main():
