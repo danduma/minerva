@@ -42,7 +42,10 @@ class SciDoc(object):
     """
     def __init__(self, data=None, ignore_errors=None):
         """
+            :param data: either a string (file name) or a dict from which to load the
+                         scidoc
             :param ignore_errors: a list of errors to ignore.
+
         """
         # the actual contents, as serialized to JSON
         self.data={

@@ -131,6 +131,9 @@ class BaseTestingPipeline(object):
         if not precomputed_queries_file_path:
             precomputed_queries_file_path=os.path.join(self.exp["exp_dir"],self.exp.get("precomputed_queries_filename","precomputed_queries.json"))
         self.precomputed_queries=json.load(open(precomputed_queries_file_path,"r"))
+
+        self.precomputed_queries=self.precomputed_queries[self.options.get("start_at",0):]
+
         files_dict_filename=os.path.join(self.exp["exp_dir"],self.exp.get("files_dict_filename","files_dict.json"))
         self.files_dict=json.load(open(files_dict_filename,"r"))
         self.files_dict["ALL_FILES"]={}
@@ -201,6 +204,11 @@ class BaseTestingPipeline(object):
     def addResult(self, file_guid, precomputed_query, doc_method, retrieved_results):
         """
             Adds a normal (successful) result to the result log.
+
+            :param file_guid: the GUID of the file that the citation is IN
+            :param precomputed_query: a dict with the precomputed query
+            :param doc_method: current doc_method we are testing (way of indexing the documents)
+            :param retrieved_results: list of all GUIDs retrieved with the query. Used to measure score.
         """
         result_dict=self.newResultDict(file_guid, precomputed_query, doc_method)
         self.logger.measureScoreAndLog(retrieved_results, precomputed_query["citation_multi"], result_dict)

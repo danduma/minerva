@@ -19,6 +19,7 @@ from elasticsearch import ConnectionError
 
 from minerva.proc.nlp_functions import (stopwords, replaceCitationTokensForParsing,
 getCitationNumberFromToken, getFirstNumberFromString)
+from minerva.proc.general_utils import cleanxml
 import minerva.db.corpora as cp
 
 
@@ -141,7 +142,7 @@ def annotateTokenDistanceFromCitations(doc,
         cit_pos=getCitationTokenPosition(cit_num, all_tokens)
 
         if not cit_pos:
-            print("Error: couldn't find citation ",cit["id"])
+##            print("Error: couldn't find citation ",cit["id"]) # not really an error, it's just that the citation is outside of the window
             continue
 
         dict_key="dist_cit_"+str(cit_num)
@@ -191,7 +192,9 @@ class DocumentFeaturesAnnotator(object):
 ##        tf = vector.tf_
 ##        tf_scores=dict(zip(vector.get_feature_names(), tf))
         for sent in doc.allsentences:
-            parse = en_nlp(replaceCitationTokensForParsing(sent["text"]))
+            text=replaceCitationTokensForParsing(sent["text"])
+            text=cleanxml(text)
+            parse = en_nlp(text)
             all_parses[sent["id"]]=parse
 
         tokens=[]
@@ -202,7 +205,7 @@ class DocumentFeaturesAnnotator(object):
         tf_scores=get_tf_scores(tokens)
         df_scores=getElasticTermScores(doctext,self.index_name,self.field_name)
         if len(df_scores) > 0:
-            df_scores=df_scores["text"]["terms"]
+            df_scores=df_scores[self.field_name]["terms"]
         numDocs=getElasticTotalDocs(self.index_name, self.doc_type)
 
         for sent in doc.allsentences:
@@ -213,8 +216,8 @@ class DocumentFeaturesAnnotator(object):
 ##            print("\n")
             for token in parse:
                 text=token.lower_
-                if text.startswith("__"):
-                    print ("FOUND: %s" % text)
+##                if text.startswith("__"):
+##                    print ("FOUND: %s" % text)
                 tf=tf_scores.get(text,1)
 ##                tf=df_scores.get(text,{}).get("term_freq",1)
                 df=df_scores.get(text,{}).get("doc_freq",0)
@@ -238,7 +241,7 @@ class DocumentFeaturesAnnotator(object):
 
                 cit_id=getCitationNumberFromToken(text)
                 if cit_id is not None:
-                    print("From %s we got cit_id %d" % (text,cit_id))
+##                    print("From %s we got cit_id %d" % (text,cit_id))
                     features["cit_num"]=cit_id
                     features["token_type"]="c"
                 elif token.is_punct:

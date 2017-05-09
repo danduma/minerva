@@ -20,6 +20,7 @@ from minerva.ml.document_features import DocumentFeaturesAnnotator
 from minerva.proc.results_logging import ProgressIndicator
 import minerva.evaluation.keyword_selection
 from minerva.evaluation.keyword_functions import MISSING_FILES
+from minerva.evaluation.weight_functions import addExtraWeights
 
 class KeywordTrainingPipeline(PrecomputedPipeline):
     """
@@ -83,6 +84,8 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
         if precomputed_query["match_guid"] not in doc_list:
             doc_list.append(precomputed_query["match_guid"])
 
+        weights=addExtraWeights(self.main_all_doc_methods[doc_method]["runtime_parameters"], self.exp)
+
         if self.use_celery:
             print("Adding subtask to queue...")
             self.tasks.append(annotateKeywordsTask.apply_async(args=[
@@ -96,7 +99,9 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
                                                  self.exp["context_extraction_parameter"],
                                                  self.exp["keyword_selector"],
                                                  self.exp["keyword_selection_parameters"],
-                                                 self.exp["max_results_recall"]],
+                                                 self.exp["max_results_recall"],
+                                                 weights,
+                                                 ],
                                                  queue="annotate_keywords"))
         else:
             annotateKeywords(precomputed_query,
@@ -110,13 +115,15 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
                              self.exp["context_extraction_parameter"],
                              self.exp["keyword_selector"],
                              self.exp["keyword_selection_parameters"],
+                             weights
                              )
 
     def saveMissingFiles(self):
         """
             Saves a list of all missing files in the output directory
         """
-        with open(r"C:\NLP\PhD\aac\output\missing_files.csv", "w", ) as f:
+        file_path=os.path.join(self.exp["exp_dir"],r"output\missing_files.csv")
+        with open(file_path, "w", ) as f:
             f.write("file_guid,match_guid,query,match_title,match_year,in_papers\n")
             for mfile in MISSING_FILES:
                 for index,item in enumerate(mfile):
@@ -131,15 +138,21 @@ class KeywordTrainingPipeline(PrecomputedPipeline):
                         f.write("\n")
 
 
+    def cacheResultsLocally(self):
+        """
+            Downloads all results from elastic to json in the experiment directory
+        """
+        reader=ResultDiskReader(self.writers["ALL"],os.path.join(self.exp["exp_dir"], "cache"))
+        reader.emptyCache()
+        reader.cacheAllItems()
+
     def saveResultsAndCleanUp(self):
         """
             Executes after the retrieval is done.
 
             Should the results be saved?
         """
-        reader=ResultDiskReader(self.writers["ALL"],os.path.join(self.exp["exp_dir"], "cache"))
-        reader.emptyCache()
-        reader.cacheAllItems()
+        self.cacheResultsLocally()
 
         if self.use_celery:
             print("Waiting for tasks to complete...")

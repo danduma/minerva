@@ -15,110 +15,20 @@ from minerva.evaluation.experiment import Experiment
 # BOW files to prebuild for generating document representation.
 prebuild_bows={
 "full_text":{"function":"getDocBOWfull", "parameters":[1]},
-##"title_abstract":{"function":"getDocBOWTitleAbstract", "parameters":[1]},
-##"passage":{"function":"getDocBOWpassagesMulti", "parameters":[150,175,200,250,300,350,400,450]},
-##"inlink_context":{"function":"generateDocBOWInlinkContext", "parameters":[200] },
-##"ilc_AZ":{"function":"generateDocBOW_ILC_Annotated", "parameters":["paragraph","1up_1down","1up","1only"] },
-##"az_annotated":{"function":"getDocBOWannotated", "parameters":[1]},
-##"section_annotated":{"function":"getDocBOWannotatedSections", "parameters":[1]},
+
 }
 
 # bow_name is just about the name of the file containing the BOWs
 prebuild_indeces={
-##    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
-##    "title_abstract":{"type":"standard_multi", "bow_name":"title_abstract", "parameters":[1]},
-##    "passage":{"type":"standard_multi", "bow_name":"passage", "parameters":[150,175,200,250,300,350,400,450]},
-##    "inlink_context":{"type":"standard_multi", "bow_name":"inlink_context", "parameters":[5, 10, 15, 20, 30, 40, 50]},
-##    "inlink_context_year":{"type":"standard_multi", "bow_name":"inlink_context", "parameters":[5, 10, 15, 20, 30, 40, 50], "options":{"max_year":True}},
-##    "az_annotated_aac_2010":{"type":"standard_multi",
-##                             "bow_name":"az_annotated", # bow to load
-##                             "parameters":[1], # parameter has to match a parameter of a prebuilt bow
-##                             },
-##    "section_annotated":{"type":"standard_multi", "bow_methods":[("section_annotated",[1])], "parameters":[1]},
-
-##    # this is just ilc but split by AZ
-##    "ilc_AZ":{"type":"standard_multi", "bow_name":"ilc_AZ", "parameters":["paragraph","1up_1down","1up","1only"]},
-
-##    "ilc_full_text":{"type":"ilc_mashup", "ilc_method":"inlink_context", "mashup_method":"full_text", "ilc_parameters":[10,20,30, 40, 50], "parameters":[1]},
-##    "ilc_year_full_text":{"type":"ilc_mashup", "ilc_method":"inlink_context", "mashup_method":"full_text", "ilc_parameters":[10,20,30, 40, 50], "parameters":[1], "options":{"max_year":True}},
-##    "ilc_section_annotated":{"type":"ilc_mashup", "ilc_method":"inlink_context", "mashup_method":"section_annotated", "ilc_parameters":[10,20,30, 40, 50], "parameters":[1]},
-##    "ilc_passage":{"type":"ilc_mashup", "ilc_method":"inlink_context", "mashup_method":"passage","ilc_parameters":[5, 10, 20, 30, 40, 50], "parameters":[250,300,350]},
-
-# this is just normal az_annotated + normal ilc
-####    "ilc_az_annotated":{"type":"ilc_mashup", "ilc_method":"inlink_context",  "mashup_method":"az_annotated", "ilc_parameters":[5, 10,20,30, 40, 50], "parameters":[1]},
-##
-####    # this is az-annotated text + az-annotated ilc
-####    "az_ilc_az_":{"type":"ilc_mashup", "ilc_method":"ilc_AZ", "mashup_method":"az_annotated", "ilc_parameters":["paragraph","1up_1down","1up","1only"], "parameters":[1]},
 }
 
 # the name of the index is important, should be unique
 prebuild_general_indexes={
     "full_text_aac_2010":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
-##    "ilc_full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
-##    "az_annotated_aac_2010":{"type":"standard_multi",
-##                             "bow_name":"az_annotated", # bow to load
-##                             "parameters":[1], # parameter has to match a parameter of a prebuilt bow
-##                             "max_year":2010 # cut-off point for adding files to index
-##                             },
 }
 
 doc_methods={
-    "full_text":{"type":"standard_multi", "index":"full_text_aac_2010", "parameters":[1], "runtime_parameters":["text"]},
-##    "title_abstract":{"type":"standard_multi", "index":"title_abstract", "parameters":[1], "runtime_parameters":{"text":"1"}},
-##    "passage":{"type":"standard_multi", "index":"passage", "parameters":[250,350,400], "runtime_parameters":{"text":"1"}},
-##
-##    "inlink_context":{"type":"standard_multi", "index":"inlink_context",
-##        "parameters": [10, 20, 30], "runtime_parameters":{"inlink_context":"1"}},
-##
-##    "inlink_context_year":{"type":"standard_multi", "index":"inlink_context_year",
-##        "parameters": [10, 20, 30], "runtime_parameters":{"inlink_context":"1"}},
-##
-##    "ilc_passage":{"type":"ilc_mashup",  "index":"ilc_passage", "mashup_method":"passage","ilc_parameters":[10, 20, 30, 40, 50],
-##        "parameters":[250,350], "runtime_parameters":{"text":"1","inlink_context":"1"}},
-
-##    "az_annotated":{"type":"annotated_boost", "index":"az_annotated_aac_2010", "parameters":[1], "runtime_parameters":{
-##        "AZ_ALL":AZ_ZONES_LIST,
-####        "CSC_ALL":CORESC_LIST,
-##        }},
-
-##    "section":{"type":"annotated_boost", "index":"section_annotated", "parameters":[1], "runtime_parameters":
-##        {
-##        "title_abstract":{"title":"1","abstract":"1"},
-##         "full_text":["title","abstract","text"],
-##        }},
-##
-##    "ilc":{"type":"ilc_annotated_boost", "index":"ilc_section_annotated", "ilc_parameters":[10, 20, 30, 40, 50], "parameters":[1], "runtime_parameters":
-##        {
-##         "title_abstract":["title","abstract","inlink_context"],
-##         "full_text":["title", "abstract","text","inlink_context"],
-##        }},
-
-    # this is normal ilc + az_annotated
-##    "ilc_az_annotated":{"type":"ilc_annotated_boost", "index":"ilc_az_annotated", "parameters":[1], "ilc_parameters":[10, 20, 30, 40, 50], "runtime_parameters":
-##        {"ALL":["AIM","BAS","BKG","CTR","OTH","OWN","TXT","inlink_context"],
-##        }},
-
-    # this is sentence-based ILC, annotated with AZ and CSC
-##    "ilc_AZ":{"type":"annotated_boost", "index":"ilc_AZ", "parameters":["paragraph","1up_1down","1up","1only"], "runtime_parameters":
-##        {
-##        "ALL":["ilc_AZ_AIM","ilc_AZ_BAS","ilc_AZ_BKG","ilc_AZ_CTR","ilc_AZ_OTH","ilc_AZ_OWN","ilc_AZ_TXT"]
-##        }},
-
-##    "ilc_AZ":{"type":"annotated_boost", "index":"ilc_AZ", "parameters":["paragraph"], "runtime_parameters":
-##        {
-##        "AZ":["ilc_AZ_AIM","ilc_AZ_BAS","ilc_AZ_BKG","ilc_AZ_CTR","ilc_AZ_OTH","ilc_AZ_OWN","ilc_AZ_TXT"],
-##        "CSC": ["ilc_CSC_"+zone for zone in CORESC_LIST],
-##        }},
-
-    # this is sentence-based AZ and AZ-annotated document contents
-##    "az_ilc_az":{"type":"ilc_annotated_boost", "index":"az_ilc_az", "parameters":[],
-##        "ilc_parameters":["1only","1up","1up1down","paragraph"],
-##        "runtime_parameters":
-##        {
-##        "ALL":["ilc_AZ_AIM","ilc_AZ_BAS","ilc_AZ_BKG","ilc_AZ_CTR","ilc_AZ_OTH","ilc_AZ_OWN","ilc_AZ_TXT","ilc_AZ_AIM"],
-######         "OTH":{"AIM":"0","BAS":"0","BKG":"0","CTR":"0","OTH":"1","OWN":"0","TXT":"0","inlink_context":1},
-######         "OWN":{"AIM":"0","BAS":"0","BKG":"0","CTR":"0","OTH":"0","OWN":"1","TXT":"0","inlink_context":1},
-##        }},
+    "full_text":{"type":"standard_multi", "index":"full_text_aac_2010", "parameters":[1], "runtime_parameters":{"text":1}},
     }
 
     # this is the dict of query extraction methods
@@ -183,7 +93,7 @@ experiment={
     "test_files":[],
     # SQL condition to automatically generate the list above
     "test_files_condition":"metadata.num_in_collection_references:>0 AND metadata.year:>2010",
-    # This lets us pick just the first N files
+    # This lets us pick just the first N files from which to generate queries
     "max_test_files":1000,
     # Use Lucene DefaultSimilarity? As opposed to FieldAgnosticSimilarity
     "use_default_similarity":True,
@@ -197,7 +107,7 @@ experiment={
 ##    "weight_values":[],
     # use full-collection retrival? If False, it runs "citation resolution"
     "full_corpus":True,
-    # "compute_once", "train_weights", "test_selectors", "extract_kw"
+    # "compute_once", "train_weights", "test_selectors", "extract_kw", "test_kw_selection"
     "type":"extract_kw",
     # If full_corpus, this is the cut-off year for including documents in the general index.
     # In this way we can separate test files and retrieval files.
@@ -235,6 +145,10 @@ experiment={
     "keyword_extractor_class": "SVMKeywordExtractor",
     # parameters for the extractor
     "keyword_extractor_parameters": {},
+    # how many folds to use for training/evaluation
+    "cross_validation_folds": 4,
+    # an upper limit on the number of data points to use
+##    "max_data_points": 50000,
 }
 
 
@@ -245,19 +159,26 @@ options={
     "compute_queries":0,   # precompute the queries?
     "overwrite_existing_queries":0,  # force rebuilding of queries too?
     "clear_existing_prr_results":0, # delete previous precomputed results? i.e. start from scratch
-    "override_folds":4,
-    "override_metric":"avg_ndcg",
 
-    "run_experiment":1,
-    "run_precompute_retrieval":0,  # only applies if type == "train_weights" or "extract_kw". This is necessary for annotation! And this is because each pipeline may do different annotation
-##    "run_feature_annotation":1,    # annotate documents with features for keyword extraction? By default, False
-    "run_package_features":0, # should we read the cache and repackage all feature information, or use it if it exists already?
+    "run_precompute_retrieval":0,  # only applies if type == "train_weights" or "extract_kw". This is necessary for run_feature_annotation! And this is because each pipeline may do different annotation
+        "run_feature_annotation":0,    # annotate documents with features for keyword extraction? By default, False
+        "refresh_results_cache": 0, # should we clean the offline reader cache and redownload it all from elastic?
+    "run_experiment":1,  # must be set to 1 for "run_package_features" to work
+        "run_package_features":0, # should we read the cache and repackage all feature information, or use it if it exists already?
+
+    "start_at":0,
 }
 
 def main():
     from minerva.multi.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
-    cp.Corpus.connectCorpus("c:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
+    import os
+    if os.path.isdir("g:\\nlp\\phd"):
+        root_dir="g:\\nlp\\phd"
+    else:
+        root_dir="c:\\nlp\\phd"
+
+    cp.Corpus.connectCorpus(root_dir+"\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     cp.Corpus.setCorpusFilter("AAC")
 ##    experiment["test_files"]=["456f8c80-9807-46a9-8455-cd4a7e346f9d"]
 
@@ -266,7 +187,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-##    from minerva.proc.doc_representation import getDictOfLuceneIndeces
-##    from minerva.evaluation.base_pipeline import getDictOfTestingMethods
-##    print(getDictOfLuceneIndeces(prebuild_general_indexes))
-##    print(getDictOfTestingMethods(doc_methods))

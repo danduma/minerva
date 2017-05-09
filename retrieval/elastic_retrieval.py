@@ -38,7 +38,7 @@ class ElasticRetrieval(BaseRetrieval):
         else:
             self.max_results=MAX_RESULTS_RECALL
 
-        self.method=method # never used?
+        self.method=method # never used!
         self.logger=logger
         self.last_query={}
         self.save_terms=save_terms
@@ -164,8 +164,14 @@ class ElasticRetrieval(BaseRetrieval):
                     )
                 break
             except Exception as e:
-                logging.exception("Exception, retrying...")
+##                logging.error("Exception, retrying...")
                 retries+=1
+
+        if retries > 0:
+            if retries == 2:
+                logging.error("Retried 3 times, failed to retrieve.")
+            else:
+                logging.warning("Retried %d times, retrieved successfuly." % (retries+1))
 
         formula=StoredFormula()
         if explanation:
@@ -181,9 +187,13 @@ class ElasticRetrievalBoost(ElasticRetrieval):
         super(self.__class__,self).__init__(index_name, method, logger, use_default_similarity, max_results, es_instance, save_terms)
         self.return_fields=["guid"]
 
-    def runQuery(self, structured_query, parameters, test_guid, max_results=None):
+    def runQuery(self, structured_query, parameters=None, test_guid=None, max_results=None):
         """
             Run the query, return a list of tuples (score,metadata) of top docs
+
+            :param structured_query: StructuredQuery or equivalent list
+            :param parameters: dict with [key]=weight for searching different fields w/different weights
+            :param test_guid: the GUID of the file that we've extracted the queries from
         """
         if not structured_query or len(structured_query) == 0 :
             return []

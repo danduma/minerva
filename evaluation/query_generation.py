@@ -16,6 +16,7 @@ from minerva.proc.results_logging import ProgressIndicator
 from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
 from minerva.proc.doc_representation import findCitationInFullText
 from base_pipeline import getDictOfTestingMethods
+from minerva.importing.fix_citations import fixDocRemovedCitations
 
 GLOBAL_FILE_COUNTER=0
 
@@ -138,7 +139,15 @@ class QueryGenerator(object):
         match=findCitationInFullText(m["cit"],doctext)
         if not match:
             print("Weird! can't find citation in text!", m["cit"])
-            return generated_queries
+            print("Fixing document ",doc["metadata"]["guid"])
+            fixDocRemovedCitations(doc)
+            doctext=doc.getFullDocumentText()
+            match=findCitationInFullText(m["cit"],doctext)
+            if not match:
+                print("Failed to fix for this citation")
+                return generated_queries
+            else:
+                cp.Corpus.saveSciDoc(doc)
 
         # this is where we are in the document
         position=match.start()

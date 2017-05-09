@@ -32,6 +32,8 @@ def addExtraWeights(weights, exp):
         Deep copies the weight dictionary and adds the fixed weights if any
         are specified in the experiment
     """
+    if isinstance(weights,list):
+        weights={x:1 for x in weights}
     res=deepcopy(weights)
     for extra_method in exp.get("fixed_runtime_parameters",{}):
         res[extra_method]=exp["fixed_runtime_parameters"][extra_method]

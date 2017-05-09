@@ -416,7 +416,7 @@ class OfflineResultReader(ResultIncrementalReader):
 
     def getResultList(self):
         """
-            Loads all ids_held from
+            Loads all ids_held from the cache dir
         """
 ##        all_files = [f for f in listdir(self.own_dir) if isfile(join(self.own_dir, f))]
         all_files=glob.glob(os.path.join(self.own_dir,"*.json"))

@@ -47,6 +47,7 @@ class PrecomputedPipeline(BaseTestingPipeline):
 
         if "ALL" in self.exp.get("queries_to_process",["ALL"]):
             self.precomputed_queries=json.load(open(precomputed_queries_file_path,"r"))#[:1]
+            self.precomputed_queries=self.precomputed_queries[self.options.get("start_at",0):]
 ##            precomputed_queries=json.load(open(self.exp["exp_dir"]+"precomputed_queries.json","r"))
         else:
             queries_filename="queries_by_"+self.exp["queries_classification"]+".json"

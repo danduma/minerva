@@ -1,4 +1,4 @@
-# Keyword trainer
+# Keyword trainer. Uses extractors from ml.keyword_extraction
 #
 # Copyright:   (c) Daniel Duma 2015
 # Author: Daniel Duma <danielduma@gmail.com>
@@ -7,17 +7,14 @@
 
 from __future__ import print_function
 
-import gc, random, os, sys, json
-from copy import deepcopy
-from collections import defaultdict
+import gc, os, json
+from collections import defaultdict, Counter
 from sklearn import cross_validation
 import pandas as pd
 
-import minerva.db.corpora as cp
 from minerva.db.result_store import OfflineResultReader, ResultIncrementalReader
 from minerva.evaluation.base_pipeline import getDictOfTestingMethods
-from minerva.evaluation.precompute_functions import precomputeFormulas
-from minerva.evaluation.weight_functions import runPrecomputedQuery
+##from minerva.evaluation.precompute_functions import precomputeFormulas
 import minerva.ml.keyword_extraction as extractors
 from minerva.proc.results_logging import ResultsLogger
 
@@ -25,22 +22,110 @@ from minerva.proc.results_logging import ResultsLogger
 
 GLOBAL_FILE_COUNTER=0
 
-def baseline_score(results):
-    """
-        Takes some retrieval results and computes the baseline score for them
-
-        TODO store this score from the retrieval?
-    """
-    pass
 
 
-def saveFeatureData(precomputed_contexts,path):
+def saveFeatureData(precomputed_contexts, path):
     """
         Calls prepareFeatureData() and dumps prepared data to json file
     """
     feature_data=extractors.prepareFeatureData(precomputed_contexts)
     json.dump(feature_data,file(path,"w"))
     return feature_data
+
+
+def saveKeywordSelectionScores(reader, exp_dir):
+    """
+        Saves a CSV to measure the performance of keyword selection
+    """
+    def getScoreDataLine(kw_data):
+        """
+            Returns a single dict/line for writing to a CSV
+        """
+        return {
+                 "precision_score":kw_data["precision_score"],
+                 "mrr_score":kw_data["mrr_score"],
+                 "rank":kw_data["rank"],
+                 "ndcg_score":kw_data["ndcg_score"],
+
+                 "precision_score_kw":kw_data["kw_selection_scores"]["precision_score"],
+                 "mrr_score_kw":kw_data["kw_selection_scores"]["mrr_score"],
+                 "rank_kw":kw_data["kw_selection_scores"]["rank"],
+                 "ndcg_score_kw":kw_data["kw_selection_scores"]["ndcg_score"],
+
+                 "precision_score_kw_weight":kw_data["kw_selection_weight_scores"]["precision_score"],
+                 "mrr_score_kw_weight":kw_data["kw_selection_weight_scores"]["mrr_score"],
+                 "rank_kw_weight":kw_data["kw_selection_weight_scores"]["rank"],
+                 "ndcg_score_kw_weight":kw_data["kw_selection_weight_scores"]["ndcg_score"],
+               }
+
+
+    lines=[]
+    for kw_data in reader:
+        lines.append(getScoreDataLine(kw_data))
+
+    data=pd.DataFrame(lines)
+    data.to_csv(os.path.join(exp_dir,"kw_selection_scores.csv"))
+
+
+def saveAllKeywordSelectionTrace(reader, exp_dir):
+    """
+        Saves a CSV to trace everything that happened, inspect the dataset
+    """
+    def getScoreDataLine(kw_data):
+        """
+            Returns a single dict/line for writing to a CSV
+        """
+        context=u" ".join([s["text"] for s in kw_data["context"]])
+        return {
+                 "cit_id": kw_data["cit_id"],
+                 "context": context,
+                 "file_guid":kw_data.get("file_guid",""),
+                 "match_guid":kw_data["match_guid"],
+                 "best_kws": [kw[0] for kw in kw_data["best_kws"]],
+
+                 "precision_score":kw_data["precision_score"],
+                 "mrr_score":kw_data["mrr_score"],
+                 "rank":kw_data["rank"],
+                 "ndcg_score":kw_data["ndcg_score"],
+
+                 "precision_score_kw":kw_data["kw_selection_scores"]["precision_score"],
+                 "mrr_score_kw":kw_data["kw_selection_scores"]["mrr_score"],
+                 "rank_kw":kw_data["kw_selection_scores"]["rank"],
+                 "ndcg_score_kw":kw_data["kw_selection_scores"]["ndcg_score"],
+
+                 "precision_score_kw_weight":kw_data["kw_selection_weight_scores"]["precision_score"],
+                 "mrr_score_kw_weight":kw_data["kw_selection_weight_scores"]["mrr_score"],
+                 "rank_kw_weight":kw_data["kw_selection_weight_scores"]["rank"],
+                 "ndcg_score_kw_weight":kw_data["kw_selection_weight_scores"]["ndcg_score"],
+               }
+
+
+    lines=[]
+    for kw_data in reader:
+        lines.append(getScoreDataLine(kw_data))
+
+    data=pd.DataFrame(lines)
+    data.to_csv(os.path.join(exp_dir,"kw_selection_trace.csv"), encoding="utf-8")
+
+
+def listAllKeywordsToExtractFromReader(reader):
+    """
+        Lists all keywords that are marked as extract:true in a list or reader object
+    """
+    to_extract=[]
+
+    for kw_data in reader:
+        if isinstance(kw_data,dict):
+            best_kws={t[0]:t[1] for t in kw_data["best_kws"]}
+            for sent in kw_data["context"]:
+                for token in sent["token_features"]:
+                    if token["text"] in best_kws:
+                        to_extract.append(token["text"])
+        elif isinstance(kw_data,tuple):
+            if kw_data[1]:
+                to_extract.append(kw_data[0]["text"])
+
+    return Counter(to_extract)
 
 class KeywordTrainer(object):
     """
@@ -60,19 +145,27 @@ class KeywordTrainer(object):
         if self.options.get("run_package_features", False) or not os.path.isfile(features_filename):
             print("Prepackaging features...")
             self.reader=OfflineResultReader("kw_data", os.path.join(self.exp["exp_dir"], "cache"))
+##            print("\n From OfflineResultReader:",listAllKeywordsToExtractFromReader(self.reader))
+##            saveKeywordSelectionScores(self.reader, self.exp["exp_dir"])
+            saveAllKeywordSelectionTrace(self.reader, self.exp["exp_dir"])
+##            print("\n After saving kw selection data:",listAllKeywordsToExtractFromReader(self.reader))
             self.reader=saveFeatureData(self.reader, features_filename)
+##            print("\n After saving feature data:",listAllKeywordsToExtractFromReader(self.reader))
         else:
+            print("Loading prepackaged features...")
             self.reader=json.load(file(features_filename,"r"))
+
+        self.reader=self.reader[:self.exp.get("max_data_points",len(self.reader))]
         self.scores=[]
 
     def trainExtractor(self, split_fold):
         """
             Train an extractor for the given fold
         """
-        all_doc_methods=getDictOfTestingMethods(self.exp["doc_methods"])
-        annotated_boost_methods=[x for x in all_doc_methods if all_doc_methods[x]["type"] in ["annotated_boost"]]
+##        all_doc_methods=getDictOfTestingMethods(self.exp["doc_methods"])
+##        annotated_boost_methods=[x for x in all_doc_methods if all_doc_methods[x]["type"] in ["annotated_boost"]]
 
-        numfolds=self.exp.get("cross_validation_folds",2)
+        numfolds=self.exp.get("cross_validation_folds",4)
 
         if len(self.reader) == 0:
             raise ValueError("No precomputed formulas")
@@ -94,17 +187,20 @@ class KeywordTrainer(object):
             raise ValueError("Unkown class of results")
 ##            train_set=self.reader.subset(traincv)
 ##            train_set=[self.reader[i] for i in traincv]
+
+##        print("train_set: ",listAllKeywordsToExtractFromReader(train_set))
+##        print("test_set: ",listAllKeywordsToExtractFromReader(test_set))
+
         if len(train_set) == 0:
             print("Training set len is 0!")
             return defaultdict(lambda:1)
 
         print("Training for %d/%d tokens " % (len(train_set),len(self.reader)))
-        trained_models={}
 
-        res={}
         # what to do with the runtime_parameters?
 ##            all_doc_methods[method]["runtime_parameters"]=weights
-        trained_model=self.extractor_class(self.exp.get("keyword_extractor_parameters",{}))
+        trained_model=self.extractor_class(self.exp.get("keyword_extractor_parameters",{}), fold=split_fold, exp=self.exp)
+        trained_model.learnFeatures(self.reader)
         trained_model.train(train_set)
         self.scores.append(trained_model.test(test_set))
 
@@ -132,7 +228,7 @@ class KeywordTrainer(object):
 ##
 ##            yield retrieval_result
 
-    def trainKeywords(self):
+    def trainExtractors(self):
         """
             Run the final stage of the training pipeline
         """
@@ -147,14 +243,14 @@ class KeywordTrainer(object):
         if options.get("override_metric",None):
             self.exp["metric"]=options["override_metric"]
 
-        numfolds=self.exp.get("cross_validation_folds",2)
+        numfolds=self.exp.get("cross_validation_folds",4)
 
         # First we train a keyword extractor from each fold's training set
         for split_fold in range(numfolds):
             print("\nFold #"+str(split_fold))
             trained_extractors[split_fold]=self.trainExtractor(split_fold)
 
-##        # Then we actually test them in retrieval
+        # TODO: actually test trained extractors in retrieval
 ##        print("Now applying and testing keywords...\n")
 ##        self.measureScoresOfExtractors(trained_extractors)
 

@@ -55,7 +55,7 @@ class Experiment(object):
         Encapsulates an experiment's parameters and global running pipeline.
 
     """
-    def __init__(self, experiment, options={}, use_celery=False):
+    def __init__(self, experiment, options={}, use_celery=False, process_command_line=True):
         """
             :param experiment: either a dict or a file name to load
             :param use_celery: if true, tasks will not be executed automatically
@@ -63,7 +63,8 @@ class Experiment(object):
         """
         self.use_celery=use_celery
         self.load(experiment, options)
-        self.processCommandLineArguments()
+        if process_command_line:
+            self.processCommandLineArguments()
         self.exp["experiment_id"]=datetime.datetime.now().isoformat("/")
         self.query_generator=QueryGenerator()
 
@@ -306,13 +307,23 @@ class Experiment(object):
                 weight_trainer=WeightTrainer(self.exp, self.options)
                 weight_trainer.trainWeights()
         elif self.exp["type"] == "extract_kw":
+            pipeline=KeywordTrainingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
             if self.options.get("run_precompute_retrieval", False):
-                pipeline=KeywordTrainingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
                 pipeline.runPipeline(self.exp, self.options)
+            if self.options.get("refresh_results_cache", False):
+                pipeline.cacheResultsLocally()
 
             if self.options.get("run_experiment", True):
                 kw_trainer=KeywordTrainer(self.exp, self.options)
-                kw_trainer.trainKeywords()
+                kw_trainer.trainExtractors()
+        elif self.exp["type"] == "test_kw_selection":
+            assert False, "Not implemented yet"
+            pipeline=KeywordTrainingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
+            if self.options.get("run_precompute_retrieval", False):
+                pipeline.runPipeline(self.exp, self.options)
+            if self.options.get("refresh_results_cache", False):
+                pipeline.cacheResultsLocally()
+
 
         elif self.exp["type"] in ["", "do_nothing"]:
             return

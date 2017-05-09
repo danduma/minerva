@@ -385,8 +385,6 @@ class WeightTrainer(object):
         if options.get("override_folds",None):
             self.exp["cross_validation_folds"]=options["override_folds"]
 
-        if options.get("override_metric",None):
-            self.exp["metric"]=options["override_metric"]
 
         numfolds=self.exp.get("cross_validation_folds",2)
 

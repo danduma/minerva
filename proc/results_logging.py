@@ -15,7 +15,7 @@ from pandas import DataFrame
 from general_utils import (reportTimeLeft, ensureDirExists, writeDictToCSV, getSafeFilename)
 import minerva.db.corpora as cp
 
-def measureScores(guids, match_guid, result_dict, citation_multi=1):
+def measureScores(guids, match_guid, result_dict, citation_multi=1, prepend_text=""):
     """
         Method that measures the retrieval score in all the metrics
     """
@@ -52,10 +52,10 @@ def measureScores(guids, match_guid, result_dict, citation_multi=1):
         mrr_score=0
         ndcg_score=0
 
-    result_dict["mrr_score"]=mrr_score
-    result_dict["precision_score"]=precision_score
-    result_dict["ndcg_score"]=ndcg_score
-    result_dict["rank"]=rank
+    result_dict[prepend_text+"mrr_score"]=mrr_score
+    result_dict[prepend_text+"precision_score"]=precision_score
+    result_dict[prepend_text+"ndcg_score"]=ndcg_score
+    result_dict[prepend_text+"rank"]=rank
 
 
 class ProgressIndicator(object):

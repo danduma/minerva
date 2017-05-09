@@ -17,6 +17,7 @@ PAR_MARKER, CIT_MARKER, BR_MARKER, AZ_ZONES_LIST, CORESC_LIST,
 formatSentenceForIndexing, selectSentencesToAdd)
 
 from minerva.proc.general_utils import getListAnyway
+from minerva.importing.fix_citations import fixDocRemovedCitations
 from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
 import minerva.db.corpora as cp
 
@@ -197,8 +198,16 @@ def generateDocBOWInlinkContext(doc_incoming, parameters, doctext=None):
                     # need a list of citations for each outlink, to extract context from each
                     match=findCitationInFullText(cit,doctext)
                     if not match:
-                        print("Weird! can't find citation in text")
-                        continue
+                        print("Weird! can't find citation in text!", cit)
+                        print("Fixing document ",doc["metadata"]["guid"])
+                        fixDocRemovedCitations(doc)
+                        doctext=doc.getFullDocumentText()
+                        match=findCitationInFullText(cit,doctext)
+                        if not match:
+                            print("Failed to fix for this citation")
+                            continue
+                        else:
+                            cp.Corpus.saveSciDoc(doc)
 
                     context=getOutlinkContextWindowAroundCitation(match, doctext, param, param)
                     # code below: store list of dicts with filename, BOW, so I can filter out same file later

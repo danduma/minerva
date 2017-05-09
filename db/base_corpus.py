@@ -288,7 +288,8 @@ class BaseCorpus(object):
             :param year: Maximum year to select from
         """
         res=[]
-        unique={}
+        unique={}\
+
         sents_with_multicitations=[]
         missing_references=[]
         if not year:

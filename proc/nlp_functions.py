@@ -157,7 +157,7 @@ def replaceCitationTokensForParsing(text):
     """
         Substitutes all <CIT> elements in the sentence with __cit__
     """
-    return re.sub(r"<CIT ID=\w*?(\d+)\s?/>",r"__cit\1", text)
+    return re.sub(r"<CIT ID=\w*?(\d+)\s?/>",r" __cit\1 ", text)
 
 
 def getCitationNumberFromToken(text):

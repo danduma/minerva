@@ -83,10 +83,9 @@ def fix_broken_scidocs():
         their scidoc. If KeyError occurs, it loads the XML again
     """
     cp.useElasticCorpus()
-    import minerva.multi.celery_app as celery_app
-    cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc",
-            endpoint={"host":celery_app.MINERVA_ELASTICSEARCH_SERVER_IP,
-            "port":celery_app.MINERVA_ELASTICSEARCH_SERVER_PORT})
+    from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
+
+    cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     importer=CorpusImporter("PMC_CSC","initial", use_celery=True)
     importer.generate_corpus_id=getPMC_CSC_corpus_id
     importer.reloadSciDocsOnly("metadata.collection_id:\"PMC_CSC\"",
@@ -106,14 +105,32 @@ def set_collection_id(sql, new_id, guids=None):
         cp.Corpus.updatePaper(meta)
     print ("Total files %d" % len(guids))
 
+
+def test_read_doc(filename):
+    """
+        Loads one Sapienta-annotated JATS file, prints out the resulting doc
+    """
+    from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    cp.useElasticCorpus()
+    cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
+    reader=SapientaJATSXMLReader()
+    with file(filename,"r") as f:
+        xml=f.read()
+    doc=reader.read(xml, filename)
+    cp.Corpus.selectDocResolvableCitations(doc,year="2000b")
+    print (doc)
+
+
+
 def main():
 ##    import_sapienta_pmc_corpus()
 ##    fix_broken_scidocs()
-##    set_collection_id("SELECT guid FROM papers where metadata.collection_id <> \"PMC_CSC\"", "AAC")
+##    set_collection_id("SELECT guid FROM papers where metadata.collection_id <> \"AAC\"", "PMC_CSC")
 ##    set_collection_id("SELECT guid FROM papers where metadata.collection_id = \"AAC\" and metadata.year > 2011", "PMC_CSC")
 
-    guids=["cdee4ecf-59f0-4a19-bded-9b0f727e13ae", "0eebf17f-5aaa-414e-b3a3-6cfa62fee701", ]
-    set_collection_id("", "PMC_CSC", guids)
+##    guids=["cdee4ecf-59f0-4a19-bded-9b0f727e13ae", "0eebf17f-5aaa-414e-b3a3-6cfa62fee701", ]
+##    set_collection_id("", "PMC_CSC", guids)
+##    test_read_doc(r"c:\nlp\phd\pmc\input_xml\3496139_annotated.xml")
 
     pass
 

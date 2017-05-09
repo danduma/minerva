@@ -1,12 +1,17 @@
-# <description>
+# Classes to annotate the best keywords from each context according to their retrieval scores
 #
 # Copyright:   (c) Daniel Duma 2016
 # Author: Daniel Duma <danielduma@gmail.com>
 
 # For license information, see LICENSE.TXT
 
+from __future__ import print_function
+
 from collections import defaultdict
 from math import log
+
+import minerva.db.corpora as cp
+from minerva.proc.structured_query import StructuredQuery
 
 def termScoresInFormula(part):
     """
@@ -38,7 +43,7 @@ def getDictOfTermScores(formula, op="max"):
     """
         Returns the score of each term in the formula as a dict
 
-        :param formula: formula
+        :param formula: formula dict
         :rtype: dict
     """
     term_scores=termScoresInFormula(formula)
@@ -55,6 +60,7 @@ def getDictOfTermScores(formula, op="max"):
         elif op=="max":
             res[score[3]]=max(old_score,new_score)
 
+##    print(res)
     return res
 
 def getFormulaTermWeights(unique_result):
@@ -97,6 +103,56 @@ def getFormulaTermWeights(unique_result):
     return match_result
 
 
+def makeStructuredQueryFromKeywords(keywords):
+    """
+        This is just to get around my former use of this query storage format
+    """
+    query=StructuredQuery()
+    for kw in keywords:
+        query.addToken(kw[0],1,boost=kw[1])
+    return query
+
+def evaluateKeywordSelection(precomputed_queries, extracted_keywords, exp, use_keywords=True, metric="mrr", index_field="text"):
+    """
+        Get the batch scores of a set of queries
+
+        :param precomputed_queries: ditto
+        :param extracted_keywords: a list of lists of tuples, one list for each query
+    """
+    from minerva.proc.results_logging import measureScores
+    from minerva.retrieval.elastic_retrieval import ElasticRetrieval
+
+    retrieval_model=ElasticRetrieval(exp["features_index_name"],"", es_instance=cp.Corpus.es)
+
+    scores_list=[]
+
+    for index, precomputed_query in precomputed_queries:
+        scores={}
+        if use_keywords:
+            query=makeStructuredQueryFromKeywords(extracted_keywords[index])
+        else:
+            query=precomputed_query
+
+        retrieved=retrieval_model.runQuery(query,max_results=exp.get("max_results_recall",200))
+        measureScores(retrieved, precomputed_query["match_guid"],scores)
+        scores_list.append(scores[metric])
+
+    return sum(scores_list) / float(len(scores_list))
+
+
+def listOfTermValuesInFormulas(formulas):
+    """
+        Returns a dict where {term: [list of values]} in all formulas
+    """
+    term_stats={}
+    for formula in formulas:
+        term_scores=getDictOfTermScores(formula.formula)
+        for term in term_scores:
+            if term not in term_stats:
+                term_stats[term]=[]
+            term_stats[term].append(term_scores[term])
+    return term_stats
+
 class BaseKeywordSelector(object):
     """
     """
@@ -132,21 +188,26 @@ class NBestSelector(BaseKeywordSelector):
         """
         res=[]
 
-        # currently using only the document
-        formula=retrieval_model.formulaFromExplanation(precomputed_query, precomputed_query["match_guid"])
+        formulas=[retrieval_model.formulaFromExplanation(precomputed_query, doc_id) for doc_id in doc_list]
+        term_values=listOfTermValuesInFormulas(formulas)
 
-        term_scores=getDictOfTermScores(formula.formula,"max")
+        match_formula=retrieval_model.formulaFromExplanation(precomputed_query, precomputed_query["match_guid"])
+
+        term_scores=getDictOfTermScores(match_formula.formula,"max")
+        for term in term_scores:
+            divisor=1+sum(term_values.get(term,[0.0]))
+##            print("Term: %s, %.3f / %.3f" % (term, term_scores[term], float(divisor)))
+            term_scores[term]=term_scores[term]/float(divisor*divisor)
+
+        # remove all words that have less than 3 characters: simple way to get rid of the "i" tokens
+##        for term in term_scores:
+##            if len(term) < 3:
+##                del term_scores[term]
+
         terms=sorted(term_scores.iteritems(),key=lambda x:x[1], reverse=True)
-        return terms[:parameters["N"]]
-
-    ##    raise ValueError("match_guid not found in formulas")
-
-
-def evaluateKeywordSelection(precomputed_queries, extracted_keywords):
-    """
-        Get the batch scores and averages of a set of queries
-    """
-
+        terms=terms[:parameters["N"]]
+##        print("Chosen terms:", terms,"\n\n")
+        return terms
 
 
 def main():
