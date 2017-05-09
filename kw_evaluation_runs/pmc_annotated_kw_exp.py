@@ -172,7 +172,7 @@ options={
     "rebuild_indexes":1,   # rebuild indices?
     "compute_queries":0,   # precompute the queries?
     "overwrite_existing_queries":0,  # force rebuilding of queries too?
-    "clear_existing_prr_results":1, # delete previous precomputed results? i.e. start from scratch
+    "clear_existing_prr_results":0, # delete previous precomputed results? i.e. start from scratch
 
     "run_precompute_retrieval":0,  # only applies if type == "train_weights" or "extract_kw". This is necessary for run_feature_annotation! And this is because each pipeline may do different annotation
         "run_feature_annotation": 0,    # annotate documents with features for keyword extraction? By default, False
@@ -197,7 +197,7 @@ def main():
     cp.Corpus.setCorpusFilter("PMC_CSC")
 ##    experiment["test_files"]=["456f8c80-9807-46a9-8455-cd4a7e346f9d"]
 
-    exp=Experiment(experiment, options, False)
+    exp=Experiment(experiment, options, True)
     exp.run()
 
 if __name__ == '__main__':
