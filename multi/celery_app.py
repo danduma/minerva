@@ -20,7 +20,8 @@ from .config import *
 app = Celery('multi',
              broker=MINERVA_AMQP_SERVER_URL,
              backend=MINERVA_AMQP_SERVER_URL,
-             include=['minerva.multi.tasks'])
+             # include=['minerva.multi.tasks'])
+             include=['multi.tasks'])
 
 ##app.config_from_object('celeryconfig')
 # Optional configuration, see the application user guide.

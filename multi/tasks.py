@@ -13,8 +13,8 @@
 # For license information, see LICENSE.TXT
 
 from __future__ import print_function
-
 from __future__ import absolute_import
+
 import logging
 
 import requests
@@ -24,7 +24,7 @@ from db.elastic_corpus import ElasticCorpus
 from retrieval.elastic_retrieval import ElasticRetrieval
 
 from importing.importing_functions import (convertXMLAndAddToCorpus,
-    updatePaperInCollectionReferences)
+                                           updatePaperInCollectionReferences)
 from evaluation.prebuild_functions import prebuildMulti
 from evaluation.precompute_functions import addPrecomputeExplainFormulas
 from db.result_store import createResultStorers
@@ -38,11 +38,12 @@ from celery.utils.log import get_task_logger
 
 logger = get_task_logger(__name__)
 
-RUN_LOCALLY=False
+RUN_LOCALLY = False
+
 
 def checkCorpusConnection(local_corpus_dir="",
-    corpus_endpoint={"host":celery_app.MINERVA_ELASTICSEARCH_SERVER_IP,
-    "port":celery_app.MINERVA_ELASTICSEARCH_SERVER_PORT}):
+                          corpus_endpoint={"host": celery_app.MINERVA_ELASTICSEARCH_SERVER_IP,
+                                           "port": celery_app.MINERVA_ELASTICSEARCH_SERVER_PORT}):
     """
         Connects this worker to the elasticsearch server. By default, uses
         values from celery_app.py
@@ -50,6 +51,7 @@ def checkCorpusConnection(local_corpus_dir="",
     if not isinstance(cp.Corpus, ElasticCorpus):
         cp.useElasticCorpus()
         cp.Corpus.connectCorpus(local_corpus_dir, corpus_endpoint)
+
 
 @app.task(ignore_result=True, bind=True)
 def importXMLTask(self, file_path, corpus_id, import_id, collection_id, import_options, existing_guid):
@@ -65,10 +67,10 @@ def importXMLTask(self, file_path, corpus_id, import_id, collection_id, import_o
             import_options,
             existing_guid=existing_guid)
     else:
-        r=requests.get(celery_app.MINERVA_FILE_SERVER_URL+"/file/"+file_path)
+        r = requests.get(celery_app.MINERVA_FILE_SERVER_URL + "/file/" + file_path)
         if not r.ok:
             logger.error("HTTP Error code %d" % r.status_code)
-            if r.status_code==500:
+            if r.status_code == 500:
                 raise self.retry(countdown=120)
             else:
                 raise RuntimeError("HTTP Error code %d: %s" % (r.status_code, r.content))
@@ -85,9 +87,10 @@ def importXMLTask(self, file_path, corpus_id, import_id, collection_id, import_o
             logging.exception("Exception: Out of memory in importXMLTask")
             raise self.retry(countdown=120, max_retries=4)
         except:
-            #TODO what other exceptions?
+            # TODO what other exceptions?
             logging.exception("Exception in importXMLTask")
             raise self.retry(countdown=60, max_retries=2)
+
 
 @app.task(ignore_result=True, bind=True)
 def updateReferencesTask(self, doc_id, import_options):
@@ -100,16 +103,19 @@ def updateReferencesTask(self, doc_id, import_options):
         logging.exception("Exception in updateReferencesTask")
         raise self.retry(countdown=120, max_retries=4)
 
+
 @app.task(ignore_result=True, bind=True)
 def prebuildBOWTask(self, method_name, parameters, function, guid, overwrite_existing_bows, rhetorical_annotations):
     """
         Builds the BOW for a single paper
     """
     try:
-        prebuildMulti(method_name, parameters, function, None, None, guid, overwrite_existing_bows, rhetorical_annotations)
+        prebuildMulti(method_name, parameters, function, None, None, guid, overwrite_existing_bows,
+                      rhetorical_annotations)
     except Exception as e:
         logging.exception("Error running prebuildMulti")
         self.retry(countdown=120, max_retries=4)
+
 
 @app.task(ignore_result=True, bind=True)
 def addToindexTask(self, guid, indexNames, index_max_year):
@@ -123,19 +129,22 @@ def addToindexTask(self, guid, indexNames, index_max_year):
         logging.exception("Error running addBOWsToIndex")
         self.retry(countdown=120, max_retries=4)
 
+
 @app.task(ignore_result=True, bind=True)
-def precomputeFormulasTask(self, precomputed_query, doc_method, doc_list, index_name, exp_name, experiment_id, max_results):
+def precomputeFormulasTask(self, precomputed_query, doc_method, doc_list, index_name, exp_name, experiment_id,
+                           max_results):
     """
         Runs one precomputed query, and the explain formulas and adds them to
         the DB.
     """
     try:
-        model=ElasticRetrieval(index_name, doc_method, max_results=max_results, es_instance=cp.Corpus.es)
-        writers=createResultStorers(exp_name)
+        model = ElasticRetrieval(index_name, doc_method, max_results=max_results, es_instance=cp.Corpus.es)
+        writers = createResultStorers(exp_name)
         addPrecomputeExplainFormulas(precomputed_query, doc_method, doc_list, model, writers, experiment_id)
     except:
         logging.exception("Error running addPrecomputeExplainFormulas")
         self.retry(countdown=120, max_retries=4)
+
 
 @app.task(ignore_result=True, bind=True)
 def computeAnnotationStatisticsTask(self, guid):
@@ -147,27 +156,29 @@ def computeAnnotationStatisticsTask(self, guid):
         logging.exception("Error running computeAnnotationStatisticsTask")
         self.retry(countdown=120, max_retries=4)
 
+
 @app.task(ignore_result=True, bind=True)
 def annotateKeywordsTask(self, precomputed_query,
-                               doc_method,
-                               doc_list,
-                               index_name,
-                               exp_name,
-                               experiment_id,
-                               context_extraction,
-                               extraction_parameter,
-                               keyword_selection_method,
-                               keyword_selection_parameters,
-                               max_results,
-                               weights):
+                         doc_method,
+                         doc_list,
+                         index_name,
+                         exp_name,
+                         experiment_id,
+                         context_extraction,
+                         extraction_parameter,
+                         keyword_selection_method,
+                         keyword_selection_parameters,
+                         max_results,
+                         weights):
     """
         Runs one precomputed query, extracts explain formulas and from them
         picks best keywords for the citation/query, stores the keyword-annotated context
     """
     try:
-        model=ElasticRetrieval(index_name, doc_method, max_results=max_results, es_instance=cp.Corpus.es)
-        writers={"ALL":ElasticResultStorer(self.exp["name"],"kw_data", endpoint=cp.Corpus.endpoint)}
-        annotateKeywords(precomputed_query, doc_method, doc_list, model, writers, experiment_id, context_extraction, extraction_parameter, keyword_selection_method, keyword_selection_parameters, weights)
+        model = ElasticRetrieval(index_name, doc_method, max_results=max_results, es_instance=cp.Corpus.es)
+        writers = {"ALL": ElasticResultStorer(self.exp["name"], "kw_data", endpoint=cp.Corpus.endpoint)}
+        annotateKeywords(precomputed_query, doc_method, doc_list, model, writers, experiment_id, context_extraction,
+                         extraction_parameter, keyword_selection_method, keyword_selection_parameters, weights)
     except:
         logging.exception("Error running annotateKeywords")
         self.retry(countdown=120, max_retries=4)

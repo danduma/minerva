@@ -7,8 +7,8 @@
 # For license information, see LICENSE.TXT
 
 from __future__ import print_function
-
 from __future__ import absolute_import
+
 import json
 from collections import Counter
 from math import sqrt, log
