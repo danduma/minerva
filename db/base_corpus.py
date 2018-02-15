@@ -5,10 +5,12 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
 import os, sys, re, json, glob, codecs, uuid, unicodedata
-from minerva.proc.general_utils import (AttributeDict, ensureTrailingBackslash,
+from proc.general_utils import (AttributeDict, ensureTrailingBackslash,
 ensureDirExists, normalizeTitle, removeSymbols)
-from minerva.scidoc.scidoc import SciDoc
+from scidoc.scidoc import SciDoc
+import six
 
 class BaseReferenceMatcher(object):
     """
@@ -93,8 +95,8 @@ class DefaultReferenceMatcher(BaseReferenceMatcher):
         # if it can't be matched by id
         norm_title=normalizeTitle(ref["title"])
 
-        if not isinstance(norm_title, unicode):
-            norm_title=unicode(norm_title, errors="ignore")
+        if not isinstance(norm_title, six.text_type):
+            norm_title=six.text_type(norm_title, errors="ignore")
 
         rows=self.corpus.listFieldByField("metadata","norm_title",norm_title)
 
@@ -158,10 +160,10 @@ class BaseCorpus(object):
         """
         for annotator in annotators:
             if annotator=="AZ":
-                from minerva.az.az_cfc_classification import AZannotator
+                from az.az_cfc_classification import AZannotator
                 self.annotators[annotator]=AZannotator("trained_az_classifier.pickle")
             if annotator=="CFC":
-                from minerva.az.az_cfc_classification import CFCannotator
+                from az.az_cfc_classification import CFCannotator
                 self.annotators[annotator]=CFCannotator("trained_cfc_classifier.pickle")
 
     def annotateDoc(self,doc,annotate_with=None):
@@ -169,10 +171,10 @@ class BaseCorpus(object):
             Shortcut to get Corpus object to annotate file with one or more annotators
         """
         if not annotate_with:
-            annotate_with=self.annotators.keys()
+            annotate_with=list(self.annotators.keys())
 
         for annotator in annotate_with:
-            assert(self.annotators.has_key(annotator))
+            assert(annotator in self.annotators)
             self.annotators[annotator].annotateDoc(doc)
 
     def generateGUID(self, metadata=None):
@@ -288,7 +290,8 @@ class BaseCorpus(object):
             :param year: Maximum year to select from
         """
         res=[]
-        unique={}
+        unique={}\
+
         sents_with_multicitations=[]
         missing_references=[]
         if not year:
@@ -426,7 +429,7 @@ class BaseCorpus(object):
         if type=="resolvable":
             return type+"_"+guid
         if type=="bow":
-            return type+"_"+guid+"_"+params["method"]+"_"+unicode(params["parameter"])
+            return type+"_"+guid+"_"+params["method"]+"_"+six.text_type(params["parameter"])
 
     def saveCachedJson(self, path, data):
         """

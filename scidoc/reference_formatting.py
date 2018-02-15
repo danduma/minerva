@@ -18,6 +18,7 @@ from citeproc import CitationStylesStyle, CitationStylesBibliography
 from citeproc import Citation, CitationItem
 from citeproc import formatter
 from citeproc.source.json import CiteProcJSON
+import six
 
 CSL_PATH = re.sub(r"scidoc.*.py",r"cit_styles",__file__,flags=re.IGNORECASE)+os.sep
 
@@ -162,20 +163,20 @@ def formatCitation(refValues, style="APA"):
     elif len(authors) == 1:
         if isinstance(authors[0], dict):
             res += u'%s ' % authors[0]["family"]
-        elif isinstance(authors[0], basestring):
+        elif isinstance(authors[0], six.string_types):
             res += u'%s ' % authors[0]
     elif len(authors) == 2:
         if isinstance(authors[0], dict):
             res += u'%s and %s' % (authors[0]["family"], authors[1]["family"])
-        elif isinstance(authors[0], basestring):
+        elif isinstance(authors[0], six.string_types):
             res += u'%s and %s' % (authors[0], authors[1])
     else:
         if isinstance(authors[0], dict):
             res += u'%s et al.' % authors[0]["family"]
-        elif isinstance(authors[0], unicode):
+        elif isinstance(authors[0], six.text_type):
             res += u'%s et al.' % authors[0]
         elif isinstance(authors[0], str):
-            res += u'%s et al.' % unicode(authors[0], errors="replace")
+            res += u'%s et al.' % six.text_type(authors[0], errors="replace")
 
     res+=" (%s)" % refValues.get("year", "?")
     res=res.replace("  "," ")
@@ -208,7 +209,7 @@ def formatAPACitationAuthors(refValues):
         try:
             res += authors[0] + u' et al.'
         except:
-            res += unicode(authors[0],errors="replace")
+            res += six.text_type(authors[0],errors="replace")
     return res
 
 def formatAPACitation(refValues):
@@ -217,24 +218,24 @@ def formatAPACitation(refValues):
     """
     res=formatAPAReferenceAuthors(refValues)
 
-    res+=u" " + unicode(refValues["year"])
+    res+=u" " + six.text_type(refValues["year"])
 
     try:
         res+=u". "+ refValues["title"]
     except:
-        res+=u". "+ unicode(refValues["title"],errors="replace")
+        res+=u". "+ six.text_type(refValues["title"],errors="replace")
     return res
 
 
 def basicTest():
     print (__file__)
-    import minerva.db.corpora as cp
+    import db.corpora as cp
     drive="g"
     cp.useLocalCorpus()
     cp.Corpus.connectCorpus(drive+":\\nlp\\phd\\pmc")
 
-    from minerva.proc.general_utils import loadFileText
-    from minerva.scidoc.xmlformats.read_jatsxml import JATSXMLReader
+    from proc.general_utils import loadFileText
+    from scidoc.xmlformats.read_jatsxml import JATSXMLReader
     reader = JATSXMLReader()
     doc=reader.read(loadFileText(r"G:\NLP\PhD\pmc\inputXML\articles.O-Z\PLoS_ONE\\PLoS_One_2013_Dec_20_8(12)_e85076.nxml"),"one")
 

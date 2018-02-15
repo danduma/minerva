@@ -7,15 +7,16 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import os, json, re
 
-from corpus_import import CorpusImporter
-import corpus_import
-import minerva.db.corpora as cp
-from minerva.db.base_corpus import BaseReferenceMatcher
-from minerva.scidoc.xmlformats.read_paperxml import PaperXMLReader
-from aan_metadata import convertAANcitations
-from minerva.proc.nlp_functions import tokenizeText, basic_stopwords
+from .corpus_import import CorpusImporter
+from . import corpus_import
+import db.corpora as cp
+from db.base_corpus import BaseReferenceMatcher
+from scidoc.xmlformats.read_paperxml import PaperXMLReader
+from .aan_metadata import convertAANcitations
+from proc.nlp_functions import tokenizeText, basic_stopwords
 from string import punctuation
 
 class AANReferenceMatcher(BaseReferenceMatcher):
@@ -176,7 +177,7 @@ def import_aac_corpus():
     """
         Do the importing of the AAC corpus
     """
-    from minerva.squad.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
+    from multi.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
     importer=CorpusImporter(reader=PaperXMLReader())
     importer.collection_id="AAC"
     importer.import_id="initial"
@@ -209,7 +210,7 @@ def import_aac_corpus():
 def fix_citation_parent_aac():
     """
     """
-    from minerva.proc.results_logging import ProgressIndicator
+    from proc.results_logging import ProgressIndicator
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac")
     guids=cp.Corpus.listPapers("metadata.collection_id:\"AAC\"")

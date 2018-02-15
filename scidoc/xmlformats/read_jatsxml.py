@@ -7,19 +7,20 @@
 
 from __future__ import print_function
 
-from base_classes import BaseSciDocXMLReader
-from minerva.scidoc.citation_utils import guessNamesOfPlainTextAuthor, fixNumberCitationsXML, detectCitationStyle
+from __future__ import absolute_import
+from .base_classes import BaseSciDocXMLReader
+from scidoc.citation_utils import guessNamesOfPlainTextAuthor, fixNumberCitationsXML, detectCitationStyle
 
 import os, glob, re, codecs, json, logging
-import cPickle, random
-from BeautifulSoup import BeautifulStoneSoup
+import six.moves.cPickle, random
+from bs4 import BeautifulStoneSoup
 
-from minerva.proc.nlp_functions import sentenceSplit
-from minerva.proc.general_utils import (writeFileText, pathSelect, cleanxml)
+from proc.nlp_functions import sentenceSplit
+from proc.general_utils import (writeFileText, pathSelect, cleanxml)
 
-from minerva.scidoc.scidoc import SciDoc
-from minerva.scidoc.render_content import SciDocRenderer
-import minerva.db.corpora as cp
+from scidoc.scidoc import SciDoc
+from scidoc.render_content import SciDocRenderer
+import db.corpora as cp
 
 def debugAddMessage(doc,prop,msg):
     """
@@ -146,13 +147,13 @@ class JATSXMLReader(BaseSciDocXMLReader):
 
             newCit=newDocument.addCitation(sentence_id, real_ref_id)
 
-            if ref.has_key("citation_id"):
+            if "citation_id" in ref:
                 res["original_id"]=ref["citation_id"]
 
             newCit["original_text"]=ref.__repr__()
             newCit["parent_section"]=section
 
-            if not newDocument.reference_by_id.has_key(real_ref_id):
+            if real_ref_id not in newDocument.reference_by_id:
                 # something strange is going on: no reference with that key
                 print ("No reference found with id: %s" % real_ref_id)
     ##            continue
@@ -194,7 +195,7 @@ class JATSXMLReader(BaseSciDocXMLReader):
                 if label:
                     aff_id=label.text
                 else:
-                    if not aff.has_key("id"):
+                    if "id" not in aff:
                         print ("Aff with no id: %s" % aff)
                     else:
                         aff_id=aff["id"]
@@ -357,7 +358,7 @@ class JATSXMLReader(BaseSciDocXMLReader):
         for r in refs:
             citations_found.extend(self.loadJATSCitation(r, newSent["id"], newDocument, section=section_id))
 
-        non_refs=s_soup.findAll(lambda tag:tag.name.lower()=="xref" and tag.has_key("ref-type") and tag["ref-type"].lower() != "bibr")
+        non_refs=s_soup.findAll(lambda tag:tag.name.lower()=="xref" and "ref-type" in tag and tag["ref-type"].lower() != "bibr")
         for nr in non_refs:
             nr.name="inref"
 
@@ -568,7 +569,7 @@ def generateSideBySide(doc_list):
         converter, one loading the XML into SciDocJSON and rendering it back as HTML
     """
     from subprocess import Popen
-    from read_auto import AutoXMLReader
+    from .read_auto import AutoXMLReader
 
     reader=AutoXMLReader()
     output_dir=os.path.join(cp.Corpus.ROOT_DIR,"conversion_visualization\\")

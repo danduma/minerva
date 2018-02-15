@@ -6,8 +6,11 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
+from __future__ import absolute_import
 import re
-from minerva.proc.general_utils import levenshtein
+from proc.general_utils import levenshtein
+import six
+from six.moves import range
 
 jatsmultinumbercitation=re.compile(r"\[.*<xref\s+?ref-type=\"bibr\".*?>(.+?)</xref>\s*?(-|--|&#x02013;)<xref\s+?ref-type=\"bibr\".*?>(.+?)</xref>",re.IGNORECASE)
 
@@ -163,7 +166,7 @@ def fixNumberCitations(text):
 
         res=[]
         for cnt in range(id_1,id_2+1):
-            res.append(unicode(cnt))
+            res.append(six.text_type(cnt))
         return match.group(1)+",".join(res).strip(",")+match.group(4)
 
     old_text=""
@@ -176,7 +179,7 @@ def fixNumberCitations(text):
         old_text=text
         text=rxseparatebrackets.sub(r"[\1,\2]", text)
 
-    return unicode(text)
+    return six.text_type(text)
 
 
 def detectCitationStyle(text, citation_regexes=CITATION_REGEXES, default=None):
@@ -196,7 +199,7 @@ def detectCitationStyle(text, citation_regexes=CITATION_REGEXES, default=None):
         citation_count[style]=count
 
     if count_non_zero:
-        return sorted(citation_count.iteritems(),key=lambda x:x[1],reverse=True)[0][0]
+        return sorted(six.iteritems(citation_count),key=lambda x:x[1],reverse=True)[0][0]
 
     return default
 
@@ -254,7 +257,7 @@ def matchCitationWithReference(citation_data, references):
             num_authors=(1,100) # min 1, we don't know
 
     year=citation_data["year"]
-    yearlen=len(unicode(year)) if year else 10
+    yearlen=len(six.text_type(year)) if year else 10
     found=False
 
     potentials=[]
@@ -415,7 +418,7 @@ def removeACLCitations(text):
     """
     old_text=""
     while len(old_text) != len(text):
-        old_text=unicode(text)
+        old_text=six.text_type(text)
         text=re.sub(r"(?:[A-Z][A-Za-z'`-]+)(?:,? (?:(?:and |& )?(?:[A-Z][A-Za-z'`-]+)|(?:et al.?)))*(?:, *(?:19|20)[0-9][0-9][a-g]?(?:, p.? [0-9]+)?| \((?:19|20)[0-9][0-9][a-g]?(?:, p.? [0-9]+)?\))", "", text)
     return text
 
@@ -436,7 +439,7 @@ def annotateCitationsInSentence(text, detected_style="APA"):
     if not detected_style:
         raise ValueError("Cannot determine the citation style")
 
-    assert isinstance(text, basestring)
+    assert isinstance(text, six.string_types)
 
     if detected_style=="APA":
         return annotateCitationsAPA(text)
@@ -472,7 +475,7 @@ def annotateCitationsAPA(text):
         }
 
         extracted_citations.append(cit_dict)
-        return CITATION_FORM % unicode(len(extracted_citations))
+        return CITATION_FORM % six.text_type(len(extracted_citations))
 
     if rxapa_detect.search(text):
         text = rxapa.sub(repFunc, text)
@@ -513,7 +516,7 @@ def annotateCitationsAFI(text):
         # each <CIT ID=%d /> token is one number more in ID
         extracted_citations.append(cit_dict)
 
-        return CITATION_FORM % unicode(len(extracted_citations))
+        return CITATION_FORM % six.text_type(len(extracted_citations))
 
     text=fixNumberCitations(text)
     text = rxafi.sub(repFunc, text)

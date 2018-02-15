@@ -5,9 +5,13 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import os, re, codecs, datetime, random, sys, unicodedata
+import six
+from six.moves import range
 try:
-    import cPickle
+    import six.moves.cPickle
 except:
     import pickle
 
@@ -28,10 +32,10 @@ def levenshtein(seq1, seq2):
         http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Python
     """
     oneago = None
-    thisrow = range(1, len(seq2) + 1) + [0]
-    for x in xrange(len(seq1)):
+    thisrow = list(range(1, len(seq2) + 1)) + [0]
+    for x in range(len(seq1)):
         twoago, oneago, thisrow = oneago, thisrow, [0] * len(seq2) + [x + 1]
-        for y in xrange(len(seq2)):
+        for y in range(len(seq2)):
             delcost = oneago[y] + 1
             addcost = thisrow[y - 1] + 1
             subcost = oneago[y - 1] + (seq1[x] != seq2[y])
@@ -53,12 +57,16 @@ def exists(filename):
     return os.path.isfile(filename)
 
 def ensureDirExists(dir):
+    # type: (basestring) -> None
     """
         Makes sure directory exists. If not, it creates it.
     """
     dir=os.path.normpath(dir)
     if not os.path.isdir(dir):
-        os.makedirs(dir)
+        try:
+            os.makedirs(dir)
+        except:
+            print(("Failed to create directory %s" % dir))
 
 def deleteFiles(path,file_list):
     """
@@ -174,7 +182,7 @@ def writeTuplesToCSV(columns,tuples,filename):
             line=pattern % l
             f.write(line)
         except:
-            print("error writing: " + l.__repr__())
+            print(("error writing: " + l.__repr__()))
 
     f.close()
 
@@ -206,7 +214,7 @@ def writeDictToCSV(columns,data,filename):
             line+="\n"
             f.write(line)
         except:
-            print ("error writing: " + sys.exc_info()[:2])
+            print(("error writing: " + sys.exc_info()[:2]))
 
     f.close()
 
@@ -227,7 +235,8 @@ def most_common(L):
         from http://stackoverflow.com/questions/1518522/python-most-common-element-in-a-list
     """
     groups = itertools.groupby(sorted(L))
-    def _auxfun((item, iterable)):
+    def _auxfun(packed):
+        (item, iterable) = packed
         return len(list(iterable)), -L.index(item)
     return max(groups, key=_auxfun)[0]
 
@@ -245,7 +254,7 @@ def savePickle(filename, what):
     """
 #    f=codecs.open(filename,"wb","utf-8", errors="replace")
     f=open(filename,"wb")
-    cPickle.dump(index,f)
+    six.moves.cPickle.dump(index,f)
     f.close()
 
 def loadPickle(filename):
@@ -255,7 +264,7 @@ def loadPickle(filename):
 
 #    f=codecs.open(filename,"rb","utf-8", errors="replace")
     f=open(filename,"rb")
-    index=cPickle.load(f)
+    index=six.moves.cPickle.load(f)
     return index
 
 def copyDictExceptKeys(dict_to_copy,except_keys):
@@ -303,7 +312,7 @@ def pathSelect(root, path, recursive=True):
         :param path: path to node we seek
         :type path: string or list
     """
-    if isinstance(path, basestring):
+    if isinstance(path, six.string_types):
         path=path.lower().split("/")
 
     for element in path:
@@ -335,18 +344,18 @@ def reportTimeLeft(current_file, num_files, time0, msg="", start_at=0):
     hours, remainder = divmod(total, 3600)
     minutes, seconds = divmod(remainder, 60)
     if msg != "":msg+=", "
-    print("%d/%d: %s %02d:%02d:%02d left" %
-        (current_file,num_files,msg,int(hours), int(minutes), int(seconds)))
+    print(("%d/%d: %s %02d:%02d:%02d left" %
+        (current_file,num_files,msg,int(hours), int(minutes), int(seconds))))
 
 
 def safe_unicode(obj, * args):
     """ return the unicode representation of obj """
     try:
-        return unicode(obj, * args)
+        return six.text_type(obj, * args)
     except UnicodeDecodeError:
         # obj is byte string
         ascii_text = str(obj).encode('string_escape')
-        return unicode(ascii_text)
+        return six.text_type(ascii_text)
 
 def safe_str(obj):
     """ return the byte string representation of obj """
@@ -354,7 +363,7 @@ def safe_str(obj):
         return str(obj)
     except UnicodeEncodeError:
         # obj is unicode
-        return unicode(obj).encode('unicode_escape')
+        return six.text_type(obj).encode('unicode_escape')
 
 
 def main():

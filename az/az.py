@@ -6,9 +6,11 @@
 # For license information, see LICENSE.TXT
 
 
+from __future__ import absolute_import
+from __future__ import print_function
 import re
 import codecs
-from BeautifulSoup import BeautifulStoneSoup
+from bs4 import BeautifulStoneSoup
 import json
 import difflib
 import itertools
@@ -52,7 +54,8 @@ def most_common(L):
 		from http://stackoverflow.com/questions/1518522/python-most-common-element-in-a-list
 	"""
 	groups = itertools.groupby(sorted(L))
-	def _auxfun((item, iterable)):
+	def _auxfun(xxx_todo_changeme):
+		(item, iterable) = xxx_todo_changeme
 		return len(list(iterable)), -L.index(item)
 	return max(groups, key=_auxfun)[0]
 
@@ -249,7 +252,7 @@ def loadAZannot(filename):
 				match["IA"]=match.get("AZ",[])
 				match["IA"].append(s.get("az",""))
 			else:
-				print "NO MATCH for CITATION in REFERENCES:", ref["text"]
+				print("NO MATCH for CITATION in REFERENCES:", ref["text"])
 				pass
 
 ## "in press", "forthcoming", "submitted", "to appear"
@@ -339,7 +342,7 @@ def generateGraph(docs):
 		for r in doc["references"]:
 ##			print r["title"]
 			if r["authors"] == "":
-				print "  NO AUTHORS!",r
+				print("  NO AUTHORS!",r)
 			match=findMatchingReferenceByAuthors(r,docs)
 			if match:
 				if doc.get("graph_num",0)==0:
@@ -359,8 +362,8 @@ def generateGraph(docs):
 ##				print "NO MATCH for REFERENCE in CORPUS:", r
 				pass
 
-	print "AZs", set(azs)
-	print "AIs", set(ias)
+	print("AZs", set(azs))
+	print("AIs", set(ias))
 	return nodes, links
 
 

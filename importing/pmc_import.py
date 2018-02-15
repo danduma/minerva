@@ -7,13 +7,14 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import os, json, re
 
-from corpus_import import CorpusImporter
-import corpus_import
-import minerva.db.corpora as cp
-from minerva.scidoc.xmlformats.read_jatsxml import JATSXMLReader
-from minerva.proc.nlp_functions import tokenizeText, basic_stopwords
+from .corpus_import import CorpusImporter
+from . import corpus_import
+import db.corpora as cp
+from scidoc.xmlformats.read_jatsxml import JATSXMLReader
+from proc.nlp_functions import tokenizeText, basic_stopwords
 from string import punctuation
 
 corpus_import.FILES_TO_PROCESS_FROM=0
@@ -41,6 +42,7 @@ def import_pmc_corpus():
 
     importer.importCorpus("g:\\nlp\\phd\\pmc\\inputXML",file_mask="*.nxml")
     importer.updateInCollectionReferences(cp.Corpus.listPapers(), {})
+
 
 
 def main():

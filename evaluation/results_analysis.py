@@ -10,6 +10,8 @@
 #-------------------------------------------------------------------------------
 
 
+from __future__ import absolute_import
+from __future__ import print_function
 import glob
 
 import pandas
@@ -18,8 +20,9 @@ from scipy.stats.mstats import mode
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-import minerva.db.corpora as cp
-from minerva.proc.general_utils import ensureTrailingBackslash, getFileDir, getFileName
+import db.corpora as cp
+from proc.general_utils import ensureTrailingBackslash, getFileDir, getFileName
+from six.moves import range
 ##from testingPipeline5 import measureCitationResolution, AZ_ZONES_LIST, CORESC_LIST
 
 def generateEqualWeights():
@@ -38,10 +41,10 @@ def statsOnResults(data, metric="avg_mrr"):
         index+=1
     lines=data.iloc[:index]
     means=lines.mean()
-    print "Averages:"
+    print("Averages:")
     for zone in AZ_ZONES_LIST:
         res[zone]=means[zone]
-        print zone,":",means[zone]
+        print(zone,":",means[zone])
     return res
 
 def drawSimilaritiesGraph(filename,metric, smooth_graph=False):
@@ -52,7 +55,7 @@ def drawSimilaritiesGraph(filename,metric, smooth_graph=False):
     if dir=="":
         filename=cp.Corpus.dir_output+filename
 
-    print "Drawing graph for",filename
+    print("Drawing graph for",filename)
     data=pandas.read_csv(filename)
 ##    columns=AZ_ZONES_LIST+[metric]
 
@@ -151,7 +154,7 @@ def computeOverlap(filename, overlap_in="rank", overlap_between=["az_annotated_1
     data=pandas.read_csv(cp.Corpus.dir_output+filename)
 ##    data['precision_2'] = Series(0, index=data.index)
 ##    data=DataFrame(self.overall_results)
-    print data.describe()
+    print(data.describe())
     group=data.groupby(["file_guid","citation_id"])
 
     all_overlaps=[]
@@ -172,7 +175,7 @@ def computeOverlap(filename, overlap_in="rank", overlap_between=["az_annotated_1
 
         all_overlaps.append(this_one)
 
-    print "Overlap between", overlap_between," in ",overlap_in,": %02.4f" % (sum(all_overlaps) / float(len(all_overlaps)))
+    print("Overlap between", overlap_between," in ",overlap_in,": %02.4f" % (sum(all_overlaps) / float(len(all_overlaps))))
 
 
 def drawGraphOfScorePerMethod(data):
@@ -181,9 +184,9 @@ def drawGraphOfScorePerMethod(data):
     # !TODO IMPLEMENT
     columns=[]
 
-    print data.describe()
+    print(data.describe())
     numrows=data.shape[0] # (y,x)
-    print data[columns].head(10).mean()
+    print(data[columns].head(10).mean())
 
     data=data.sort(metric, ascending=False)
 
@@ -243,9 +246,9 @@ def drawNewSimilaritiesGraph(filename, metric, single_out="OWN", smooth_graph=Fa
         data["pct_"+zone]=data[zone]/data[AZ_ZONES_LIST].sum(axis=1)
         columns.append("pct_"+zone)
 
-    print data.describe()
+    print(data.describe())
     numrows=data.shape[0] # (y,x)
-    print data[columns].head(10).mean()
+    print(data[columns].head(10).mean())
 
     data=data.sort(metric, ascending=False)
 
@@ -323,7 +326,7 @@ def drawScoreProgression(exp,scores,name):
     sns.set_context("notebook", font_scale=1.5, rc={"lines.linewidth": 2.5})
     sns.set_palette(sns.color_palette("gist_rainbow", 11),11,0.9)
 
-    print scores
+    print(scores)
 
     results_data=DataFrame(scores)
     results_data.plot(kind="line",title="scores",fontsize=20, xlim=(0,8))

@@ -5,6 +5,8 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import os, glob, shutil
 from xmlformats.azscixml import *
 
@@ -37,8 +39,8 @@ def renameAZFilesToACL(dir):
 	for az in AZdocs:
 		num=os.path.basename(az).lower().replace(".annot","")
 		newnum=renamelist[num]
-		print "copy ",az,dir+newnum+".xml"
-		print "copy ",az.replace(".annot",".txt"),dir+newnum+".txt"
+		print("copy ",az,dir+newnum+".xml")
+		print("copy ",az.replace(".annot",".txt"),dir+newnum+".txt")
 		shutil.copyfile()
 
 
@@ -51,7 +53,7 @@ def testTypesContained(container):
         if isinstance(cont2,list):
             elements=cont2
         elif isinstance(element, dict):
-            elements=element.values()
+            elements=list(element.values())
         else:
             return
 
@@ -69,7 +71,7 @@ def convertAnnotToSciDoc(input_mask,output_dir):
     """
     output_dir=ensureTrailingBackslash(output_dir)
     for filename in glob.glob(input_mask)[2:]:
-        print "Converting",filename
+        print("Converting",filename)
         doc=loadAZSciXML(filename)
         fn=os.path.basename(filename)
         doc.saveToFile(output_dir+os.path.splitext(fn)[0]+".json")

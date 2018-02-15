@@ -5,6 +5,8 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import json, re, os, inspect
 
 class formulaicPattern:
@@ -43,12 +45,12 @@ class formulaicPattern:
         """
         def replConcept(match):
             concept=match.group(1)
-            if self.concepts.has_key(concept):
+            if concept in self.concepts:
                 if len(self.concepts[concept])==1:
                     return self.concepts[concept][0]
                 else:
                     return "("+"|".join(self.concepts[concept]).strip("|")+")"
-            print match.group(0)
+            print(match.group(0))
             return "!!NOT FOUND!!"
 
         rx=pattern.replace(" ","\s+")

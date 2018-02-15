@@ -9,14 +9,17 @@
 # Licence:     GPL v3
 #-------------------------------------------------------------------------------
 
+from __future__ import absolute_import
+from __future__ import print_function
 import os, glob, re, codecs, json
-import cPickle, random
-from BeautifulSoup import BeautifulStoneSoup
+import six.moves.cPickle, random
+from bs4 import BeautifulStoneSoup
 
-from minerva.proc.general_utils import *
+from proc.general_utils import *
 
-import minerva.db.scidoc as scidoc
-import minerva.db.corpora as cp
+import db.scidoc as scidoc
+import db.corpora as cp
+import six
 
 all_azs=set([u'OTH', u'BKG', u'BAS', u'CTR', u'AIM', u'OWN', u'TXT']) # argumentative zones
 all_ais=set([u'OTH', u'BKG', u'OWN']) # intellectual attribution
@@ -47,7 +50,7 @@ def debugAddMessage(doc,prop,msg):
     """
         Prints a message and adds it to the specified tag of a document
     """
-    print msg   # uncomment
+    print(msg)   # uncomment
     doc[prop]=doc.data.get(prop,"")+msg
 
 # ------------------------------------------------------------------------------
@@ -170,7 +173,7 @@ def processReferenceXML(ref,doc, firstcall=True):
             id=ref["id"]
             if not id:
                 id=prevref["id"]
-                if isinstance(id,basestring):
+                if isinstance(id,six.string_types):
                     id="ref"+str(len(doc["references"])+1)
                 elif isinstance(id,int):
                     id=id+1
@@ -190,7 +193,7 @@ def processReferenceXML(ref,doc, firstcall=True):
     authors=ref.findAll("author")
     authorlist=[]
     surnames=[]
-    original_id=ref["id"] if ref.has_key("id") else None
+    original_id=ref["id"] if "id" in ref else None
 
     if authors:
         for a in authors:
@@ -251,7 +254,7 @@ def processCitationXML(intext):
     """
         Extract the authors, date of an in-text citation <ref> from XML dom
     """
-    if isinstance(intext,basestring):
+    if isinstance(intext,six.string_types):
         xml=BeautifulStoneSoup(intext)
     else:
         xml=intext
@@ -301,14 +304,14 @@ def loadCitation(ref, sentence_id, newDocument, section):
     """
     res=newDocument.addCitation()
 
-    if ref.has_key("citation_id"):
+    if "citation_id" in ref:
         res["original_id"]=ref["citation_id"]
 
     res["original_text"]=ref.__repr__()
     res["ref_id"]=0
     res["parent_section"]=section
 
-    if ref.has_key("refid"):
+    if "refid" in ref:
         if ref["refid"] != "?":
             replist=newDocument["metadata"].get("ref_replace_list",{})
             if str(ref["refid"]) in replist:
@@ -334,7 +337,7 @@ def findMatchingReferenceByOriginalId(id, doc):
         Returns a reference from the bibliography by its original_id if found, None otherwise
     """
     for ref in doc["references"]:
-        if ref.has_key("original_id") and str(ref["original_id"])==str(id):
+        if "original_id" in ref and str(ref["original_id"])==str(id):
             return ref
     return None
 
@@ -494,7 +497,7 @@ def loadSciXML(filename):
             For each element in attributes, if present in branch, it is added to sent
         """
         for a in attributes:
-            if branch.has_key(a):
+            if a in branch:
                 sent[a]=branch[a]
 
     def loadMetadata(newDocument,paper, fileno):
@@ -555,7 +558,7 @@ def loadSciXML(filename):
         newDocument["metadata"]["surnames"]=newSurnames
 
         newDocument["metadata"]["year"]=sanitizeString(newDocument["metadata"]["year"])
-        if newDocument["metadata"].has_key("conference"):
+        if "conference" in newDocument["metadata"]:
             newDocument["metadata"]["conference"]=sanitizeString(newDocument["metadata"]["conference"])
 
     def matchCitationsWithReferences(newDocument):
@@ -606,7 +609,7 @@ def loadSciXML(filename):
 
     # Load metadata, either from corpus or from file
     key=cp.Corpus.getFileUID(newDocument["metadata"]["filename"])
-    if cp.Corpus.metadata_index.has_key(key):
+    if key in cp.Corpus.metadata_index:
         metadata=cp.Corpus.metadata_index[key]
     else:
         metadata=None
@@ -665,16 +668,16 @@ def saveSciXML(doc, filename):
         """
         """
         res="<METADATA>"
-        if doc["metadata"].has_key("fileno"):
+        if "fileno" in doc["metadata"]:
             res+="<FILENO>"+doc["metadata"]["fileno"]+"</FILENO>\n"
 
         res+="<FILENAME>"+doc["filename"]+"</FILENAME>\n"
 
 
         res+="<APPEARED>"
-        if doc["metadata"].has_key("conference"):
+        if "conference" in doc["metadata"]:
             res+="<CONFERENCE>"+doc["metadata"]["conference"]+"</CONFERENCE>\n"
-        if doc["metadata"].has_key("journal"):
+        if "journal" in doc["metadata"]:
             res+="<JOURNAL>"+doc["metadata"]["journal"]+"</JOURNAL>\n"
 
         res+="<AUTHORS>"
@@ -695,7 +698,7 @@ def saveSciXML(doc, filename):
         res+="<YEAR>"+doc["year"]+"</YEAR>"
         res+="</APPEARED>"
 
-        if doc["metadata"].has_key("revisionhistory"):
+        if "revisionhistory" in doc["metadata"]:
             res+="<REVISIONHISTORY>"+doc["metadata"]["revisionhistory"]+"</REVISIONHISTORY>\n"
 
         return res
@@ -769,7 +772,7 @@ def matchGenericSection(header, prev):
                 if w==w2:
                     scores[s]=scores.get(s,0)+wdict[w]
 
-    res=sorted(scores.iteritems(),key=lambda x:x[1],reverse=True)[0]
+    res=sorted(six.iteritems(scores),key=lambda x:x[1],reverse=True)[0]
     return res[0]
 
 def matchCoreSC(section,prev):
@@ -786,9 +789,9 @@ def matchCoreSC(section,prev):
 
     for c in [c.lower() for c in CSC]:
         if c in header:
-            print "yay",c+"!"
+            print("yay",c+"!")
 
-    print header
+    print(header)
 
 def writeTuplesToCSV(columns,tuples,filename):
     """
@@ -812,7 +815,7 @@ def writeTuplesToCSV(columns,tuples,filename):
             line=pattern % l
             f.write(line)
         except:
-            print "error writing: ", l
+            print("error writing: ", l)
 
     f.close()
 

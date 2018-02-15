@@ -5,10 +5,13 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import json
 
-##from minerva.proc.nlp_functions import CORESC_LIST
+##from proc.nlp_functions import CORESC_LIST
 import pandas as pd
+from six.moves import range
 
 CORESC_LIST=["Bac","Con","Exp","Goa","Hyp", "Met","Mod","Mot","Obj","Obs","Res"]
 AZ_ZONES_LIST=["AIM","BAS","BKG","CTR","OTH","OWN","TXT"]
@@ -44,8 +47,8 @@ def generate_sankey(input_file, zones=CORESC_LIST):
 
     stacks.append(zones)
 
-    print make_raw_data(raw_data)
-    print make_stacks(stacks)
+    print(make_raw_data(raw_data))
+    print(make_stacks(stacks))
 
 def main():
 ##    generate_sankey(r"C:\Users\dd\Documents\Dropbox\PhD\WOSP16\sankey_diagram\sankey_ilc.csv")

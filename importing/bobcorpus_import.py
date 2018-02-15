@@ -5,11 +5,12 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
 import sqlite3, os, glob
 from general_utils import *
 
 import corpus_ingest
-import aan_metadata
+from . import aan_metadata
 
 from xmlformats.bobscixml import *
 from scidoc import SciDoc

@@ -11,14 +11,15 @@
     mangled XML of the bob corpus.
 """
 
-import os, glob, re, codecs, json
-import cPickle, random
-from BeautifulSoup import BeautifulStoneSoup
+from __future__ import absolute_import
+from __future__ import print_function
+from bs4 import BeautifulStoneSoup
 
-from minerva.proc.general_utils import *
+from proc.general_utils import *
 
-from minerva.scidoc.scidoc import SciDoc
-import minerva.db.corpora as cp
+from scidoc.scidoc import SciDoc
+import db.corpora as cp
+import six
 
 all_azs=set([u'OTH', u'BKG', u'BAS', u'CTR', u'AIM', u'OWN', u'TXT']) # argumentative zones
 all_ais=set([u'OTH', u'BKG', u'OWN']) # intellectual attribution
@@ -50,7 +51,7 @@ def debugAddMessage(doc,prop,msg):
     """
         Prints a message and adds it to the specified tag of a document
     """
-    print msg   # uncomment
+    print(msg)   # uncomment
     doc[prop]=doc.data.get(prop,"")+msg
 
 # ------------------------------------------------------------------------------
@@ -173,7 +174,7 @@ def processReferenceXML(ref,doc, firstcall=True):
             id=ref["id"]
             if not id:
                 id=prevref["id"]
-                if isinstance(id,basestring):
+                if isinstance(id,six.string_types):
                     id="ref"+str(len(doc["references"])+1)
                 elif isinstance(id,int):
                     id=id+1
@@ -193,7 +194,7 @@ def processReferenceXML(ref,doc, firstcall=True):
     authors=ref.findAll("author")
     authorlist=[]
     surnames=[]
-    original_id=ref["id"] if ref.has_key("id") else None
+    original_id=ref["id"] if "id" in ref else None
 
     if authors:
         for a in authors:
@@ -254,7 +255,7 @@ def processCitationXML(intext):
     """
         Extract the authors, date of an in-text citation <ref> from XML dom
     """
-    if isinstance(intext,basestring):
+    if isinstance(intext,six.string_types):
         xml=BeautifulStoneSoup(intext)
     else:
         xml=intext
@@ -311,9 +312,9 @@ def loadCitation(ref, sentence_id, newDocument, section):
     """
     res=newDocument.addCitation(sent_id=sentence_id)
 
-    if ref.has_key("citation_id"):
+    if "citation_id" in ref:
         res["original_id"]=ref["citation_id"]
-    elif ref.has_key("citation_id"):
+    elif "citation_id" in ref:
         res["original_id"]=ref["id"]
 
     loadTagAttributes(ref,res)
@@ -322,7 +323,7 @@ def loadCitation(ref, sentence_id, newDocument, section):
     res["ref_id"]=0
     res["parent_section"]=section
 
-    if ref.has_key("refid"):
+    if "refid" in ref:
         if ref["refid"] != "?":
             replist=newDocument["metadata"].get("ref_replace_list",{})
             if str(ref["refid"]) in replist:
@@ -348,14 +349,14 @@ def loadRefauthor(refauthor, sentence_id, newDocument, section):
     """
     res=newDocument.addCitation()
 
-    if ref.has_key("id"):
+    if "id" in ref:
         res["original_id"]=ref["id"]
 
     res["original_text"]=ref.__repr__()
     res["ref_id"]=0
     res["parent_section"]=section
 
-    if ref.has_key("refid"):
+    if "refid" in ref:
         if ref["refid"] != "?":
             replist=newDocument["metadata"].get("ref_replace_list",{})
             if str(ref["refid"]) in replist:
@@ -381,7 +382,7 @@ def findMatchingReferenceByOriginalId(id, doc):
         Returns a reference from the bibliography by its original_id if found, None otherwise
     """
     for ref in doc["references"]:
-        if ref.has_key("original_id") and str(ref["original_id"])==str(id):
+        if "original_id" in ref and str(ref["original_id"])==str(id):
             return ref
     return None
 
@@ -600,7 +601,7 @@ def loadMetadata(newDocument, paper, fileno, soup):
         newDocument["metadata"]["year"]=""
 
 def sanitizeString(s, maxlen=200):
-    if not isinstance(s,basestring):
+    if not isinstance(s,six.string_types):
         raise ValueError("SanitizeString() takes a string parameter!")
     s=s.replace("\t"," ")
     s=s[:maxlen]
@@ -619,7 +620,7 @@ def makeSureValuesAreReadable(newDocument):
     newDocument["metadata"]["surnames"]=newSurnames
 
     newDocument["metadata"]["year"]=sanitizeString(newDocument["metadata"]["year"])
-    if newDocument["metadata"].has_key("conference"):
+    if "conference" in newDocument["metadata"]:
         newDocument["metadata"]["conference"]=sanitizeString(newDocument["metadata"]["conference"])
 
 def matchCitationsWithReferences(newDocument):
@@ -801,7 +802,7 @@ def matchGenericSection(header, prev):
                 if w==w2:
                     scores[s]=scores.get(s,0)+wdict[w]
 
-    res=sorted(scores.iteritems(),key=lambda x:x[1],reverse=True)[0]
+    res=sorted(six.iteritems(scores),key=lambda x:x[1],reverse=True)[0]
     return res[0]
 
 def matchCoreSC(section,prev):
@@ -818,9 +819,9 @@ def matchCoreSC(section,prev):
 
     for c in [c.lower() for c in CSC]:
         if c in header:
-            print "yay",c+"!"
+            print("yay",c+"!")
 
-    print header
+    print(header)
 
 def writeTuplesToCSV(columns,tuples,filename):
     """
@@ -844,7 +845,7 @@ def writeTuplesToCSV(columns,tuples,filename):
             line=pattern % l
             f.write(line)
         except:
-            print "error writing: ", l
+            print("error writing: ", l)
 
     f.close()
 

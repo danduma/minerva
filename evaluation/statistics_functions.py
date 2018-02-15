@@ -5,10 +5,12 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import sys
 
-from minerva.proc.nlp_functions import CORESC_LIST, AZ_ZONES_LIST
-import minerva.db.corpora as cp
+from proc.nlp_functions import CORESC_LIST, AZ_ZONES_LIST
+import db.corpora as cp
 
 
 def getAnnotationStatistics(doc):
@@ -61,7 +63,7 @@ def getAnnotationStatistics(doc):
             "per_zone_citations":citation_zone_counts
             }
 
-from minerva.importing.importing_functions import addSciDocToDB
+from importing.importing_functions import addSciDocToDB
 
 
 def computeAnnotationStatistics(guid):
@@ -90,13 +92,13 @@ def computeAnnotationStatistics(guid):
 
 def main():
     import json
-    cp.useElasticCorpus()
-    from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
+##    cp.useElasticCorpus()
+    from multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.Corpus.connectCorpus("",endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 ##    doc=cp.Corpus.loadSciDoc("957e1fcf-d5b4-41dc-af32-7db08f1d2ded")
 ##    print getAnnotationStatistics(doc)
     computeAnnotationStatistics("957e1fcf-d5b4-41dc-af32-7db08f1d2ded")
-    print json.dumps(cp.Corpus.getStatistics("957e1fcf-d5b4-41dc-af32-7db08f1d2ded"),indent=3)
+    print(json.dumps(cp.Corpus.getStatistics("957e1fcf-d5b4-41dc-af32-7db08f1d2ded"),indent=3))
     pass
 
 if __name__ == '__main__':

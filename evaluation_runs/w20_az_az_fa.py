@@ -10,6 +10,7 @@
 #-------------------------------------------------------------------------------
 # including AZ
 
+from __future__ import absolute_import
 import context_extract
 from az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
 
@@ -24,7 +25,7 @@ prebuild_bows={
 }
 
 # bow_name is just about the name of the file containing the BOWs
-prebuild_indexes={
+prebuild_indeces={
 ##    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "title_abstract":{"type":"standard_multi", "bow_name":"title_abstract", "parameters":[1]},
 ##    "passage":{"type":"standard_multi", "bow_name":"passage", "parameters":[150,175,200,250,300,350,400,450]},
@@ -147,7 +148,7 @@ def main():
         "name":"w20_az_az_fa",
         "description":"Correlation of AZ to AZ in the document's text",
         "prebuild_bows":prebuild_bows,
-        "prebuild_indexes":prebuild_indexes,
+        "prebuild_indeces":prebuild_indeces,
         "prebuild_general_indexes":prebuild_general_indexes,
         "doc_methods":testing_methods,
         "qmethods":qmethods,

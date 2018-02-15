@@ -5,7 +5,8 @@
 
 # For license information, see LICENSE.TXT
 
-from minerva.proc.general_utils import loadFileText
+from __future__ import absolute_import
+from proc.general_utils import loadFileText
 
 class BaseSciDocXMLReader(object):
     """

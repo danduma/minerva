@@ -7,13 +7,14 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import logging
 from copy import deepcopy
 
-import minerva.db.corpora as cp
-import minerva.proc.doc_representation as doc_representation
-from minerva.retrieval.elastic_writer import ElasticWriter, ES_TYPE_DOC
-from minerva.evaluation.prebuild_functions import prebuildMulti
+import db.corpora as cp
+import proc.doc_representation as doc_representation
+from retrieval.elastic_writer import ElasticWriter, ES_TYPE_DOC
+from evaluation.prebuild_functions import prebuildMulti
 
 def defaultAddDocument(writer, new_doc, metadata, fields_to_process, bow_info):
     """

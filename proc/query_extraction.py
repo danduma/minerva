@@ -7,17 +7,22 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import re
 ##from collections import defaultdict, OrderedDict
 
-from nlp_functions import (tokenizeText, tokenizeTextAndRemoveStopwords, stopwords,
-CITATION_PLACEHOLDER, unTokenize, ESTIMATED_AVERAGE_WORD_LENGTH, removeCitations,
-PAR_MARKER, CIT_MARKER, BR_MARKER, AZ_ZONES_LIST, CORESC_LIST, formatSentenceForIndexing,
-getDictOfTokenCounts, removeStopwords, selectSentencesToAdd)
+from .nlp_functions import (tokenizeText, tokenizeTextAndRemoveStopwords, stopwords,
+unTokenize, ESTIMATED_AVERAGE_WORD_LENGTH, removeCitations,
+AZ_ZONES_LIST, CORESC_LIST, formatSentenceForIndexing,
+getDictOfTokenCounts, removeStopwords, selectSentencesToAdd,
+replaceCitationsWithPlaceholders)
+##from nlp_functions import PAR_MARKER, CIT_MARKER, BR_MARKER
 
-from general_utils import removeSymbols
-from structured_query import StructuredQuery
-from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+from .general_utils import removeSymbols
+from .structured_query import StructuredQuery
+from az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+import six
+from six.moves import range
 
 # this is for adding fields to a document in Lucene. These fields are not to be indexed
 FIELDS_TO_IGNORE=["left_start","right_end","params","guid_from","year_from",
@@ -80,7 +85,6 @@ class BaseQueryExtractor(object):
             Returns:
                 intermediate_query: a list of token data
         """
-        original_query=query_text
         query_text=self.cleanupQuery(query_text)
         if query_text=="":
             return None
@@ -102,7 +106,7 @@ class BaseQueryExtractor(object):
         current_parameter=params["current_parameter"]
         if isinstance(current_parameter,list) or isinstance(current_parameter,tuple):
             return "%s%d_%d" % (params["method_name"],current_parameter[0],current_parameter[1])
-        elif isinstance(current_parameter,basestring):
+        elif isinstance(current_parameter,six.string_types):
             return "%s_%s" % (params["method_name"],current_parameter)
         else:
             raise NotImplementedError
@@ -158,7 +162,7 @@ class WindowQueryExtractor(BaseQueryExtractor):
         allwords.extend(rightwords)
         allwords=[token for token in allwords if token.lower() not in stopwords]
         # Always convert in-text citations to placeholders
-        extract_dict["text"]=re.sub(r"<CIT ID=(.*?)\s?/>",CITATION_PLACEHOLDER, unTokenize(allwords))
+        extract_dict["text"]=replaceCitationsWithPlaceholders(unTokenize(allwords))
         return extract_dict
 
     def selectTokensFromContext(self, context, params):
@@ -322,7 +326,7 @@ class SelectedSentenceQueryExtractor(SentenceQueryExtractor):
                 # TODO remove names of authors from text
                 text=formatSentenceForIndexing(sent)
                 if params.get("separate_by_tag","")=="sentiment":
-                    extracted_query[unicode(intersection)]+=text+" "
+                    extracted_query[six.text_type(intersection)]+=text+" "
                 else:
                     extracted_query[params["dict_key"]]+=text+" "
 

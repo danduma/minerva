@@ -5,13 +5,15 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import sys, json, datetime, math
 
-import minerva.db.corpora as cp
-import minerva.proc.doc_representation as doc_representation
-from minerva.proc.general_utils import loadFileText, writeFileText, ensureDirExists
+import db.corpora as cp
+import proc.doc_representation as doc_representation
+from proc.general_utils import loadFileText, writeFileText, ensureDirExists
 
-from base_index import BaseIndexer
+from .base_index import BaseIndexer
 
 # lucene
 import lucene
@@ -42,7 +44,7 @@ class LuceneIndexer(BaseIndexer):
         """
             Initializes the Java VM, creates directories if needed
         """
-        print "Initializing VM..."
+        print("Initializing VM...")
         lucene.initVM(maxheap="768m")
 
         baseFullIndexDir=cp.Corpus.paths.fileLuceneIndex+os.sep

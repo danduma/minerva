@@ -7,7 +7,8 @@
 # For license information, see LICENSE.TXT
 
 from __future__ import print_function
-from read_parscit import ParsCitReader
+from __future__ import absolute_import
+from .read_parscit import ParsCitReader
 import json
 import requests
 
@@ -63,7 +64,7 @@ class ParsCitClient:
         return res
 
 def simpleTest():
-    from minerva.scidoc.reference_formatting import formatReference
+    from scidoc.reference_formatting import formatReference
     from parscit_server import test_data
     client=ParsCitClient("http://127.0.0.1:5000/parscit/")
     parsed=client.extractReferenceList([test_data])[0]

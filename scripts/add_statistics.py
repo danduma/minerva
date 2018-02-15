@@ -7,15 +7,16 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import os, sys, json
 
-import minerva.db.corpora as cp
-from minerva.proc.results_logging import ProgressIndicator
-from minerva.evaluation.statistics_functions import computeAnnotationStatistics
-from minerva.squad.tasks import computeAnnotationStatisticsTask
+import db.corpora as cp
+from proc.results_logging import ProgressIndicator
+from evaluation.statistics_functions import computeAnnotationStatistics
+from multi.tasks import computeAnnotationStatisticsTask
 
 
-def add_statistics_to_all_files(use_celery=False, conditions=None, max_files=sys.maxint):
+def add_statistics_to_all_files(use_celery=False, conditions=None, max_files=sys.maxsize):
     """
         For each paper in the corpus, it computes and stores its statistics
     """
@@ -36,7 +37,7 @@ def add_statistics_to_all_files(use_celery=False, conditions=None, max_files=sys
             progress.showProgressReport("Computing statistics -- latest paper "+ guid)
 
 
-def aggregate_statistics(conditions=None, max_files=sys.maxint):
+def aggregate_statistics(conditions=None, max_files=sys.maxsize):
     """
         Aggretates all counts from all documents in the collection
     """
@@ -86,7 +87,7 @@ def aggregate_statistics(conditions=None, max_files=sys.maxint):
         res[key.replace("num","avg")]=sum(res[key]) / float(num_files)
 
     res["num_files"] = num_files
-    json.dump(res, file(os.path.join(cp.Corpus.paths.output,"stats.json"), "w"))
+    json.dump(res, open(os.path.join(cp.Corpus.paths.output,"stats.json"), "w"))
 
 
 def fix_collection_id():
@@ -95,7 +96,7 @@ def fix_collection_id():
 
 
 def main():
-    from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    from multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 ##    cp.Corpus.setCorpusFilter(collection_id="PMC_CSC")

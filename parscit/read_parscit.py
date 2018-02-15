@@ -5,8 +5,10 @@
 
 # For license information, see LICENSE.TXT
 
-from BeautifulSoup import BeautifulStoneSoup
-from minerva.scidoc.citation_utils import guessNamesOfPlainTextAuthor
+from __future__ import absolute_import
+from __future__ import print_function
+from bs4 import BeautifulStoneSoup
+from scidoc.citation_utils import guessNamesOfPlainTextAuthor
 import re
 
 class ParsCitReader:
@@ -120,7 +122,7 @@ def main():
     reader=ParsCitReader()
     loaded=reader.parseParsCitXML(loadFileText(r"G:\NLP\ParsCit-win\example.xml"))
     for ref in loaded:
-        print formatReference(ref)
+        print(formatReference(ref))
     pass
 
 if __name__ == '__main__':

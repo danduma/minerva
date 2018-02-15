@@ -7,6 +7,7 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 from flask import Flask, jsonify, Blueprint, request, Response, url_for
 import logging, subprocess, os, tempfile, json, sys, codecs
 

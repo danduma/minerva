@@ -6,11 +6,12 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
-from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+from __future__ import absolute_import
+from az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
 
-import minerva.db.corpora as cp
+import db.corpora as cp
 
-from minerva.evaluation.experiment import Experiment
+from evaluation.experiment import Experiment
 
 # BOW files to prebuild for generating document representation.
 prebuild_bows={
@@ -24,7 +25,7 @@ prebuild_bows={
 }
 
 # bow_name is just about the name of the file containing the BOWs
-prebuild_indexes={
+prebuild_indeces={
 ##    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "title_abstract":{"type":"standard_multi", "bow_name":"title_abstract", "parameters":[1]},
 ##    "passage":{"type":"standard_multi", "bow_name":"passage", "parameters":[150,175,200,250,300,350,400,450]},
@@ -170,7 +171,7 @@ experiment={
     # dict of bag-of-word document representations to prebuild
     "prebuild_bows":prebuild_bows,
     # dict of per-file indexes to prebuild
-    "prebuild_indexes":prebuild_indexes,
+    "prebuild_indeces":prebuild_indeces,
     # dict of general indexes to prebuild
     "prebuild_general_indexes":prebuild_general_indexes,
     # dictionary of document representation methods to test
@@ -234,7 +235,7 @@ options={
 }
 
 def main():
-    from minerva.squad.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
+    from multi.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     cp.Corpus.setCorpusFilter("AAC")
@@ -245,7 +246,7 @@ def main():
 
 if __name__ == '__main__':
     main()
-##    from minerva.proc.doc_representation import getDictOfLuceneIndeces
-##    from minerva.evaluation.base_pipeline import getDictOfTestingMethods
+##    from proc.doc_representation import getDictOfLuceneIndeces
+##    from evaluation.base_pipeline import getDictOfTestingMethods
 ##    print(getDictOfLuceneIndeces(prebuild_general_indexes))
 ##    print(getDictOfTestingMethods(doc_methods))

@@ -1,23 +1,22 @@
-#-------------------------------------------------------------------------------
-# Name:        module1
-# Purpose:
+# various NLP related functions
 #
-# Author:      dd
-#
-# Created:     24/04/2015
-# Copyright:   (c) dd 2015
-# Licence:     <your licence>
-#-------------------------------------------------------------------------------
+# Copyright:   (c) Daniel Duma 2014
+# Author: Daniel Duma <danielduma@gmail.com>
+
+# For license information, see LICENSE.TXT
+
+from __future__ import absolute_import
+import re
+from string import punctuation
+from nltk import word_tokenize, sent_tokenize
+from nltk.stem.snowball import SnowballStemmer
+from six.moves import range
 
 AZ_ZONES_LIST=["AIM","BAS","BKG","CTR","OTH","OWN","TXT"]
 CORESC_LIST=["Hyp","Mot","Bac","Goa","Obj","Met","Exp","Mod","Obs","Res","Con"]
 RANDOM_ZONES_7=["RND7_"+str(x) for x in range(7)]
 RANDOM_ZONES_11=["RND11_"+str(x) for x in range(11)]
 
-from nltk import word_tokenize, sent_tokenize
-from nltk.stem.snowball import SnowballStemmer
-from string import punctuation
-import re
 
 basic_stopwords="a an and or not the that for with on in off after over".split()
 
@@ -83,7 +82,7 @@ stopwords_list=["a","able","about","above","according","accordingly","across",
 
 stopwords=["~", "the", "and", "or", "not", "of", "to", "from", "by", "with", "a", "an"]
 stopwords.extend(punctuation)
-CIT_MARKER="__cit__"
+CIT_MARKER="__cit"
 PAR_MARKER="__par__"
 BR_MARKER="__br__"
 
@@ -150,6 +149,37 @@ def tokenizeTextAndRemoveStopwords(text, stopwords=stopwords):
     tokens = removeStopwords(tokens, stopwords)
     return tokens
 
+def replaceCitationsWithPlaceholders(text):
+    """
+        Substitutes all <CIT> elements in the sentence with __cit__
+    """
+    return re.sub(r"<CIT ID=(.*?)\s?/>",CITATION_PLACEHOLDER, text)
+
+def replaceCitationTokensForParsing(text):
+    """
+        Substitutes all <CIT> elements in the sentence with __cit__
+    """
+    return re.sub(r"<CIT ID=\w*?(\d+)\s?/>",r" __cit\1 ", text)
+
+
+def getCitationNumberFromToken(text):
+    """
+        Returns the citation number from a single-token citation
+    """
+    match=re.search(r"__cit(\d+)",text,flags=re.IGNORECASE)
+    if not match:
+        return None
+    return int(match.group(1))
+
+def getFirstNumberFromString(text):
+    """
+        Returns any number found in a string
+    """
+    match=re.search(r"(\d+)",text,flags=re.IGNORECASE)
+    if not match:
+        return None
+    return int(match.group(1))
+
 def formatSentenceForIndexing(s, no_stemming=False):
     """
         Fixes all the contents of the sentence, returns a sentence that's easy
@@ -164,12 +194,13 @@ def formatSentenceForIndexing(s, no_stemming=False):
 
 def selectSentencesToAdd(docfrom,cit,param):
     """
-        Returns a list of sentences to include based on the [param]
+        Returns a list of sentence IDs (strings) to include based on the [param]
 
-        Args:
-            docfrom: SciDoc we are extracting from
-            cit: citation dict
-            param: ["paragraph", "1only", "[n]up_[n]down[_crosspar]"]
+        :param docfrom: SciDoc we are extracting from
+        :param cit: citation dict
+        :param param: ["paragraph", "1only", "[n]up_[n]down[_crosspar]"]
+        :returns list of sentence IDs
+        :rtpye list
     """
     sent=docfrom.element_by_id[cit["parent_s"]]
     para=docfrom.element_by_id[sent["parent"]]

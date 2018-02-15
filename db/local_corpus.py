@@ -8,11 +8,13 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import os, sys, json, glob, sqlite3, codecs, uuid, unicodedata
-from minerva.proc.general_utils import AttributeDict, ensureTrailingBackslash, ensureDirExists
-from minerva.scidoc.scidoc import SciDoc
+from proc.general_utils import AttributeDict, ensureTrailingBackslash, ensureDirExists
+from scidoc.scidoc import SciDoc
 
-from base_corpus import BaseCorpus
+from .base_corpus import BaseCorpus
+import six
 
 class LocalCorpus(BaseCorpus):
     """
@@ -219,8 +221,8 @@ class LocalCorpus(BaseCorpus):
         metadata["num_resolvable_citations"],
         metadata["num_citations"],
         metadata["num_references"],
-        unicode(len(metadata["inlinks"])),
-        unicode(metadata["guid"])))
+        six.text_type(len(metadata["inlinks"])),
+        six.text_type(metadata["guid"])))
         self.globalDBconn.commit()
         c.close()
 
@@ -351,19 +353,19 @@ class LocalCorpus(BaseCorpus):
         metadata
         )
         values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (unicode(metadata["guid"]),
-        unicode(metadata["doi"]),
-        unicode(metadata["corpus_id"]),
-        unicode(metadata["filename"]),
+        (six.text_type(metadata["guid"]),
+        six.text_type(metadata["doi"]),
+        six.text_type(metadata["corpus_id"]),
+        six.text_type(metadata["filename"]),
 ##            unicode(normalizeTitle(metadata["title"])),
-        unicode(metadata["norm_title"]),
-        unicode(metadata["surnames"]),
-        unicode(metadata["year"]),
+        six.text_type(metadata["norm_title"]),
+        six.text_type(metadata["surnames"]),
+        six.text_type(metadata["year"]),
         metadata["num_in_collection_references"],
         metadata["num_references"],
         metadata["num_resolvable_citations"],
         metadata["num_citations"],
-        unicode(len(metadata["inlinks"])),
+        six.text_type(len(metadata["inlinks"])),
         metadata["import_id"], # import_id
         metadata["collection_id"], # collection_id
         json.dumps(metadata)))
@@ -418,9 +420,9 @@ class LocalCorpus(BaseCorpus):
         reference_counts,
         metadata)
         values (?,?,?)""",
-        (unicode(normalizeTitle(metadata["title"])),
+        (six.text_type(normalizeTitle(metadata["title"])),
         0,
-        unicode(json.dumps(metadata))))
+        six.text_type(json.dumps(metadata))))
         self.globalDBconn.commit()
         c.close()
 

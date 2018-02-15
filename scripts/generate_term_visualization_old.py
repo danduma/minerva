@@ -10,6 +10,7 @@
 #-------------------------------------------------------------------------------
 
 
+from __future__ import absolute_import
 from pandas import *
 from corpora import Corpus
 from general_utils import writeFileText
@@ -19,6 +20,7 @@ import nlp_functions
 import json, re
 
 from collections import defaultdict
+from six.moves import range
 
 local_stopwords_list=[str(num) for num in range(100)]
 local_stopwords_list.extend(["abstract","introduction"])

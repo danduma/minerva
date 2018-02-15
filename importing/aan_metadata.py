@@ -5,7 +5,8 @@
 
 # For license information, see LICENSE.TXT
 
-from minerva.proc.general_utils import loadFileText
+from __future__ import absolute_import
+from proc.general_utils import loadFileText
 import codecs, re, json
 
 
@@ -50,7 +51,7 @@ def convertAANcitations(infile):
             returns a dict where [id_from] = [list of id_to]
     """
     with open(infile, "r") as f:
-        lines=file(infile, "r").readlines()
+        lines=open(infile, "r").readlines()
 
     citations={}
     for line in lines:
@@ -89,7 +90,7 @@ def makeCSVwithStats():
         metadata[key]["citations"]=citations.get(key,[])
         metadata[key]["num_in_collection_references"]=len(citations.get(key,[]))
 
-    data=pd.DataFrame(metadata.values())
+    data=pd.DataFrame(list(metadata.values()))
     data.to_csv("G:\\NLP\\PhD\\aan\\release\\data.csv", encoding="utf-8")
 
 def main():

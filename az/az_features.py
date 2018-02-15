@@ -5,16 +5,18 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import re, itertools, json
 
 import nltk
 from nltk.collocations import BigramCollocationFinder
 from nltk.metrics import BigramAssocMeasures
 
-from BeautifulSoup import BeautifulStoneSoup
+from bs4 import BeautifulStoneSoup
 
-from formulaic_patterns import formulaicPattern
-from minerva.proc.nlp_functions import formatSentenceForIndexing
+from .formulaic_patterns import formulaicPattern
+from proc.nlp_functions import formatSentenceForIndexing
 
 formPat=formulaicPattern()
 
@@ -42,9 +44,9 @@ def getFeatureBigrams(features,sentence,doc,history=None):
         bigrams = bigram_finder.nbest(BigramAssocMeasures.chi_sq, 20) # similarity function, num features
     except:
         try:
-            print "ARGG: error finding bigrams in sentence #",sentence["id"],": ",sentence["text"]
+            print("ARGG: error finding bigrams in sentence #",sentence["id"],": ",sentence["text"])
         except:
-            print "ARGG: error finding bigrams in sentence: <unicode error>"
+            print("ARGG: error finding bigrams in sentence: <unicode error>")
         return
     for ngram in itertools.chain(words, bigrams):
         features[ngram]=True
@@ -131,7 +133,7 @@ def prebuildAZFeaturesForDoc(doc):
     sentences_in_paragraph=[]
 
     for element in doc.data["content"]:
-        if element.has_key("type"):
+        if "type" in element:
             if element["type"].lower()=="section":
                 section_counter+=1
                 fixEndOfSection(sentences_in_section)
@@ -164,7 +166,7 @@ def removePrebuiltAZFeatures(doc):
     """
     for sentence in doc.allsentences:
         for feature in AZ_precomputed_features:
-            if sentence.has_key(feature):
+            if feature in sentence:
                 del sentence[feature]
 
 def loadRefAuthorsFromSentence(sentence):
@@ -195,7 +197,7 @@ def buildAZFeatureSetForDoc(doc):
     prebuildAZFeaturesForDoc(doc)
 
     for sentence in doc.allsentences:
-        if sentence.has_key("az"):
+        if "az" in sentence:
             features={}
             for feature in AZ_all_features:
                 feature(features,sentence,doc, None)
@@ -226,7 +228,7 @@ def buildCFCFeaturesetForDoc(doc):
         cfc_citations.extend(loadRefAuthorsFromSentence(sentence))
 
         for citation in cfc_citations:
-            if citation.has_key("cfunc"):
+            if "cfunc" in citation:
                 features={}
                 for feature in CFC_all_features:
                     feature(features,sentence,doc, None)

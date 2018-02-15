@@ -5,6 +5,8 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import codecs
 import re
 import os
@@ -31,12 +33,12 @@ def exploreBobCorpus(filename):
 
 		if match:
 			fileno=match.group(2).replace("\n","")
-			print fileno
+			print(fileno)
 			count+=1
 
 
 	f.close()
-	print "Total files:", count
+	print("Total files:", count)
 
 
 def listvalues(filename,regex):
@@ -50,7 +52,7 @@ def listvalues(filename,regex):
 
 		if match:
 			fileno=match.group(2).replace("\n","")
-			print fileno
+			print(fileno)
 
 
 	f.close()
@@ -71,7 +73,7 @@ def listuniquevalues(filename,regex):
 	f.close()
 
 	for u in uniques:
-		print u,uniques[u]
+		print(u,uniques[u])
 
 def splitMassiveBobIntoFiles(filename, subdir):
 	"""
@@ -102,7 +104,7 @@ def splitMassiveBobIntoFiles(filename, subdir):
 			else:
 				fileno="NO_MATCH_"+str(count)
 
-			print "Saving file #",count, " - ", fileno
+			print("Saving file #",count, " - ", fileno)
 			try:
 				f2=codecs.open(dir+"\\"+fileno+".xml","wb","utf-8", errors="ignore")
 				f2.write(newdoc)
@@ -170,11 +172,11 @@ def fixBobXML(infile,outfile):
 			match2=re.search(r"\.",header[start+1:])
 			if match2:
 				actual_header=cleanxml(header[start:match2.end()+1])
-				print "actual header", actual_header
+				print("actual header", actual_header)
 				para_text=header[match2.end()+1:]
 				glob_s_id+=1
 				para_text="<p><s id='s-ins-"+str(glob_s_id)+"'>"+para_text+"</s></p>"
-				print "para text",para_text
+				print("para text",para_text)
 				fulltext=fulltext[:header_match.start(1)]+actual_header+"</header>"+para_text+fulltext[header_match.end(0):]
 		elif re.match(r"\d\.?\s*.*",header):
 			# 'tis a footnote, dammit! Fix it!

@@ -1,4 +1,4 @@
-beautifulsoup
+beautifulsoup4
 celery
 citeproc-py
 elasticsearch
@@ -11,3 +11,4 @@ pybtex>=0.19
 requests
 scipy>=0.10
 scikit-learn
+spacy

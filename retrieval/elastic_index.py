@@ -5,13 +5,15 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import json
 
 from elasticsearch import Elasticsearch
-from base_index import BaseIndexer
-from minerva.retrieval.elastic_retrieval import ES_TYPE_DOC
-import index_functions
-from elastic_writer import ElasticWriter
+from .base_index import BaseIndexer
+from retrieval.elastic_retrieval import ES_TYPE_DOC
+from . import index_functions
+from .elastic_writer import ElasticWriter
 
 class ElasticIndexer(BaseIndexer):
     """
@@ -39,12 +41,12 @@ class ElasticIndexer(BaseIndexer):
 ##        properties["bow_info"] = {"type":"string", "index": "analyzed", "store":True}
 
         if not self.es.indices.exists(index=index_name):
-            print("Creating index %s " % index_name)
+            print(("Creating index %s " % index_name))
             self.es.indices.create(
                 index=index_name,
                 body={"settings":settings,"mappings":{ES_TYPE_DOC:{"properties":properties}}})
         else:
-            print("Index %s already exists" % index_name)
+            print(("Index %s already exists" % index_name))
 
 
     def createIndexWriter(self, actual_dir, max_field_length=20000000):
@@ -85,7 +87,7 @@ index_functions.ADD_DOCUMENT_FUNCTION=addDocument
 
 
 def main():
-##    import minerva.db.corpora as cp
+##    import db.corpora as cp
 ##    cp.useElasticCorpus()
 ##    cp.Corpus.connectCorpus()
     ei=ElasticIndexer(use_celery=False)

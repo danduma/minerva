@@ -6,16 +6,17 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
+from __future__ import absolute_import
 import os, json
 
-##import minerva.proc.context_extract as context_extract
-from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+##import proc.context_extract as context_extract
+from az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
 
-import minerva.db.corpora as cp
-from minerva.evaluation.athar_corpus import AtharQueryGenerator
+import db.corpora as cp
+from evaluation.athar_corpus import AtharQueryGenerator
 
-from minerva.evaluation.experiment import Experiment
-from minerva.evaluation.query_generation import QueryGenerator
+from evaluation.experiment import Experiment
+from evaluation.query_generation import QueryGenerator
 
 # BOW files to prebuild for generating document representation.
 prebuild_bows={
@@ -29,7 +30,7 @@ prebuild_bows={
 }
 
 # bow_name is just about the name of the file containing the BOWs
-prebuild_indexes={
+prebuild_indeces={
 ##    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "title_abstract":{"type":"standard_multi", "bow_name":"title_abstract", "parameters":[1]},
 ##    "passage":{"type":"standard_multi", "bow_name":"passage", "parameters":[150,175,200,250,300,350,400,450]},
@@ -167,7 +168,7 @@ experiment={
     # dict of bag-of-word document representations to prebuild
     "prebuild_bows":prebuild_bows,
     # dict of per-file indexes to prebuild
-    "prebuild_indexes":prebuild_indexes,
+    "prebuild_indeces":prebuild_indeces,
     # dict of general indexes to prebuild
     "prebuild_general_indexes":prebuild_general_indexes,
     # dictionary of document representation methods to test
@@ -226,7 +227,7 @@ def main():
 
     cp.Corpus.connectCorpus(drive+":\\nlp\\phd\\aac")
     generator=AtharQueryGenerator(drive+r":\NLP\PhD\citation_context\doc_dict.json", reassign_guids=True)
-    experiment["test_files"]=generator.docs.keys()
+    experiment["test_files"]=list(generator.docs.keys())
 
     exp=Experiment(experiment, options)
     exp.query_generator=generator

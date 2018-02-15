@@ -5,12 +5,14 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import re
 
-from base_classes import BaseSciDocXMLReader
-from read_jatsxml import JATSXMLReader
-from read_paperxml import PaperXMLReader
-from read_sapienta_jatsxml import SapientaJATSXMLReader
+from .base_classes import BaseSciDocXMLReader
+from .read_jatsxml import JATSXMLReader
+from .read_paperxml import PaperXMLReader
+from .read_sapienta_jatsxml import SapientaJATSXMLReader
 
 XML_FORMATS_LIST={
     "JATS":{"regex":r"(//NLM//DTD|JATS|Journal\sArchiving\sand\sInterchange\sDTD)", "reader":JATSXMLReader},
@@ -42,7 +44,7 @@ class AutoXMLReader(BaseSciDocXMLReader):
         for format in XML_FORMATS_LIST:
             if re.findall(XML_FORMATS_LIST[format]["regex"], xml, flags=re.IGNORECASE|re.DOTALL):
                 return format
-        print(xml[:200])
+        print((xml[:200]))
         return None
 
     def read(self, xml, identifier):
@@ -63,7 +65,7 @@ def inspectFiles():
     """
         Goes file by file printing something about it
     """
-    import minerva.db.corpora as cp
+    import db.corpora as cp
     drive="g"
     cp.Corpus.connectCorpus(drive+":\\nlp\\phd\\pmc")
 

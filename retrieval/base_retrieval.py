@@ -5,10 +5,11 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
 import re
 
-from minerva.proc.query_extraction import getFieldSpecialTestName
-from minerva.proc.structured_query import StructuredQuery
+from proc.query_extraction import getFieldSpecialTestName
+from proc.structured_query import StructuredQuery
 
 MAX_RESULTS_RECALL=200
 SPECIAL_FIELDS_FOR_TESTS=["inlink_context"]

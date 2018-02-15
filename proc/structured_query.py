@@ -5,6 +5,7 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
 from collections import namedtuple
 
 StructuredToken=namedtuple("StructuredToken",["token", "count","boost","bool","field","distance"])
@@ -43,11 +44,11 @@ class StructuredQuery(list):
             if isinstance(token,dict):
                 self.addToken()
                 self.addToken(token["token"],
-                              token["count"],
-                              token["boost"],
-                              token["bool"],
-                              token["field"],
-                              token["distance"]
+                              token.get("count",1),
+                              token.get("boost",1),
+                              token.get("bool",None),
+                              token.get("field",""),
+                              token.get("distance",None)
                               )
             elif isinstance(token, tuple) or isinstance(token, list):
                 self.addToken(*token)

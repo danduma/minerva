@@ -6,11 +6,12 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
-from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+from __future__ import absolute_import
+from az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
 
-import minerva.db.corpora as cp
+import db.corpora as cp
 
-from minerva.evaluation.experiment import Experiment
+from evaluation.experiment import Experiment
 
 # BOW files to prebuild for generating document representation.
 prebuild_bows={
@@ -31,7 +32,7 @@ prebuild_bows={
 }
 
 # bow_name is just about the name of the file containing the BOWs
-prebuild_indexes={
+prebuild_indeces={
 ##    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "title_abstract":{"type":"standard_multi", "bow_name":"title_abstract", "parameters":[1]},
 ##    "passage":{"type":"standard_multi", "bow_name":"passage", "parameters":[150,175,200,250,300,350,400,450]},
@@ -133,7 +134,7 @@ doc_methods={
 
     # this is sentence-based ILC, annotated with AZ/CSC
     "full_ilc_annotated":{"type":"annotated_boost",
-                     "index":"az_ilc_az_annotated_pmc_2014_1",
+                     "index":"az_ilc_az_annotated_aac_2010_1",
                      "parameters":["paragraph"],
                      "runtime_parameters":
                         {
@@ -203,7 +204,7 @@ experiment={
     # dict of bag-of-word document representations to prebuild
     "prebuild_bows":prebuild_bows,
     # dict of per-file indexes to prebuild
-    "prebuild_indexes":prebuild_indexes,
+    "prebuild_indeces":prebuild_indeces,
     # dict of general indexes to prebuild
     "prebuild_general_indexes":prebuild_general_indexes,
     # dictionary of document representation methods to test
@@ -258,13 +259,13 @@ experiment={
 
 
 options={
-    "run_prebuild_bows":1, # should the whole BOW building process run?
-    "overwrite_existing_bows":1,   # if a BOW exists already, should we overwrite it?
-    "rebuild_indexes":1,   # rebuild indices?
-    "compute_queries":1,  # should we compute the queries?
-    "overwrite_existing_queries":1,  # force rebuilding of queries too?
-    "run_precompute_retrieval":1,  # only applies if type == "train_weights"
-    "clear_existing_prr_results":1, # delete previous precomputed results? i.e. start from scratch
+    "run_prebuild_bows":0, # should the whole BOW building process run?
+    "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
+    "rebuild_indexes":0,   # rebuild indices?
+    "compute_queries":0,  # should we compute the queries?
+    "overwrite_existing_queries":0,  # force rebuilding of queries too?
+    "run_precompute_retrieval":0,  # only applies if type == "train_weights"
+    "clear_existing_prr_results":0, # delete previous precomputed results? i.e. start from scratch
     "override_folds":4,
     "override_metric":"avg_ndcg",
 ##    "max_files_to_process":10
@@ -274,7 +275,7 @@ options={
 # usage: wosp16_experiments.py --w Mod
 
 def main():
-    from minerva.squad.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    from multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     cp.Corpus.setCorpusFilter("AAC")

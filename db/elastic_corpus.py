@@ -7,67 +7,73 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import sys, json, datetime, re, copy
 
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionTimeout, ConnectionError, TransportError
 import requests
+import six.moves.urllib.request, six.moves.urllib.parse, six.moves.urllib.error
 
-from minerva.proc.general_utils import ensureTrailingBackslash
-from minerva.scidoc.scidoc import SciDoc
-from base_corpus import BaseCorpus
+from proc.general_utils import ensureTrailingBackslash
+from scidoc.scidoc import SciDoc
+from .base_corpus import BaseCorpus
 
-ES_INDEX_PAPERS="papers"
-ES_INDEX_SCIDOCS="scidocs"
-ES_INDEX_CACHE="cache"
-ES_INDEX_AUTHORS="authors"
-ES_INDEX_LINKS="links"
-ES_INDEX_VENUES="venues"
-ES_INDEX_MISSING_REFERENCES="missing_references"
+ES_INDEX_PAPERS = "papers"
+ES_INDEX_SCIDOCS = "scidocs"
+ES_INDEX_CACHE = "cache"
+ES_INDEX_AUTHORS = "authors"
+ES_INDEX_LINKS = "links"
+ES_INDEX_VENUES = "venues"
+ES_INDEX_MISSING_REFERENCES = "missing_references"
 
-ES_TYPE_PAPER="paper"
-ES_TYPE_SCIDOC="scidoc"
-ES_TYPE_CACHE="cache"
-ES_TYPE_AUTHOR="author"
-ES_TYPE_LINK="link"
-ES_TYPE_VENUE="venue"
-ES_TYPE_MISSING_REFERENCES="missing_reference"
+ES_TYPE_PAPER = "paper"
+ES_TYPE_SCIDOC = "scidoc"
+ES_TYPE_CACHE = "cache"
+ES_TYPE_AUTHOR = "author"
+ES_TYPE_LINK = "link"
+ES_TYPE_VENUE = "venue"
+ES_TYPE_MISSING_REFERENCES = "missing_reference"
 
-index_equivalence={
-    "papers":{"index":ES_INDEX_PAPERS,"type":ES_TYPE_PAPER, "source":"metadata",
-        "non_nested_fields":["norm_title", "author_ids", "has_scidoc"]},
-    "scidocs":{"index":ES_INDEX_SCIDOCS,"type":ES_TYPE_SCIDOC, "source":"scidoc"},
-    "authors":{"index":ES_INDEX_AUTHORS,"type":ES_TYPE_AUTHOR, "source":"author"},
-    "cache":{"index":ES_INDEX_CACHE,"type":ES_TYPE_CACHE, "source":"data"},
-    "links":{"index":ES_INDEX_LINKS,"type":ES_TYPE_LINK, "source":"link"},
-    "venues":{"index":ES_INDEX_VENUES,"type":ES_TYPE_VENUE, "source":"venue"},
-    "missing_references":{"index":ES_INDEX_MISSING_REFERENCES,"type":ES_TYPE_MISSING_REFERENCES, "source":"missing_reference"},
+index_equivalence = {
+    "papers": {"index": ES_INDEX_PAPERS, "type": ES_TYPE_PAPER, "source": "metadata",
+               "non_nested_fields": ["norm_title", "author_ids", "has_scidoc"]},
+    "scidocs": {"index": ES_INDEX_SCIDOCS, "type": ES_TYPE_SCIDOC, "source": "scidoc"},
+    "authors": {"index": ES_INDEX_AUTHORS, "type": ES_TYPE_AUTHOR, "source": "author"},
+    "cache": {"index": ES_INDEX_CACHE, "type": ES_TYPE_CACHE, "source": "data"},
+    "links": {"index": ES_INDEX_LINKS, "type": ES_TYPE_LINK, "source": "link"},
+    "venues": {"index": ES_INDEX_VENUES, "type": ES_TYPE_VENUE, "source": "venue"},
+    "missing_references": {"index": ES_INDEX_MISSING_REFERENCES, "type": ES_TYPE_MISSING_REFERENCES,
+                           "source": "missing_reference"},
 }
 
-ES_ALL_INDECES=[ES_INDEX_PAPERS, ES_INDEX_SCIDOCS, ES_INDEX_CACHE,
-                ES_INDEX_LINKS, ES_INDEX_AUTHORS]
+ES_ALL_INDECES = [ES_INDEX_PAPERS, ES_INDEX_SCIDOCS, ES_INDEX_CACHE,
+                  ES_INDEX_LINKS, ES_INDEX_AUTHORS]
+
 
 class ElasticCorpus(BaseCorpus):
     """
         ElasticSearch connection corpus
     """
+
     def __init__(self):
         """
             Basic creator
         """
         super(self.__class__, self).__init__()
-        self.es=None
+        self.es = None
 
-        self.query_filter=""
+        self.query_filter = ""
+        self.endpoint = None
+        self.ALL_FILES = []
+        self.TEST_FILES = []
+        self.FILES_TO_IGNORE = []
+        self.metadata_index = None
+        self.paths.fullLuceneIndex = "index_"
+        self.max_results = sys.maxsize
 
-        self.ALL_FILES=[]
-        self.TEST_FILES=[]
-        self.FILES_TO_IGNORE=[]
-        self.metadata_index=None
-        self.paths.fullLuceneIndex="index_"
-        self.max_results=sys.maxint
-
-    def connectCorpus(self, base_directory, endpoint={"host":"localhost", "port":9200}, initializing_corpus=False,suppress_error=False):
+    def connectCorpus(self, base_directory, endpoint={"host": "localhost", "port": 9200}, initializing_corpus=False,
+                      suppress_error=False):
         """
             If DB has been created, connect to it. Icf not, initialize it first.
 
@@ -76,7 +82,7 @@ class ElasticCorpus(BaseCorpus):
                 initializing_corpus: if True, create DB and directories
                 suppress_error: if true, db doesn't complain if it's connected already
         """
-        self.endpoint=endpoint
+        self.endpoint = endpoint
         self.setPaths(ensureTrailingBackslash(base_directory))
 
         if initializing_corpus:
@@ -95,98 +101,97 @@ class ElasticCorpus(BaseCorpus):
             if not self.es.indices.exists(index=index_equivalence[name]["index"]):
                 self.es.indices.create(
                     index=index_equivalence[name]["index"],
-                    body={"settings":settings,"mappings":{index_equivalence[name]["type"]:{"properties":properties}}})
+                    body={"settings": settings,
+                          "mappings": {index_equivalence[name]["type"]: {"properties": properties}}})
 
-        settings={
-            "number_of_shards" : 2,
-            "number_of_replicas" : 0
+        settings = {
+            "number_of_shards": 2,
+            "number_of_replicas": 0
         }
-        properties={
-            "guid": {"type":"string", "index":"not_analyzed"},
-            "metadata": {"type":"nested"},
-            "norm_title": {"type":"string", "index":"not_analyzed"},
-            "author_ids":{"type":"string", "index":"not_analyzed", "store":True},
-            "num_in_collection_references": {"type":"integer"},
-            "num_resolvable_citations": {"type":"integer"},
-            "num_inlinks": {"type":"integer"},
-            "collection_id": {"type":"string", "index":"not_analyzed", "store":True},
-            "import_id": {"type":"string", "index":"not_analyzed", "store":True},
-            "time_created": {"type":"date"},
-            "time_modified": {"type":"date"},
-            "has_scidoc": {"type":"boolean","index":"not_analyzed", "store":True},
-            "flags": {"type":"string","index":"not_analyzed", "store":True},
+        properties = {
+            "guid": {"type": "string", "index": "not_analyzed"},
+            "metadata": {"type": "nested"},
+            "norm_title": {"type": "string", "index": "not_analyzed"},
+            "author_ids": {"type": "string", "index": "not_analyzed", "store": True},
+            "num_in_collection_references": {"type": "integer"},
+            "num_resolvable_citations": {"type": "integer"},
+            "num_inlinks": {"type": "integer"},
+            "collection_id": {"type": "string", "index": "not_analyzed", "store": True},
+            "import_id": {"type": "string", "index": "not_analyzed", "store": True},
+            "time_created": {"type": "date"},
+            "time_modified": {"type": "date"},
+            "has_scidoc": {"type": "boolean", "index": "not_analyzed", "store": True},
+            "flags": {"type": "string", "index": "not_analyzed", "store": True},
             # This is all now accessed through the nested metadata
-##            "filename": {"type":"string", "index":"not_analyzed", "store":True},
-##            "corpus_id": {"type":"string", "index":"not_analyzed"},
-##            "title": {"type":"string", "store":True},##            "surnames": {"type":"string"},
-##            "year": {"type":"integer"},
-##            "in_collection_references": {"type":"string", "index":"not_analyzed", "store":True},
-##            "inlinks": {"type":"string", "index":"not_analyzed", "store":True},
-            }
+            ##            "filename": {"type":"string", "index":"not_analyzed", "store":True},
+            ##            "corpus_id": {"type":"string", "index":"not_analyzed"},
+            ##            "title": {"type":"string", "store":True},##            "surnames": {"type":"string"},
+            ##            "year": {"type":"integer"},
+            ##            "in_collection_references": {"type":"string", "index":"not_analyzed", "store":True},
+            ##            "inlinks": {"type":"string", "index":"not_analyzed", "store":True},
+        }
         createTable("papers", settings, properties)
 
-
-        properties={
-            "scidoc": {"type":"string", "index": "no", "store":True},
-            "guid": {"type":"string", "index": "not_analyzed", "store":True},
-            "time_created": {"type":"date"},
-            "time_modified": {"type":"date"},
-            }
+        properties = {
+            "scidoc": {"type": "string", "index": "no", "store": True},
+            "guid": {"type": "string", "index": "not_analyzed", "store": True},
+            "time_created": {"type": "date"},
+            "time_modified": {"type": "date"},
+        }
         createTable("scidocs", settings, properties)
 
-        settings={
-            "number_of_shards" : 1,
-            "number_of_replicas" : 1
+        settings = {
+            "number_of_shards": 1,
+            "number_of_replicas": 1
         }
-        properties={
-            "data": {"type":"string", "index": "no", "store":True},
-            "time_created": {"type":"date"},
-            "time_modified": {"type":"date"},
-            }
+        properties = {
+            "data": {"type": "string", "index": "no", "store": True},
+            "time_created": {"type": "date"},
+            "time_modified": {"type": "date"},
+        }
         createTable("cache", settings, properties)
 
-        properties={
-            "link":{"type":"nested"},
-##                "guid_from": {"type":"string", "index":"not_analyzed", "store":True},
-##                "guid_to": {"type":"string", "index":"not_analyzed", "store":True},
-##                "authors_from": {"type":"string", "index":"not_analyzed", "store":True},
-##                "authors_to": {"type":"string", "index":"not_analyzed", "store":True},
-##                "self_citation": {"type":"boolean", "index":"not_analyzed", "store":True},
-##                "year_from": {"type":"integer", "index":"not_analyzed", "store":True},
-##                "year_to": {"type":"integer", "index":"not_analyzed", "store":True},
-##                "numcitations": {"type":"integer", "index":"not_analyzed", "store":True},
-            "time_created": {"type":"date"}}
+        properties = {
+            "link": {"type": "nested"},
+            ##                "guid_from": {"type":"string", "index":"not_analyzed", "store":True},
+            ##                "guid_to": {"type":"string", "index":"not_analyzed", "store":True},
+            ##                "authors_from": {"type":"string", "index":"not_analyzed", "store":True},
+            ##                "authors_to": {"type":"string", "index":"not_analyzed", "store":True},
+            ##                "self_citation": {"type":"boolean", "index":"not_analyzed", "store":True},
+            ##                "year_from": {"type":"integer", "index":"not_analyzed", "store":True},
+            ##                "year_to": {"type":"integer", "index":"not_analyzed", "store":True},
+            ##                "numcitations": {"type":"integer", "index":"not_analyzed", "store":True},
+            "time_created": {"type": "date"}}
 
         createTable("links", settings, properties)
 
-        properties={
-##                "author_id": {"type":"string", "index":"not_analyzed", "store":True},
-            "author": {"type":"nested"},
-##                "given": {"type":"string", "index":"analyzed", "store":True},
-##                "middle": {"type":"string", "index":"analyzed", "store":True},
-##                "family": {"type":"string", "index":"analyzed", "store":True},
-##                "papers": {"type":"string", "index":"not_analyzed", "store":True},
-##                "papers_first_author": {"type":"string", "index":"not_analyzed", "store":True},
-##                "papers_last_author": {"type":"string", "index":"not_analyzed", "store":True},
-##                "affiliations": {"type":"nested", "index":"not_analyzed", "store":True},
-            "time_created": {"type":"date"}
-            }
+        properties = {
+            ##                "author_id": {"type":"string", "index":"not_analyzed", "store":True},
+            "author": {"type": "nested"},
+            ##                "given": {"type":"string", "index":"analyzed", "store":True},
+            ##                "middle": {"type":"string", "index":"analyzed", "store":True},
+            ##                "family": {"type":"string", "index":"analyzed", "store":True},
+            ##                "papers": {"type":"string", "index":"not_analyzed", "store":True},
+            ##                "papers_first_author": {"type":"string", "index":"not_analyzed", "store":True},
+            ##                "papers_last_author": {"type":"string", "index":"not_analyzed", "store":True},
+            ##                "affiliations": {"type":"nested", "index":"not_analyzed", "store":True},
+            "time_created": {"type": "date"}
+        }
         createTable("authors", settings, properties)
 
-        properties={
-            "venue": {"type":"nested"},
-            "time_created": {"type":"date"},
-            "norm_title": {"type":"string", "index":"not_analyzed"},
-            }
+        properties = {
+            "venue": {"type": "nested"},
+            "time_created": {"type": "date"},
+            "norm_title": {"type": "string", "index": "not_analyzed"},
+        }
         createTable("venues", settings, properties)
 
-        properties={
-            "missing": {"type":"nested"},
-            "time_created": {"type":"date"},
-            "norm_title": {"type":"string", "index":"not_analyzed"},
-            }
+        properties = {
+            "missing": {"type": "nested"},
+            "time_created": {"type": "date"},
+            "norm_title": {"type": "string", "index": "not_analyzed"},
+        }
         createTable("missing_references", settings, properties)
-
 
     def connectedToDB(self):
         """
@@ -206,11 +211,11 @@ class ElasticCorpus(BaseCorpus):
             that file guid
         """
         if full_corpus:
-            return "idx_"+index_filename
-##            return index_filename
+            return "idx_" + index_filename
+        ##            return index_filename
         else:
-            guid=guid.lower()
-            return "idx_"+guid+"_"+index_filename
+            guid = guid.lower()
+            return "idx_" + guid + "_" + index_filename
 
     def getRecord(self, rec_id, table="papers", source=None):
         """
@@ -227,14 +232,14 @@ class ElasticCorpus(BaseCorpus):
             raise ValueError("Unknown record type")
 
         try:
-            res=self.es.get(
+            res = self.es.get(
                 index=index_equivalence[table]["index"],
                 doc_type=index_equivalence[table]["type"],
                 id=rec_id,
                 _source=source
-                )
+            )
         except:
-            raise ValueError("Not found: %s in index %s" % (rec_id,index_equivalence[table]["index"]))
+            raise ValueError("Not found: %s in index %s" % (rec_id, index_equivalence[table]["index"]))
 
         if not res:
             raise IndexError("Can't find record with id %s" % rec_id)
@@ -253,15 +258,15 @@ class ElasticCorpus(BaseCorpus):
         if table not in index_equivalence:
             raise ValueError("Unknown record type")
 
-##~        try:
+        ##~        try:
         if op_type == "update":
-            body={"doc":body}
+            body = {"doc": body}
             self.es.update(
-                            index=index_equivalence[table]["index"],
-                            doc_type=index_equivalence[table]["type"],
-                            id=rec_id,
-                            body=body
-                            )
+                index=index_equivalence[table]["index"],
+                doc_type=index_equivalence[table]["type"],
+                id=rec_id,
+                body=body
+            )
         elif op_type in ["index", "create"]:
             self.es.index(
                 index=index_equivalence[table]["index"],
@@ -269,11 +274,11 @@ class ElasticCorpus(BaseCorpus):
                 op_type=op_type,
                 id=rec_id,
                 body=body
-                )
+            )
         else:
             raise ValueError("Unkown op_type %s" % op_type)
-##        except:
-##            raise ValueError("Error writing record: %s in index %s : %s" % (rec_id,index_equivalence[table]["index"], str(sys.exc_info[:2])))
+        ##        except:
+        ##            raise ValueError("Error writing record: %s in index %s : %s" % (rec_id,index_equivalence[table]["index"], str(sys.exc_info[:2])))
 
         return
 
@@ -285,7 +290,8 @@ class ElasticCorpus(BaseCorpus):
             All other "getter" functions like getMetadataByGUID and loadSciDoc
             are aliases for this function
         """
-        return self.getRecord(rec_id, table,source=index_equivalence[table]["source"])[index_equivalence[table]["source"]]
+        return self.getRecord(rec_id, table, source=index_equivalence[table]["source"])[
+            index_equivalence[table]["source"]]
 
     def recordExists(self, rec_id, table="papers"):
         """
@@ -298,7 +304,7 @@ class ElasticCorpus(BaseCorpus):
             id=rec_id,
             index=index_equivalence[table]["index"],
             doc_type=index_equivalence[table]["type"],
-            )
+        )
 
     def SQLQuery(self, query):
         """
@@ -307,38 +313,39 @@ class ElasticCorpus(BaseCorpus):
             :param query: SQL query
             :type query: string
         """
-        uri="http://%s:%s/_sql/_explain?sql=%s" % (self.endpoint["host"],self.endpoint["port"],query)
+        url_query = six.moves.urllib.parse.quote(query.encode('utf8'))
+        uri = "http://%s:%s/_sql/_explain?sql=%s" % (self.endpoint["host"], self.endpoint["port"], url_query)
         response = requests.get(uri)
         dsl_query = json.loads(response.text)
 
         if "error" in dsl_query:
             raise ConnectionError("Error in query: " + str(dsl_query["error"]["root_cause"]))
 
-        dsl_query["body"]={"query":dsl_query.pop("query")}
-        dsl_query["from_"]=dsl_query.pop("from")
-        dsl_query["_source_include"]=dsl_query["_source"]["includes"]
-        dsl_query["_source_exclude"]=dsl_query["_source"]["excludes"]
+        dsl_query["body"] = {"query": dsl_query.pop("query")}
+        dsl_query["from_"] = dsl_query.pop("from")
+        dsl_query["_source_include"] = dsl_query["_source"]["includes"]
+        dsl_query["_source_exclude"] = dsl_query["_source"]["excludes"]
         dsl_query.pop("_source")
 
-        match=re.search(r"select.+?from[\s\"\']+([\w,]+)", query, flags=re.IGNORECASE)
+        match = re.search(r"select.+?from[\s\"\']+([\w,]+)", query, flags=re.IGNORECASE)
         if match:
-            table_name=match.group(1)
+            table_name = match.group(1)
         else:
-            table_name="papers"
+            table_name = "papers"
 
-        dsl_query["index"]=index_equivalence[table_name]["index"]
-        dsl_query["doc_type"]=index_equivalence[table_name]["type"]
+        dsl_query["index"] = index_equivalence[table_name]["index"]
+        dsl_query["doc_type"] = index_equivalence[table_name]["type"]
 
-        tmp_max=self.max_results
-##        self.max_results=dsl_query["size"]
+        tmp_max = self.max_results
+        ##        self.max_results=dsl_query["size"]
         if "size" in dsl_query:
             del dsl_query["size"]
-        results=self.unlimitedQuery(**dsl_query)
-        self.max_results=tmp_max
+        results = self.unlimitedQuery(**dsl_query)
+        self.max_results = tmp_max
 
-        results=[r["_source"] for r in results]
+        results = [r["_source"] for r in results]
         if len(dsl_query["_source_include"]) == 1:
-            results=[r[dsl_query["_source_include"][0]] for r in results]
+            results = [r[dsl_query["_source_include"][0]] for r in results]
 
         return results
 
@@ -352,7 +359,7 @@ class ElasticCorpus(BaseCorpus):
             index=ES_INDEX_CACHE,
             doc_type=ES_TYPE_CACHE,
             id=self.cachedDataIDString(type, guid, params)
-            )
+        )
 
     def saveCachedJson(self, path, data):
         """
@@ -363,7 +370,7 @@ class ElasticCorpus(BaseCorpus):
         """
         self.checkConnectedToDB()
 
-        timestamp=datetime.datetime.now()
+        timestamp = datetime.datetime.now()
         self.es.index(
             index=ES_INDEX_CACHE,
             doc_type=ES_TYPE_CACHE,
@@ -373,34 +380,34 @@ class ElasticCorpus(BaseCorpus):
                 "data": json.dumps(data),
                 "time_created": timestamp,
                 "time_modified": timestamp,
-                }
-            )
+            }
+        )
 
-    def loadCachedJson(self,path):
+    def loadCachedJson(self, path):
         """
             Load precomputed JSON
 
             :param path: unique ID of resource to load
         """
-        return json.loads(self.getRecordField(path,"cache"))
+        return json.loads(self.getRecordField(path, "cache"))
 
-    def loadSciDoc(self,guid, ignore_errors=None):
+    def loadSciDoc(self, guid, ignore_errors=None):
         """
             If a SciDocJSON file exists for guid, it returns it, otherwise None
         """
-        data=json.loads(self.getRecordField(guid,"scidocs"))
+        data = json.loads(self.getRecordField(guid, "scidocs"))
         return SciDoc(data, ignore_errors=ignore_errors)
 
-    def saveSciDoc(self,doc):
+    def saveSciDoc(self, doc):
         """
             Saves the document as JSON in the index
         """
         self.checkConnectedToDB()
 
-        attempts=0
+        attempts = 0
         while attempts < 3:
             try:
-                timestamp=datetime.datetime.now()
+                timestamp = datetime.datetime.now()
                 self.es.index(
                     index=ES_INDEX_SCIDOCS,
                     doc_type=ES_TYPE_SCIDOC,
@@ -408,44 +415,44 @@ class ElasticCorpus(BaseCorpus):
                     op_type="index",
                     body={
                         "scidoc": json.dumps(doc.data),
-                        "guid":doc["metadata"]["guid"],
+                        "guid": doc["metadata"]["guid"],
                         "time_created": timestamp,
                         "time_modified": timestamp,
-                        }
-                    )
+                    }
+                )
                 break
             except ConnectionTimeout:
-                attempts+=1
+                attempts += 1
 
     def connectToDB(self, suppress_error=False):
         """
             Connects to database
         """
         self.es = Elasticsearch([self.endpoint], timeout=60)
-        self.es.retry_on_timeout=True
+        self.es.retry_on_timeout = True
 
-    def getMetadataByGUID(self,guid):
+    def getMetadataByGUID(self, guid):
         """
             Returns a paper's metadata by GUID
         """
         return self.getRecordField(guid, "papers")
 
-    def getMetadataByField(self,field,value):
+    def getMetadataByField(self, field, value):
         """
             Returns a paper's metadata by any other field
         """
         self.checkConnectedToDB()
 
-        query=self.filterQuery("%s:\"%s\"" % (field,value))
+        query = self.filterQuery("%s:\"%s\"" % (field, value))
 
-        res=self.es.search(
+        res = self.es.search(
             index=ES_INDEX_PAPERS,
             doc_type=ES_TYPE_PAPER,
             _source="metadata",
             size=1,
             q=query)
 
-        hits=res["hits"]["hits"]
+        hits = res["hits"]["hits"]
         if len(hits) == 0:
             return None
 
@@ -461,7 +468,7 @@ class ElasticCorpus(BaseCorpus):
         """
             Easy method to set a paper's statistics
         """
-        return self.setRecord(guid, {"statistics":stats}, "papers", op_type="update")
+        return self.setRecord(guid, {"statistics": stats}, "papers", op_type="update")
 
     def filterQuery(self, query, table="papers"):
         """
@@ -470,16 +477,15 @@ class ElasticCorpus(BaseCorpus):
 
             :param query: string
         """
-        if table !="papers":
+        if table != "papers":
             raise NotImplementedError
 
         if self.query_filter != "":
-            return self.query_filter+" ("+query+")"
+            return self.query_filter + " (" + query + ")"
         else:
             return query
 
-
-    def listFieldByField(self,field1,field2,value,table="papers",max_results=100):
+    def listFieldByField(self, field1, field2, value, table="papers", max_results=100):
         """
             Returns a list: for each paper, field1 if field2==value
         """
@@ -488,18 +494,17 @@ class ElasticCorpus(BaseCorpus):
         if table not in index_equivalence:
             raise ValueError("Unknown record type")
 
-        query=self.filterQuery("%s:\"%s\"" % (field2,value))
+        query = self.filterQuery("%s:\"%s\"" % (field2, value))
 
-        hits=self.unlimitedQuery(
-                q=query,
-                index=index_equivalence[table]["index"],
-                doc_type=index_equivalence[table]["type"],
-                _source=field1,
+        hits = self.unlimitedQuery(
+            q=query,
+            index=index_equivalence[table]["index"],
+            doc_type=index_equivalence[table]["type"],
+            _source=field1,
 
         )
 
         return [r["_source"][field1] for r in hits]
-
 
     def isNestedQuery(self, query_string):
         """
@@ -509,8 +514,8 @@ class ElasticCorpus(BaseCorpus):
             :param query_string: query string
             :returns: boolean
         """
-        query_without_quotes=re.sub(r"[^\\]\".*?[^\\]\"","",query_string)
-        nested_query=re.search(r"[a-zA-Z]\.[a-zA-Z]",query_without_quotes) is not None
+        query_without_quotes = re.sub(r"[^\\]\".*?[^\\]\"", "", query_string)
+        nested_query = re.search(r"[a-zA-Z]\.[a-zA-Z]", query_without_quotes) is not None
         return nested_query
 
     def abstractNestedResults(self, query_string, hits, field=None):
@@ -531,41 +536,41 @@ class ElasticCorpus(BaseCorpus):
             else:
                 return [r["_source"] for r in hits]
 
-    def listRecords(self, conditions=None, field="guid", max_results=sys.maxint, table="papers"):
+    def listRecords(self, conditions=None, field="guid", max_results=sys.maxsize, table="papers"):
         """
             This is the equivalent of a SELECT clause
         """
         self.checkConnectedToDB()
 
-        es_index=index_equivalence[table]["index"]
-        es_type=index_equivalence[table]["type"]
+        es_index = index_equivalence[table]["index"]
+        es_type = index_equivalence[table]["type"]
 
         if conditions:
-            query=self.filterQuery(conditions)
+            query = self.filterQuery(conditions)
         else:
-##            query=self.filterQuery(field+":*")
-            query=self.filterQuery("*:*")
+            ##            query=self.filterQuery(field+":*")
+            query = self.filterQuery("*:*")
 
-        prev_max_results=self.max_results
-        self.max_results=max_results
+        prev_max_results = self.max_results
+        self.max_results = max_results
 
-        hits=self.unlimitedQuery(
-                q=query,
-                index=es_index,
-                doc_type=es_type,
-                _source=field,
+        hits = self.unlimitedQuery(
+            q=query,
+            index=es_index,
+            doc_type=es_type,
+            _source=field,
         )
-        self.max_results=prev_max_results
+        self.max_results = prev_max_results
 
         return self.abstractNestedResults(query, hits, field)
 
-    def listPapers(self,conditions=None,field="guid", max_results=sys.maxint):
+    def listPapers(self, conditions=None, field="guid", max_results=sys.maxsize):
         """
             Return a list of GUIDs in papers table where [conditions]
         """
         return self.listRecords(conditions, field, max_results, "papers")
 
-    def runSingleValueQuery(self,query):
+    def runSingleValueQuery(self, query):
         raise NotImplementedError
 
     def addAuthor(self, author):
@@ -574,20 +579,21 @@ class ElasticCorpus(BaseCorpus):
         """
         self.checkConnectedToDB()
 
-        author["author_id"]=self.generateAuthorID
-        self.updateAuthor(author,"create")
+        author["author_id"] = self.generateAuthorID
+        self.updateAuthor(author, "create")
 
     def mergeAuthorDetails(self, author_record, new_author_data):
         """
         """
+
         def findAffiliation(aff_list, new_aff):
             """
             """
-            if new_aff.get("name","") in ["",None]:
+            if new_aff.get("name", "") in ["", None]:
                 return None
 
             for aff in aff_list:
-                if aff.get("name","")==new_aff["name"]:
+                if aff.get("name", "") == new_aff["name"]:
                     return aff
 
         def mergeList(new_list, record_list):
@@ -598,11 +604,11 @@ class ElasticCorpus(BaseCorpus):
                 if paper not in record_list:
                     record_list.append(paper)
 
-        #TODO Fuzzywuzzy this!
+        # TODO Fuzzywuzzy this!
         for aff in new_author_data:
-            match=findAffiliation(author_record["affiliation"],aff)
+            match = findAffiliation(author_record["affiliation"], aff)
             if match:
-                mergeList(aff.get("papers",[]), match["papers"])
+                mergeList(aff.get("papers", []), match["papers"])
             else:
                 author_record["affiliation"].append(aff)
 
@@ -619,24 +625,24 @@ class ElasticCorpus(BaseCorpus):
         self.checkConnectedToDB()
 
         for index, new_author in enumerate(metadata["authors"]):
-            creating_new_record=False
-            author_record=self.matcher.matchAuthor(new_author)
+            creating_new_record = False
+            author_record = self.matcher.matchAuthor(new_author)
             if not author_record:
-                creating_new_record=True
-                author_record=copy.deepcopy(new_author)
-                author_record["author_id"]=self.generateAuthorID()
-                author_record["papers"]=[]
-                author_record["papers_first_author"]=[]
-                author_record["papers_last_author"]=[]
-                author_record["num_papers"]=0
+                creating_new_record = True
+                author_record = copy.deepcopy(new_author)
+                author_record["author_id"] = self.generateAuthorID()
+                author_record["papers"] = []
+                author_record["papers_first_author"] = []
+                author_record["papers_last_author"] = []
+                author_record["num_papers"] = 0
 
             if metadata["guid"] not in author_record["papers"]:
                 author_record["papers"].append(metadata["guid"])
-                if index==0:
+                if index == 0:
                     author_record["papers_first_author"].append(metadata["guid"])
-                if index==len(metadata["authors"]):
+                if index == len(metadata["authors"]):
                     author_record["papers_last_author"].append(metadata["guid"])
-            author_record["num_papers"]=len(author_record["papers"])
+            author_record["num_papers"] = len(author_record["papers"])
 
             if not creating_new_record:
                 self.mergeAuthorDetails(author_record, new_author)
@@ -648,13 +654,14 @@ class ElasticCorpus(BaseCorpus):
             Progressive update of venues
         """
         raise NotImplementedError
-##        res=self.es.search(
-##            index=ES_INDEX_VENUES,
-##            doc_type=ES_TYPE_VENUE,
-##            _source=field,
-##            q="guid:*")
-##
-##        return [r["_source"] for r in hits]
+
+    ##        res=self.es.search(
+    ##            index=ES_INDEX_VENUES,
+    ##            doc_type=ES_TYPE_VENUE,
+    ##            _source=field,
+    ##            q="guid:*")
+    ##
+    ##        return [r["_source"] for r in hits]
 
     def updateAuthor(self, author, op_type="index"):
         """
@@ -665,16 +672,16 @@ class ElasticCorpus(BaseCorpus):
         """
         self.checkConnectedToDB()
 
-        timestamp=datetime.datetime.now()
+        timestamp = datetime.datetime.now()
 
-        body={
-            "author":author,
+        body = {
+            "author": author,
         }
 
-        author["time_updated"]=timestamp
+        author["time_updated"] = timestamp
 
-        if op_type=="create":
-            body["time_created"]=timestamp
+        if op_type == "create":
+            body["time_created"] = timestamp
 
         self.es.index(
             index=ES_INDEX_AUTHORS,
@@ -682,13 +689,13 @@ class ElasticCorpus(BaseCorpus):
             op_type=op_type,
             id=author["author_id"],
             body=body
-            )
+        )
 
     def addPaper(self, metadata, check_existing=True, has_scidoc=True):
         """
             Add paper metadata to database
         """
-        op_type="create" if check_existing else "index"
+        op_type = "create" if check_existing else "index"
         self.updatePaper(metadata, op_type, has_scidoc)
         if self.AUTO_ADD_AUTHORS:
             self.updateAuthorsFromPaper(metadata)
@@ -704,38 +711,38 @@ class ElasticCorpus(BaseCorpus):
         """
         self.checkConnectedToDB()
 
-        timestamp=datetime.datetime.now()
-        body={"guid": metadata["guid"],
+        timestamp = datetime.datetime.now()
+        body = {"guid": metadata["guid"],
                 "metadata": metadata,
                 "norm_title": metadata["norm_title"],
-                "num_in_collection_references": metadata.get("num_in_collection_references",0),
-                "num_resolvable_citations": metadata.get("num_resolvable_citations",0),
-                "num_inlinks": len(metadata.get("inlinks",[])),
+                "num_in_collection_references": metadata.get("num_in_collection_references", 0),
+                "num_resolvable_citations": metadata.get("num_resolvable_citations", 0),
+                "num_inlinks": len(metadata.get("inlinks", [])),
                 "time_modified": timestamp,
-##                "corpus_id": metadata["corpus_id"],
-##                "filename": metadata["filename"],
-##                 "collection_id": metadata["collection_id"],
-##                "import_id": metadata["import_id"],
-##                "title": metadata["title"],
-##                "surnames": metadata["surnames"],
-##                "year": metadata["year"],
-                  }
+                ##                "corpus_id": metadata["corpus_id"],
+                ##                "filename": metadata["filename"],
+                ##                 "collection_id": metadata["collection_id"],
+                ##                "import_id": metadata["import_id"],
+                ##                "title": metadata["title"],
+                ##                "surnames": metadata["surnames"],
+                ##                "year": metadata["year"],
+                }
 
         if has_scidoc is not None:
-            body["has_scidoc"]=has_scidoc
+            body["has_scidoc"] = has_scidoc
 
-        if op_type=="create":
-            body["time_created"]=timestamp
+        if op_type == "create":
+            body["time_created"] = timestamp
 
-        if op_type=="update":
-            body={"doc":body}
+        if op_type == "update":
+            body = {"doc": body}
             try:
                 self.es.update(
                     index=ES_INDEX_PAPERS,
                     doc_type=ES_TYPE_PAPER,
                     id=metadata["guid"],
                     body=body
-                    )
+                )
             except TransportError as e:
                 self.es.indices.refresh(index=ES_INDEX_PAPERS)
                 self.es.update(
@@ -743,7 +750,7 @@ class ElasticCorpus(BaseCorpus):
                     doc_type=ES_TYPE_PAPER,
                     id=metadata["guid"],
                     body=body
-                    )
+                )
 
         else:
             self.es.index(
@@ -752,9 +759,9 @@ class ElasticCorpus(BaseCorpus):
                 op_type=op_type,
                 id=metadata["guid"],
                 body=body
-                )
+            )
 
-    def addLink(self,GUID_from,GUID_to,authors_from,authors_to,year_from,year_to,numcitations):
+    def addLink(self, GUID_from, GUID_to, authors_from, authors_to, year_from, year_to, numcitations):
         """
             Add a link in the citation graph.
         """
@@ -778,7 +785,7 @@ class ElasticCorpus(BaseCorpus):
         """
             Inserts known data about a paper with no SciDoc
         """
-##        self.addPaper(metadata,check_existing=True,has_scidoc=False)
+        ##        self.addPaper(metadata,check_existing=True,has_scidoc=False)
         raise NotImplementedError
 
     def createDBindeces(self):
@@ -806,7 +813,7 @@ class ElasticCorpus(BaseCorpus):
         if record_type not in index_equivalence:
             raise ValueError("Unknown record type")
 
-        es_table=index_equivalence[record_type]["index"]
+        es_table = index_equivalence[record_type]["index"]
 
         if self.es.indices.exists(index=es_table):
             print("Deleting ALL files in %s" % es_table)
@@ -836,10 +843,10 @@ class ElasticCorpus(BaseCorpus):
         if not self.es.indices.exists(index=index_equivalence[record_type]["index"]):
             return
 
-        es_table=index_equivalence[record_type]["index"]
-        es_type=index_equivalence[record_type]["type"]
+        es_table = index_equivalence[record_type]["index"]
+        es_type = index_equivalence[record_type]["type"]
 
-        to_delete=self.unlimitedQuery(
+        to_delete = self.unlimitedQuery(
             index=es_table,
             doc_type=es_type,
             q=query)
@@ -857,12 +864,12 @@ class ElasticCorpus(BaseCorpus):
         if not self.es.indices.exists(index=index_equivalence[table]["index"]):
             return
 
-        es_table=index_equivalence[table]["index"]
-        es_type=index_equivalence[table]["type"]
+        es_table = index_equivalence[table]["index"]
+        es_type = index_equivalence[table]["type"]
 
-        bulk_commands=[]
+        bulk_commands = []
         for item in id_list:
-            bulk_commands.append( "{ \"delete\" : {  \"_id\" : \"%s\" } }" % item )
+            bulk_commands.append("{ \"delete\" : {  \"_id\" : \"%s\" } }" % item)
 
         if len(bulk_commands) > 0:
             self.es.bulk(
@@ -879,17 +886,17 @@ class ElasticCorpus(BaseCorpus):
             It does more or less what elasticsearch.helpers.scan does, only this
             one actually works.
         """
-        scroll_time="20m"
+        scroll_time = "20m"
 
-        size=min(self.max_results,10000)
+        size = min(self.max_results, 10000)
 
-        res=self.es.search(
+        res = self.es.search(
             *args,
             size=size,
             search_type="scan",
             scroll=scroll_time,
             **kwargs
-            )
+        )
 
         results = res['hits']['hits']
         scroll_size = res['hits']['total']
@@ -897,7 +904,7 @@ class ElasticCorpus(BaseCorpus):
             try:
                 scroll_id = res['_scroll_id']
                 rs = self.es.scroll(scroll_id=scroll_id, scroll=scroll_time)
-                res=rs
+                res = rs
                 results.extend(rs['hits']['hits'])
                 scroll_size = len(rs['hits']['hits'])
             except:
@@ -917,7 +924,7 @@ class ElasticCorpus(BaseCorpus):
             :param date: comparison with a date, e.g. ">[date]", "<[date]",
             :type collection:basestring
         """
-        query_items=[]
+        query_items = []
         if collection_id:
             query_items.append("metadata.collection_id:\"%s\"" % collection_id)
         if import_id:
@@ -925,7 +932,7 @@ class ElasticCorpus(BaseCorpus):
         if date:
             query_items.append("time_created:%s" % date)
 
-        self.query_filter=" AND ".join(query_items)+" AND "
+        self.query_filter = " AND ".join(query_items) + " AND "
 
 
 DOCTEST = False
@@ -934,4 +941,5 @@ if __name__ == '__main__':
 
     if DOCTEST:
         import doctest
+
         doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE)

@@ -7,27 +7,27 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import os, glob, re, codecs, json
-import cPickle, random
-import BeautifulSoup
-from BeautifulSoup import BeautifulStoneSoup
+import six.moves.cPickle, random
+from bs4 import BeautifulStoneSoup
 from pybtex.database.input.bibtexml import Parser as BibTeXMLParser
 from pybtex.database import BibliographyDataError
 
-from base_classes import BaseSciDocXMLReader
+from .base_classes import BaseSciDocXMLReader
 
-from minerva.proc.nlp_functions import sentenceSplit
-from minerva.proc.general_utils import loadFileText, writeFileText, normalizeUnicode, normalizeTitle
-from minerva.scidoc.scidoc import SciDoc
-from minerva.scidoc.render_content import SciDocRenderer
-import minerva.db.corpora as cp
-from minerva.parscit import ParsCitClient
+from proc.nlp_functions import sentenceSplit
+from proc.general_utils import loadFileText, writeFileText, normalizeUnicode, normalizeTitle
+from scidoc.scidoc import SciDoc
+from scidoc.render_content import SciDocRenderer
+import db.corpora as cp
+from parscit import ParsCitClient
 
-from minerva.scidoc.citation_utils import (annotateCitationsInSentence,
+from scidoc.citation_utils import (annotateCitationsInSentence,
 matchCitationWithReference, normalizeAuthor, CITATION_FORM,
 guessNamesOfPlainTextAuthor, fixNumberCitationsXML, detectCitationStyle)
 
-from minerva.scidoc.reference_formatting import formatReference
+from scidoc.reference_formatting import formatReference
 
 def debugAddMessage(doc,prop,msg):
     """
@@ -124,7 +124,7 @@ class PaperXMLReader(BaseSciDocXMLReader):
             bib_data=None
 
         if bib_data:
-            entry=bib_data.entries[bib_data.entries.keys()[0]]
+            entry=bib_data.entries[list(bib_data.entries.keys())[0]]
             for field in entry.fields:
                 newDocument.metadata[field]=entry.fields[field].replace(u"\u2013",u"-")
 
@@ -438,7 +438,7 @@ def inspectFiles(doc_list):
 def basicTest():
     """
     """
-    import minerva.db.corpora as cp
+    import db.corpora as cp
 
     drive="g"
     cp.useElasticCorpus()

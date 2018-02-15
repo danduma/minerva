@@ -5,14 +5,15 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
 import nltk.collocations
 
-import cPickle, inspect, os
+import six.moves.cPickle, inspect, os
 
-from az_features import (prebuildAZFeaturesForDoc, AZ_all_features,
+from .az_features import (prebuildAZFeaturesForDoc, AZ_all_features,
 AZ_precomputed_features, formPat, removePrebuiltAZFeatures, loadRefAuthorsFromSentence)
 
-from minerva.proc.nlp_functions import *
+from proc.nlp_functions import *
 
 class AZannotator:
     def __init__(self,filename=None):
@@ -27,10 +28,10 @@ class AZannotator:
         pass
 
     def saveClasifier(self,clasifier,filename):
-        cPickle.dump(classifier,open(filename,"w"))
+        six.moves.cPickle.dump(classifier,open(filename,"w"))
 
     def loadClasifier(self,filename):
-        self.classifier=cPickle.load(open(os.path.join(self.filepath,filename),"r"))
+        self.classifier=six.moves.cPickle.load(open(os.path.join(self.filepath,filename),"r"))
 
     def annotateDoc(self,doc):
         """
@@ -68,10 +69,10 @@ class CFCannotator:
         pass
 
     def saveClasifier(self,clasifier,filename):
-        cPickle.dump(classifier,open(filename,"w"))
+        six.moves.cPickle.dump(classifier,open(filename,"w"))
 
     def loadClasifier(self,filename):
-        self.classifier=cPickle.load(open(os.path.join(self.filepath,filename),"r"))
+        self.classifier=six.moves.cPickle.load(open(os.path.join(self.filepath,filename),"r"))
 
     def annotateDoc(self,doc):
         """

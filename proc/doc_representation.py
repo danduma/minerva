@@ -7,18 +7,21 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import re, copy
 from collections import defaultdict, OrderedDict
 from string import punctuation
 
-from nlp_functions import (tokenizeText, stemText, stopwords, stemTokens,
+from .nlp_functions import (tokenizeText, stemText, stopwords, stemTokens,
 CITATION_PLACEHOLDER, unTokenize, ESTIMATED_AVERAGE_WORD_LENGTH, removeCitations,
 PAR_MARKER, CIT_MARKER, BR_MARKER, AZ_ZONES_LIST, CORESC_LIST,
 formatSentenceForIndexing, selectSentencesToAdd)
 
-from minerva.proc.general_utils import getListAnyway
-from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
-import minerva.db.corpora as cp
+from proc.general_utils import getListAnyway
+from importing.fix_citations import fixDocRemovedCitations
+from az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+import db.corpora as cp
+from six.moves import range
 
 # this is for adding fields to a document in Lucene. These fields are not to be indexed
 FIELDS_TO_IGNORE=["left_start","right_end","params","guid_from","year_from"]
@@ -135,7 +138,7 @@ def joinTogetherContextExcluding(context_list, exclude_files=[], max_year=None, 
             pass
 
     # Important! RENAMING "text" field to "inlink_context" for all BOWs thus created
-    res["inlink_context"]=res.pop("text") if res.has_key("text") else ""
+    res["inlink_context"]=res.pop("text") if "text" in res else ""
 
     return res
 
@@ -197,8 +200,16 @@ def generateDocBOWInlinkContext(doc_incoming, parameters, doctext=None):
                     # need a list of citations for each outlink, to extract context from each
                     match=findCitationInFullText(cit,doctext)
                     if not match:
-                        print("Weird! can't find citation in text")
-                        continue
+                        print("Weird! can't find citation in text!", cit)
+                        print("Fixing document ",doc["metadata"]["guid"])
+                        fixDocRemovedCitations(doc)
+                        doctext=doc.getFullDocumentText()
+                        match=findCitationInFullText(cit,doctext)
+                        if not match:
+                            print("Failed to fix for this citation")
+                            continue
+                        else:
+                            cp.Corpus.saveSciDoc(doc)
 
                     context=getOutlinkContextWindowAroundCitation(match, doctext, param, param)
                     # code below: store list of dicts with filename, BOW, so I can filter out same file later
@@ -383,11 +394,11 @@ def getDocBOWpassagesMulti(doc, parameters=[100], doctext=None):
     for param in parameters:
         res[param]=[]
 
-        for i in xrange(0, len(tokens), param):
+        for i in range(0, len(tokens), param):
             bow={"text":unTokenize(tokens[i:i+param])}
             res[param].append(bow)
 
-        for i in xrange(param/2, len(tokens), param):
+        for i in range(param/2, len(tokens), param):
             bow={"text":unTokenize(tokens[i:i+param])}
             res[param].append(bow)
 
@@ -416,7 +427,7 @@ def getDocBOWannotated(doc, parameters=None, doctext=None, keys=["az","csc_type"
     for sentence in doc.allsentences:
         text=formatSentenceForIndexing(sentence)
         for key in keys:
-            if sentence.has_key(key):
+            if key in sentence:
                 res[sentence[key]].append(text)
     for key in res:
         res[key]=" ".join(res[key])

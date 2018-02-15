@@ -7,23 +7,24 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import sys, json, datetime, math
 from copy import deepcopy
 import logging
 ##from tqdm import tqdm
 ##from progressbar import ProgressBar, SimpleProgress, Bar, ETA
-from minerva.proc.results_logging import ProgressIndicator
+from proc.results_logging import ProgressIndicator
 
-import minerva.db.corpora as cp
-import minerva.evaluation.base_pipeline as doc_representation
-from minerva.evaluation.base_pipeline import getDictOfTestingMethods
-from minerva.proc.doc_representation import getDictOfLuceneIndeces
-from minerva.proc.general_utils import loadFileText, writeFileText, ensureDirExists
-from index_functions import addBOWsToIndex
+import db.corpora as cp
+import evaluation.base_pipeline as doc_representation
+from evaluation.base_pipeline import getDictOfTestingMethods
+from proc.doc_representation import getDictOfLuceneIndeces
+from proc.general_utils import loadFileText, writeFileText, ensureDirExists
+from .index_functions import addBOWsToIndex
 
-from minerva.proc.nlp_functions import CORESC_LIST
+from proc.nlp_functions import CORESC_LIST
 
-from minerva.squad.tasks import addToindexTask
+from multi.tasks import addToindexTask
 
 ES_TYPE_DOC="doc"
 
@@ -101,6 +102,9 @@ class BaseIndexer(object):
         elif index_data["type"] in ["standard_multi"]:
             if index_data["method"] in ["az_annotated", "ilc_annotated"]:
                 return CORESC_LIST + ["ilc_CSC_"+zone for zone in CORESC_LIST]
+            else:
+                # this is the standard BOW name
+                return ["text"]
             pass
 
 
@@ -118,7 +122,7 @@ class BaseIndexer(object):
             entry=indexNames[entry_name]
             entry["function_name"]=exp["prebuild_bows"][entry["bow_name"]]["function_name"]
 
-        max_results=options.get("max_files_to_process",sys.maxint)
+        max_results=options.get("max_files_to_process",sys.maxsize)
 
         ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year,  max_results=max_results)
         for indexName in indexNames:

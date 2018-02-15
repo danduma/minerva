@@ -7,14 +7,17 @@
 
 from __future__ import print_function
 
-import json, sys, time, os
+from __future__ import absolute_import
+import json, sys, time, os, glob
 
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionTimeout, ConnectionError, TransportError
-from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
-from minerva.proc.general_utils import ensureDirExists
+from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
+from proc.general_utils import ensureDirExists
 
-import minerva.db.corpora as cp
+import db.corpora as cp
+import six
+from six.moves import range
 
 def createResultStorers(exp_name, exp_random_zoning=False, clear_existing_prr_results=False):
     """
@@ -50,11 +53,13 @@ def createResultStorers(exp_name, exp_random_zoning=False, clear_existing_prr_re
     return writers
 
 class ElasticResultStorer(object):
+    """
+        Class to store results in Elasticsearch
+    """
     def __init__(self, namespace, table_name, endpoint={"host":"localhost", "port":9200}):
-        """
-        """
-        assert isinstance(namespace, basestring)
-        assert isinstance(table_name, basestring)
+
+        assert isinstance(namespace, six.string_types)
+        assert isinstance(table_name, six.string_types)
         assert namespace != ""
 
         self.namespace=namespace
@@ -66,7 +71,7 @@ class ElasticResultStorer(object):
         self.connect()
         self.createTable()
 
-    def connect(self, ):
+    def connect(self):
         """
             Connect to elasticsearch server
         """
@@ -144,7 +149,7 @@ class ElasticResultStorer(object):
 
         return self.resultPreLoad(source)
 
-    def getResultList(self, max_results=sys.maxint):
+    def getResultList(self, max_results=sys.maxsize):
         """
             Returns a list of all results in the table.
         """
@@ -211,12 +216,12 @@ class ElasticResultStorer(object):
                 return
 
             if first:
-                columns=results[0]["_source"].keys()
+                columns=list(results[0]["_source"].keys())
                 line=SEPARATOR.join(columns).strip(SEPARATOR)+u"\n"
                 csv_file.write(line)
 
             for result in results:
-                line=SEPARATOR.join([unicode(result["_source"][key]) for key in columns]).strip(SEPARATOR)+u"\n"
+                line=SEPARATOR.join([six.text_type(result["_source"][key]) for key in columns]).strip(SEPARATOR)+u"\n"
                 csv_file.write(line)
 
         scroll_time="2m"
@@ -254,7 +259,7 @@ class ElasticResultStorer(object):
         """
         result_ids=self.getResultList()
 
-        f=file(filename, "w")
+        f=open(filename, "w")
         f.write("[")
         for index, res_id in enumerate(result_ids):
             res=self.getResult(res_id)
@@ -267,8 +272,9 @@ class ElasticResultStorer(object):
 
 class ResultIncrementalReader(object):
     """
+        Can loop over results using a cache, faster than retrieving results one by one
     """
-    def __init__(self, result_storer, res_ids=None, max_results=sys.maxint):
+    def __init__(self, result_storer, res_ids=None, max_results=sys.maxsize):
         """
         """
         self.result_storer=result_storer
@@ -288,22 +294,24 @@ class ResultIncrementalReader(object):
 
     def fillBuffer(self, key):
         """
+            retrieves enough items to fill the buffer up to the given key
         """
-##        print("fillBuffer", key)
         self.ids_held={}
         if int(key) < len(self.res_ids):
             for cnt in range(min(len(self.res_ids)-int(key),self.bufsize)):
                 self.ids_held[key+cnt]=self.retrieveItem(self.res_ids[key+cnt])
 
-    def __getitem__(self, key):
+    def __getitem__(self, index):
         """
+            If there is an element at [index], return it
         """
-##        print("getitem",key)
-        if key not in self.ids_held:
-            self.fillBuffer(key)
-            return self.ids_held[key]
-        else:
-            return self.ids_held[key]
+        if index >= len(self.res_ids):
+            raise ValueError("No element at index %d" % index)
+
+        if index not in self.ids_held:
+            self.fillBuffer(index)
+
+        return self.ids_held[index]
 
     def __iter__(self):
         """
@@ -330,7 +338,7 @@ class ResultDiskReader(ResultIncrementalReader):
         Like ResultIncrementalReader but it keeps a local cache of everything to avoid
         having to call Elastic every few results
     """
-    def __init__(self, result_storer, cache_dir, res_ids=None, max_results=sys.maxint):
+    def __init__(self, result_storer, cache_dir, res_ids=None, max_results=sys.maxsize):
         """
             Creates cache directory if it doesn't exist
         """
@@ -340,15 +348,23 @@ class ResultDiskReader(ResultIncrementalReader):
         ensureDirExists(cache_dir)
         ensureDirExists(self.own_dir)
 
+    def __getitem__(self, index):
+        """
+            Calls retrieveItem
+        """
+        return self.retrieveItem(self.res_ids[index])
+
     def retrieveItem(self, res_id):
         """
+            Reads the item from disk if it exists, otherwise it downloads and
+            stores it, then returns it
         """
         res_path=os.path.join(self.own_dir,res_id+".json")
         if os.path.exists(res_path):
-            return json.load(file(res_path,"r"))
+            return json.load(open(res_path,"r"))
         else:
             res=self.result_storer.getResult(res_id)
-            json.dump(res,file(res_path,"w"))
+            json.dump(res,open(res_path,"w"))
             return res
 
     def subset(self, items):
@@ -359,6 +375,86 @@ class ResultDiskReader(ResultIncrementalReader):
         new=ResultDiskReader(self.result_storer, self.cache_dir, res_ids=[self.res_ids[i] for i in items])
         return new
 
+    def emptyCache(self):
+        """
+            Deletes all files in the cache directory
+        """
+        for file_name in os.listdir(self.own_dir):
+            file_path = os.path.join(self.own_dir, file_name)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+            except Exception as e:
+                print(e)
+
+    def cacheAllItems(self):
+        """
+            Forces to download and locally cache all of the items
+        """
+        for res_id in self.res_ids:
+            res_path=os.path.join(self.own_dir,res_id+".json")
+            if not os.path.exists(res_path):
+                res=self.result_storer.getResult(res_id)
+                json.dump(res,open(res_path,"w"))
+
+class OfflineResultReader(ResultIncrementalReader):
+    """
+        A reader that assumes all items have been saved offline
+    """
+    def __init__(self, table_name, cache_dir, res_ids=None, max_results=sys.maxsize):
+        """
+            Creates cache directory if it doesn't exist
+        """
+        if res_ids:
+            self.res_ids=res_ids
+        else:
+            self.res_ids=[]
+
+        self.cache_dir=cache_dir
+        self.table_name=table_name
+        self.own_dir=os.path.join(cache_dir, table_name)
+        ensureDirExists(cache_dir)
+        ensureDirExists(self.own_dir)
+        self.getResultList()
+
+    def getResultList(self):
+        """
+            Loads all ids_held from the cache dir
+        """
+##        all_files = [f for f in listdir(self.own_dir) if isfile(join(self.own_dir, f))]
+        all_files=glob.glob(os.path.join(self.own_dir,"*.json"))
+        self.res_ids=[]
+        for filename in all_files:
+            file_id=os.path.splitext(os.path.basename(filename))[0]
+            self.res_ids.append(file_id)
+
+    def __getitem__(self, key):
+        """
+
+        """
+        return self.retrieveItem(self.res_ids[key])
+
+
+    def retrieveItem(self, res_id):
+        """
+            Reads the item from disk if it exists, raises exception otherwise
+        """
+        res_path=os.path.join(self.own_dir,res_id+".json")
+        if os.path.exists(res_path):
+            return json.load(open(res_path,"r"))
+        else:
+            raise ValueError("Res_id %s not found" % res_id)
+
+    def __len__(self):
+        return len(self.res_ids)
+
+    def subset(self, items):
+        """
+            Selects a subset of the items it holds, returns a new instance with
+            those
+        """
+        new=OfflineResultReader(self.table_name, self.cache_dir, res_ids=[self.res_ids[i] for i in items])
+        return new
 
 def basicTest():
     """
@@ -372,7 +468,7 @@ def basicTest():
     rs.deleteTable()
 
 def dumpResultsToDisk():
-    from minerva.proc.nlp_functions import CORESC_LIST
+    from proc.nlp_functions import CORESC_LIST
     for zone in CORESC_LIST:
         rs=ElasticResultStorer("pmc_lrec_experiments","prr_csc_type_"+zone)
         rs.saveAsJSON(r"g:\NLP\PhD\pmc_coresc\experiments"+"\\" + "prr_csc_type_"+zone+".json")

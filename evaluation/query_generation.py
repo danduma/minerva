@@ -7,15 +7,17 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import  math, os, random, json
 from copy import deepcopy
 from collections import defaultdict, OrderedDict
 
-import minerva.db.corpora as cp
-from minerva.proc.results_logging import ProgressIndicator
-from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
-from minerva.proc.doc_representation import findCitationInFullText
-from base_pipeline import getDictOfTestingMethods
+import db.corpora as cp
+from proc.results_logging import ProgressIndicator
+from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
+from proc.doc_representation import findCitationInFullText
+from .base_pipeline import getDictOfTestingMethods
+from importing.fix_citations import fixDocRemovedCitations
 
 GLOBAL_FILE_COUNTER=0
 
@@ -55,7 +57,7 @@ class QueryGenerator(object):
                     queries_by["rz7"][random.choice(RANDOM_ZONES_7)].append(precomputed_query)
                     queries_by["rz11"][random.choice(RANDOM_ZONES_11)].append(precomputed_query)
 
-        json.dump(self.files_dict,open(self.exp["exp_dir"]+"files_dict.json","w"))
+        json.dump(self.files_dict,open(self.exp["exp_dir"]+self.exp.get("files_dict_filename","files_dict.json"),"w"))
         if self.exp.get("use_rhetorical_annotation", False):
             for annot_type in annot_types:
                 json.dump(queries_by[annot_type],open(os.path.join(self.exp["exp_dir"],"queries_by_%s.json" % annot_type),"w"))
@@ -138,7 +140,15 @@ class QueryGenerator(object):
         match=findCitationInFullText(m["cit"],doctext)
         if not match:
             print("Weird! can't find citation in text!", m["cit"])
-            return generated_queries
+            print("Fixing document ",doc["metadata"]["guid"])
+            fixDocRemovedCitations(doc)
+            doctext=doc.getFullDocumentText()
+            match=findCitationInFullText(m["cit"],doctext)
+            if not match:
+                print("Failed to fix for this citation")
+                return generated_queries
+            else:
+                cp.Corpus.saveSciDoc(doc)
 
         # this is where we are in the document
         position=match.start()

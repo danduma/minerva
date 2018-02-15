@@ -9,15 +9,18 @@
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
+from __future__ import absolute_import
+from __future__ import print_function
 from scidoc import *
 import re, codecs
 
 from general_utils import safe_unicode
 from cStringIO import StringIO
+import six
 
 html_escape=["quot", "amp", "apos", "lt", "gt", "nbsp", "iexcl", "cent", "pound", "curren", "yen", "brvbar", "sect", "uml", "copy", "ordf", "laquo", "not", "shy", "reg", "macr", "deg", "plusmn", "sup2", "sup3", "acute", "micro", "para", "middot", "cedil", "sup1", "ordm", "raquo", "frac14", "frac12", "frac34", "iquest", "Agrave", "Aacute", "Acirc", "Atilde", "Auml", "Aring", "AElig", "Ccedil", "Egrave", "Eacute", "Ecirc", "Euml", "Igrave", "Iacute", "Icirc", "Iuml", "ETH", "Ntilde", "Ograve", "Oacute", "Ocirc", "Otilde", "Ouml", "times", "Oslash", "Ugrave", "Uacute", "Ucirc", "Uuml", "Yacute", "THORN", "szlig", "agrave", "aacute", "acirc", "atilde", "auml", "aring", "aelig", "ccedil", "egrave", "eacute", "ecirc", "euml", "igrave", "iacute", "icirc", "iuml", "eth", "ntilde", "ograve", "oacute", "ocirc", "otilde", "ouml", "divide", "oslash", "ugrave", "uacute", "ucirc", "uuml", "yacute", "thorn", "yuml", "OElig", "oelig", "Scaron", "scaron", "Yuml", "fnof", "circ", "tilde", "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa", "Lambda", "Mu", "Nu", "Xi", "Omicron", "Pi", "Rho", "Sigma", "Tau", "Upsilon", "Phi", "Chi", "Psi", "Omega", "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota", "kappa", "lambda", "mu", "nu", "xi", "omicron", "pi", "rho", "sigmaf", "sigma", "tau", "upsilon", "phi", "chi", "psi", "omega", "thetasym", "upsih", "piv", "ensp", "emsp", "thinsp", "zwnj", "zwj", "lrm", "rlm", "ndash", "mdash", "lsquo", "rsquo", "sbquo", "ldquo", "rdquo", "bdquo", "dagger", "Dagger", "bull", "hellip", "permil", "prime", "Prime", "lsaquo", "rsaquo", "oline", "frasl", "euro", "image", "weierp", "real", "trade", "alefsym", "larr", "uarr", "rarr", "darr", "harr", "crarr", "lArr", "uArr", "rArr", "dArr", "hArr", "forall", "part", "exist", "empty", "nabla", "isin", "notin", "ni", "prod", "sum", "minus", "lowast", "radic", "prop", "infin", "ang", "and", "or", "cap", "cup", "int", "there4", "sim", "cong", "asymp", "ne", "equiv", "le", "ge", "sub", "sup", "nsub", "sube", "supe", "oplus", "otimes", "perp", "sdot", "lceil", "rceil", "lfloor", "rfloor", "lang", "rang", "loz", "spades", "clubs", "hearts", "diams"]
 rx_html_escape="&("+"|".join(html_escape).strip("|")+")[^;]"
-print rx_html_escape
+print(rx_html_escape)
 
 
 def fixAmpersandsHTML(text):
@@ -41,7 +44,7 @@ def saveSapientaXML(doc,filename):
         lines=[]
         lines.append('<mode2 hasDoc="yes" name="'+doc.metadata["filename"].replace(".xml","")+'" version="597"/>')
         lines.append("<METADATA>")
-        if doc["metadata"].has_key("fileno"):
+        if "fileno" in doc["metadata"]:
             lines.append("<FILENO>"+doc.metadata["fileno"]+"</FILENO>\n")
 
         lines.append("<FILENAME>"+doc.metadata["filename"]+"</FILENAME>\n")
@@ -72,7 +75,7 @@ def saveSapientaXML(doc,filename):
         lines.append(u"<YEAR>"+doc.metadata["year"]+"</YEAR>")
         lines.append(u"</APPEARED>")
 
-        if doc["metadata"].has_key("revisionhistory"):
+        if "revisionhistory" in doc["metadata"]:
             lines.append(u"<REVISIONHISTORY>"+doc.metadata["revisionhistory"]+u"</REVISIONHISTORY>\n")
         lines.append(u"</METADATA>")
         return lines
@@ -181,7 +184,7 @@ def saveSapientaXML(doc,filename):
         """
         lines=[]
         lines.append(u"<AUTHOR>")
-        if isinstance(author,basestring):
+        if isinstance(author,six.string_types):
             lines.append(author)
         elif isinstance(author,dict):
             lines.append(author["given"])
@@ -258,7 +261,7 @@ def saveSapientaXML(doc,filename):
 
 
 def main():
-    from azscixml import loadAZSciXML
+    from .azscixml import loadAZSciXML
     from scidoc import SciDoc
     doc=SciDoc(r"C:\NLP\PhD\bob\fileDB\jsonDocs\a00-1001.json")
 ##    doc=loadAZSciXML(r"C:\NLP\PhD\bob\fileDB\jsonDocs\a00-1001.json")

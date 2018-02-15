@@ -10,6 +10,7 @@
 #-------------------------------------------------------------------------------
 # including AZ
 
+from __future__ import absolute_import
 import context_extract
 from code.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7,RANDOM_ZONES_11
 
@@ -24,7 +25,7 @@ prebuild_bows={
 }
 
 # bow_name is just about the name of the file containing the BOWs
-prebuild_indexes={
+prebuild_indeces={
 ##    "full_text":{"type":"standard_multi", "bow_name":"full_text", "parameters":[1]},
 ##    "title_abstract":{"type":"standard_multi", "bow_name":"title_abstract", "parameters":[1]},
 ##    "passage":{"type":"standard_multi", "bow_name":"passage", "parameters":[150,175,200,250,300,350,400,450]},
@@ -147,7 +148,7 @@ def main():
         "name":"w20_rz_rz_fa",
         "description":"Random zoning to test for significance of results",
         "prebuild_bows":prebuild_bows,
-        "prebuild_indexes":prebuild_indexes,
+        "prebuild_indeces":prebuild_indeces,
         "prebuild_general_indexes":prebuild_general_indexes,
         "doc_methods":testing_methods,
         "qmethods":qmethods,

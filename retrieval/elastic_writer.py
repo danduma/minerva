@@ -5,7 +5,8 @@
 
 # For license information, see LICENSE.TXT
 
-from elastic_retrieval import ES_TYPE_DOC
+from __future__ import absolute_import
+from .elastic_retrieval import ES_TYPE_DOC
 
 class ElasticWriter(object):
     """

@@ -6,15 +6,18 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import os, glob, re, codecs, json
-import cPickle, random
-from BeautifulSoup import BeautifulStoneSoup
+import six.moves.cPickle, random
+from bs4 import BeautifulStoneSoup
 
-from minerva.proc.general_utils import *
+from proc.general_utils import *
 
-from minerva.scidoc import SciDoc
-import minerva.db.corpora as cp
-from minerva.scidoc.xmlformats.base_classes import BaseSciDocXMLReader
+from scidoc import SciDoc
+import db.corpora as cp
+from scidoc.xmlformats.base_classes import BaseSciDocXMLReader
+import six
 
 all_azs=set([u'OTH', u'BKG', u'BAS', u'CTR', u'AIM', u'OWN', u'TXT']) # argumentative zones
 all_ais=set([u'OTH', u'BKG', u'OWN']) # intellectual attribution
@@ -45,7 +48,7 @@ def debugAddMessage(doc,prop,msg):
     """
         Prints a message and adds it to the specified tag of a document
     """
-    print msg   # uncomment
+    print(msg)   # uncomment
     doc[prop]=doc.data.get(prop,"")+msg
 
 # ------------------------------------------------------------------------------
@@ -131,7 +134,7 @@ class SciXMLReader(BaseSciDocXMLReader):
                 ref_id=ref["id"]
                 if not ref_id:
                     ref_id=prevref["id"]
-                    if isinstance(id,basestring):
+                    if isinstance(id,six.string_types):
                         ref_id="ref"+str(len(doc["references"])+1)
                     elif isinstance(id,int):
                         ref_id=id+1
@@ -151,7 +154,7 @@ class SciXMLReader(BaseSciDocXMLReader):
         authors=ref.findAll("author")
         authorlist=[]
         surnames=[]
-        original_id=ref["id"] if ref.has_key("id") else None
+        original_id=ref["id"] if "id" in ref else None
 
         if authors:
             for a in authors:
@@ -212,7 +215,7 @@ class SciXMLReader(BaseSciDocXMLReader):
         """
             Extract the authors, date of an in-text citation <ref> from XML dom
         """
-        if isinstance(intext,basestring):
+        if isinstance(intext,six.string_types):
             xml=BeautifulStoneSoup(intext)
         else:
             xml=intext
@@ -262,14 +265,14 @@ class SciXMLReader(BaseSciDocXMLReader):
         """
         res=newDocument.addCitation()
 
-        if ref.has_key("citation_id"):
+        if "citation_id" in ref:
             res["original_id"]=ref["citation_id"]
 
         res["original_text"]=ref.__repr__()
         res["ref_id"]=0
         res["parent_section"]=section
 
-        if ref.has_key("refid"):
+        if "refid" in ref:
             if ref["refid"] != "?":
                 replist=newDocument["metadata"].get("ref_replace_list",{})
                 if str(ref["refid"]) in replist:
@@ -295,7 +298,7 @@ class SciXMLReader(BaseSciDocXMLReader):
             Returns a reference from the bibliography by its original_id if found, None otherwise
         """
         for ref in doc["references"]:
-            if ref.has_key("original_id") and str(ref["original_id"])==str(id):
+            if "original_id" in ref and str(ref["original_id"])==str(id):
                 return ref
         return None
 
@@ -438,7 +441,7 @@ class SciXMLReader(BaseSciDocXMLReader):
             For each element in attributes, if present in branch, it is added to sent
         """
         for a in attributes:
-            if branch.has_key(a):
+            if a in branch:
                 sent[a]=branch[a]
 
     def loadMetadata(newDocument,paper, fileno):
@@ -499,7 +502,7 @@ class SciXMLReader(BaseSciDocXMLReader):
         newDocument["metadata"]["surnames"]=newSurnames
 
         newDocument["metadata"]["year"]=sanitizeString(newDocument["metadata"]["year"])
-        if newDocument["metadata"].has_key("conference"):
+        if "conference" in newDocument["metadata"]:
             newDocument["metadata"]["conference"]=sanitizeString(newDocument["metadata"]["conference"])
 
     def matchCitationsWithReferences(newDocument):
@@ -553,7 +556,7 @@ class SciXMLReader(BaseSciDocXMLReader):
 
         # Load metadata, either from corpus or from file
         key=cp.Corpus.getFileUID(newDocument["metadata"]["filename"])
-        if cp.Corpus.metadata_index.has_key(key):
+        if key in cp.Corpus.metadata_index:
             metadata=cp.Corpus.metadata_index[key]
         else:
             metadata=None

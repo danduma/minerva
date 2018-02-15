@@ -6,21 +6,23 @@
 
 # For license information, see LICENSE.TXT
 
-from base_corpus import BaseCorpus
+##from base_corpus import BaseCorpus
 
 ##global Corpus
-Corpus=BaseCorpus()
+from __future__ import absolute_import
+from db.elastic_corpus import ElasticCorpus
+Corpus=ElasticCorpus()
 
 def useLocalCorpus():
     """
     """
     global Corpus
-    from local_corpus import LocalCorpus
+    from .local_corpus import LocalCorpus
     Corpus=LocalCorpus()
 
 def useElasticCorpus():
     """
+        22/12/16 NOTE Now deprecated. ElasticCorpus is now the default, so this
+        method no longer does anything.
     """
-    global Corpus
-    from elastic_corpus import ElasticCorpus
-    Corpus=ElasticCorpus()
+    pass

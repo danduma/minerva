@@ -12,15 +12,18 @@
 ##from __future__ import print_function
 
 #from pandas import *
-import minerva.db.corpora as cp
-from minerva.proc.general_utils import writeFileText
-from minerva.proc.context_extract import tokenizeText, getDictOfTokenCounts
+from __future__ import absolute_import
+from __future__ import print_function
+import db.corpora as cp
+from proc.general_utils import writeFileText
+from proc.context_extract import tokenizeText, getDictOfTokenCounts
 from reference_formatting import formatCitation
 import nlp_functions
 
 import json, re
 
 from collections import defaultdict
+from six.moves import range
 
 local_stopwords_list=[str(num) for num in range(100)]
 local_stopwords_list.extend(["abstract","introduction"])
@@ -259,7 +262,7 @@ class VisGenerator:
         """
         file_data=[]
         for index, guid in enumerate(files):
-            print "Processing #%d - %s" % (index, guid)
+            print("Processing #%d - %s" % (index, guid))
             file_info=self.generateVisualizationOneFile(guid)
             file_data.append(file_info)
 

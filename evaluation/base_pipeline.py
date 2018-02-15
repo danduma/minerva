@@ -7,16 +7,18 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import os, sys, json
 from copy import deepcopy
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 
-from minerva.retrieval.base_retrieval import BaseRetrieval, MAX_RESULTS_RECALL
+from retrieval.base_retrieval import BaseRetrieval, MAX_RESULTS_RECALL
 
-import minerva.db.corpora as cp
-from minerva.proc.results_logging import ResultsLogger, ProgressIndicator
-from pipeline_functions import getDictOfTestingMethods
-from weight_functions import addExtraWeights
+import db.corpora as cp
+from proc.results_logging import ResultsLogger
+from .pipeline_functions import getDictOfTestingMethods
+from .weight_functions import addExtraWeights
+from six.moves import range
 
 def analyticalRandomChanceMRR(numinlinks):
     """
@@ -39,12 +41,14 @@ class BaseTestingPipeline(object):
         self.exp=None
         self.options=None
         self.precomputed_queries=[]
-        self.tfidfmodels={}
+        self.retrieval_models={}
         self.files_dict={}
         self.main_all_doc_methods={}
         self.current_all_doc_methods={}
         self.save_terms=False
         self.max_per_class_results=1000
+        self.previous_guid=""
+        self.per_class_count=0
 
     def loadModel(self, guid):
         """
@@ -52,7 +56,7 @@ class BaseTestingPipeline(object):
         """
         for model in self.files_dict[guid]["tfidf_models"]:
             # create a search instance for each method
-            self.tfidfmodels[model["method"]]=self.retrieval_class(
+            self.retrieval_models[model["method"]]=self.retrieval_class(
                 model["actual_dir"],
                 model["method"],
                 logger=None,
@@ -129,6 +133,9 @@ class BaseTestingPipeline(object):
         if not precomputed_queries_file_path:
             precomputed_queries_file_path=os.path.join(self.exp["exp_dir"],self.exp.get("precomputed_queries_filename","precomputed_queries.json"))
         self.precomputed_queries=json.load(open(precomputed_queries_file_path,"r"))
+
+        self.precomputed_queries=self.precomputed_queries[self.options.get("start_at",0):]
+
         files_dict_filename=os.path.join(self.exp["exp_dir"],self.exp.get("files_dict_filename","files_dict.json"))
         self.files_dict=json.load(open(files_dict_filename,"r"))
         self.files_dict["ALL_FILES"]={}
@@ -138,7 +145,7 @@ class BaseTestingPipeline(object):
             Fills dict with all the test methods, parameters and options, including
             the retrieval instances
         """
-        self.tfidfmodels={}
+        self.retrieval_models={}
         all_doc_methods=None
 
         if self.exp.get("doc_methods", None):
@@ -148,7 +155,7 @@ class BaseTestingPipeline(object):
             if self.exp["full_corpus"]:
                 all_files=["ALL_FILES"]
             else:
-                all_files=self.files_dict.keys()
+                all_files=list(self.files_dict.keys())
 
             self.generateRetrievalModels(all_doc_methods,all_files)
         else:
@@ -157,7 +164,7 @@ class BaseTestingPipeline(object):
         if self.exp["full_corpus"]:
             for model in self.files_dict["ALL_FILES"]["tfidf_models"]:
                 # create a search instance for each method
-                self.tfidfmodels[model["method"]]=self.retrieval_class(
+                self.retrieval_models[model["method"]]=self.retrieval_class(
                         model["actual_dir"],
                         model["method"],
                         logger=None,
@@ -196,25 +203,29 @@ class BaseTestingPipeline(object):
         result_dict["first_result"]=""
         self.logger.addResolutionResultDict(result_dict)
 
-    def addResult(self, guid, precomputed_query, doc_method, retrieved_results):
+    def addResult(self, file_guid, precomputed_query, doc_method, retrieved_results):
         """
             Adds a normal (successful) result to the result log.
+
+            :param file_guid: the GUID of the file that the citation is IN
+            :param precomputed_query: a dict with the precomputed query
+            :param doc_method: current doc_method we are testing (way of indexing the documents)
+            :param retrieved_results: list of all GUIDs retrieved with the query. Used to measure score.
         """
-        result_dict=self.newResultDict(guid, precomputed_query, doc_method)
+        result_dict=self.newResultDict(file_guid, precomputed_query, doc_method)
         self.logger.measureScoreAndLog(retrieved_results, precomputed_query["citation_multi"], result_dict)
 ##        rank_per_method[result["doc_method"]].append(result["rank"])
 ##        precision_per_method[result["doc_method"]].append(result["precision_score"])
 
-    def logTextAndReferences(self, doctext, queries, qmethod):
-        """
-            Extra logging, not used right now
-        """
-        pre_selection_text=doctext[queries[qmethod]["left_start"]-300:queries[qmethod]["left_start"]]
-        draft_text=doctext[queries[qmethod]["left_start"]:queries[qmethod]["right_end"]]
-        post_selection_text=doctext[queries[qmethod]["right_end"]:queries[qmethod]["left_start"]+300]
-        draft_text=u"<span class=document_text>{}</span> <span class=selected_text>{}</span> <span class=document_text>{}</span>".format(pre_selection_text, draft_text, post_selection_text)
+##    def logTextAndReferences(self, doctext, queries, qmethod):
+##        """
+##            Extra logging, not used right now
+##        """
+##        pre_selection_text=doctext[queries[qmethod]["left_start"]-300:queries[qmethod]["left_start"]]
+##        draft_text=doctext[queries[qmethod]["left_start"]:queries[qmethod]["right_end"]]
+##        post_selection_text=doctext[queries[qmethod]["right_end"]:queries[qmethod]["left_start"]+300]
+##        draft_text=u"<span class=document_text>{}</span> <span class=selected_text>{}</span> <span class=document_text>{}</span>".format(pre_selection_text, draft_text, post_selection_text)
 ##        print(draft_text)
-
 
     def saveResultsAndCleanUp(self):
         """
@@ -223,6 +234,73 @@ class BaseTestingPipeline(object):
         """
         self.logger.writeDataToCSV()
         self.logger.showFinalSummary()
+
+    def processOneQuery(self,precomputed_query):
+        """
+            Runs the retrieval and evaluation for a single query
+        """
+        if self.exp.get("queries_classification","") not in ["", None]:
+            query_class=self.exp.get("queries_classification",None)
+            if query_class:
+                q_type=precomputed_query[query_class]
+                if self.per_class_count[q_type] < self.max_per_class_results:
+                    self.per_class_count[q_type] += 1
+                else:
+                    print("Too many queries of type %s already" % q_type)
+                    return
+
+        guid=precomputed_query["file_guid"]
+        self.logger.total_citations+=self.files_dict[guid]["resolvable_citations"]
+
+        all_doc_methods=deepcopy(self.main_all_doc_methods)
+
+        # If we're running per-file resolution and we are now on a different file, load its model
+        if not self.exp["full_corpus"] and guid != self.previous_guid:
+            self.previous_guid=guid
+            self.loadModel(guid)
+
+        # create a dict where every field gets a weight of 1
+        for method in self.main_all_doc_methods:
+            all_doc_methods[method]["runtime_parameters"]={x:1 for x in self.main_all_doc_methods[method]["runtime_parameters"]}
+
+        self.current_all_doc_methods=all_doc_methods
+
+        # for every method used for extracting BOWs
+        for doc_method in all_doc_methods:
+            # Log everything if the logger is enabled
+##                self.logger.logReport("Citation: "+precomputed_query["citation_id"]+"\n Query method:"+precomputed_query["query_method"]+" \nDoc method: "+doc_method +"\n")
+##                self.logger.logReport(precomputed_query["query_text"]+"\n")
+
+            # ACTUAL RETRIEVAL HAPPENING - run query
+            retrieved=self.retrieval_models[doc_method].runQuery(
+                precomputed_query,
+                addExtraWeights(all_doc_methods[doc_method]["runtime_parameters"], self.exp),
+                guid,
+                max_results=self.exp.get("max_results_recall",MAX_RESULTS_RECALL))
+
+            if not retrieved:    # the query was empty or something
+                self.addEmptyResult(guid, precomputed_query, doc_method)
+            else:
+                self.addResult(guid, precomputed_query, doc_method, retrieved)
+
+        if self.exp.get("add_random_control_result", False):
+            self.addRandomControlResult(guid, precomputed_query)
+
+        self.logger.showProgressReport(guid) # prints out info on how it's going
+
+    def processAllQueries(self):
+        """
+            MAIN LOOP over all precomputed queries
+        """
+        for precomputed_query in self.precomputed_queries:
+            self.processOneQuery(precomputed_query)
+
+    def annotateDocuments(self):
+        """
+            To be overriden by descendant classes: run annotators on documents
+            if needed
+        """
+        pass
 
     def runPipeline(self, exp, options):
         """
@@ -237,107 +315,22 @@ class BaseTestingPipeline(object):
         self.max_per_class_results=self.exp.get("max_per_class_results",self.max_per_class_results)
         self.per_class_count=defaultdict(lambda:0)
         if self.exp.get("similiarity_tie_breaker",0):
-            for model in self.tfidfmodels.items():
+            for model in self.retrieval_models.items():
                 model.tie_breaker=self.exp["similiarity_tie_breaker"]
 
         self.startLogging()
         self.initializePipeline()
         self.loadQueriesAndFileList()
+        self.annotateDocuments()
         self.logger.setNumItems(len(self.precomputed_queries))
         self.populateMethods()
 
-##        methods_overlap=0
-##        total_overlap_points=0
-##        rank_differences=[]
-##        rank_per_method=defaultdict(lambda:[])
-##        precision_per_method=defaultdict(lambda:[])
+        self.previous_guid=""
 
-        previous_guid=""
-
-        #=======================================
-        # MAIN LOOP over all precomputed queries
-        #=======================================
-        for precomputed_query in self.precomputed_queries:
-            if self.exp.get("queries_classification","") != "":
-                q_type=precomputed_query[self.exp.get("queries_classification")]
-                if self.per_class_count[q_type] < self.max_per_class_results:
-                    self.per_class_count[q_type] += 1
-                else:
-                    print("Too many queries of type %s already" % q_type)
-                    continue
-
-            guid=precomputed_query["file_guid"]
-            self.logger.total_citations+=self.files_dict[guid]["resolvable_citations"]
-
-            all_doc_methods=deepcopy(self.main_all_doc_methods)
-
-            # If we're running per-file resolution and we are now on a different file, load its model
-            if not exp["full_corpus"] and guid != previous_guid:
-                previous_guid=guid
-                self.loadModel(guid)
-
-            # create a dict where every field gets a weight of 1
-            for method in self.main_all_doc_methods:
-                all_doc_methods[method]["runtime_parameters"]={x:1 for x in self.main_all_doc_methods[method]["runtime_parameters"]}
-
-            self.current_all_doc_methods=all_doc_methods
-
-            # for every method used for extracting BOWs
-            for doc_method in all_doc_methods:
-                # Log everything if the logger is enabled
-##                self.logger.logReport("Citation: "+precomputed_query["citation_id"]+"\n Query method:"+precomputed_query["query_method"]+" \nDoc method: "+doc_method +"\n")
-##                self.logger.logReport(precomputed_query["query_text"]+"\n")
-
-
-                # ACTUAL RETRIEVAL HAPPENING - run query
-                retrieved=self.tfidfmodels[doc_method].runQuery(
-                    precomputed_query,
-                    addExtraWeights(all_doc_methods[doc_method]["runtime_parameters"], self.exp),
-                    guid,
-                    max_results=exp.get("max_results_recall",MAX_RESULTS_RECALL))
-
-                if not retrieved:    # the query was empty or something
-                    self.addEmptyResult(guid, precomputed_query, doc_method)
-                else:
-                    self.addResult(guid, precomputed_query, doc_method, retrieved)
-
-            if self.exp.get("add_random_control_result", False):
-                self.addRandomControlResult(guid, precomputed_query)
-
-            self.logger.showProgressReport(guid) # prints out info on how it's going
+         # MAIN LOOP over all precomputed queries
+        self.processAllQueries()
 
         self.saveResultsAndCleanUp()
-
-class CompareExplainPipeline(BaseTestingPipeline):
-    """
-        This compared the results of the default similarity with those of the
-        explain pipeline. Deprecated and to be discontinued.
-    """
-    def __init__(self):
-        pass
-
-    def populateMethods(self):
-        """
-        """
-        super(LuceneTestingPipeline, self).populateMethods()
-
-        if self.exp.get("compare_explain",False):
-            for method in self.main_all_doc_methods:
-                self.main_all_doc_methods[method+"_EXPLAIN"]=self.main_all_doc_methods[method]
-
-    def loadModel(self, model, exp):
-        """
-            Overrides the default loadModel to add explain models.
-        """
-        super(self.__class__, self).loadModel(model, exp)
-
-        # this is to compare bulkScorer and .explain() on their overlap
-        self.tfidfmodels[model["method"]+"_EXPLAIN"]=self.retrieval_class(
-            model["actual_dir"],
-            model["method"],
-            logger=None,
-            use_default_similarity=exp["use_default_similarity"])
-        self.tfidfmodels[model["method"]+"_EXPLAIN"].useExplainQuery=True
 
 def main():
     pass

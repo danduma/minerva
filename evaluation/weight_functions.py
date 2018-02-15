@@ -5,14 +5,15 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
 import random
 from copy import deepcopy
 from multiprocessing import Pool, cpu_count
 
-from sklearn import cross_validation
+from sklearn import model_selection
 
-from pipeline_functions import getDictOfTestingMethods
-from minerva.retrieval.stored_formula import StoredFormula
+from .pipeline_functions import getDictOfTestingMethods
+from retrieval.stored_formula import StoredFormula
 
 ##def runSingleFormula(result_tuple):
 ##    """
@@ -32,6 +33,8 @@ def addExtraWeights(weights, exp):
         Deep copies the weight dictionary and adds the fixed weights if any
         are specified in the experiment
     """
+    if isinstance(weights,list):
+        weights={x:1 for x in weights}
     res=deepcopy(weights)
     for extra_method in exp.get("fixed_runtime_parameters",{}):
         res[extra_method]=exp["fixed_runtime_parameters"][extra_method]

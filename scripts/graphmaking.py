@@ -9,8 +9,11 @@
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
+from __future__ import absolute_import
+from __future__ import print_function
 from scixml import *
 from reference_formatting import *
+import six
 
 # ------------------------------------------------------------------------------
 #   Graph generating helper functions
@@ -33,8 +36,8 @@ def makeDocFullInfo(doc):
 	try:
 		res+=u"<em>%s</em>" % doc["title"]
 	except:
-		res+=u"<em>%s</em>" % unicode(doc["title"],errors="replace")
-	if doc.has_key("filename"):
+		res+=u"<em>%s</em>" % six.text_type(doc["title"],errors="replace")
+	if "filename" in doc:
 		res+=u"<br/><br/>FILE: " + doc["filename"]
 ##	print res
 	return res
@@ -66,7 +69,7 @@ def generateRTTreeGraph(docname, outputfilename, index, working_dir, maxdepth=5,
 
 		if depth < maxdepth:
 			for ref in doc["references"]:
-				print "processing reference", ref["surnames"], ref["year"], ref["title"]
+				print("processing reference", ref["surnames"], ref["year"], ref["title"])
 				title=normalizeTitle(ref["title"])
 				if title in allhashes:
 					node["children"].append(
@@ -87,7 +90,7 @@ def generateRTTreeGraph(docname, outputfilename, index, working_dir, maxdepth=5,
 
 		graph.append(node)
 
-		print "Added node for ", doc["authors"], doc["year"], doc["title"]
+		print("Added node for ", doc["authors"], doc["year"], doc["title"])
 		return graph
 
 
@@ -121,7 +124,7 @@ def generateGraph(docs):
 		for r in doc["references"]:
 ##			print r["title"]
 			if r["authors"] == "":
-				print "  NO AUTHORS!",r
+				print("  NO AUTHORS!",r)
 			match=findMatchingReferenceByAuthors(r,docs)
 			if match:
 				if doc.get("graph_num",0)==0:
@@ -141,8 +144,8 @@ def generateGraph(docs):
 ##				print "NO MATCH for REFERENCE in CORPUS:", r
 				pass
 
-	print "AZs", set(azs)
-	print "AIs", set(ias)
+	print("AZs", set(azs))
+	print("AIs", set(ias))
 	return nodes, links
 
 

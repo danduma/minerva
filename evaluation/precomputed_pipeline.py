@@ -7,16 +7,17 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import json, os, time
 
-from base_pipeline import BaseTestingPipeline
-from minerva.retrieval.base_retrieval import BaseRetrieval
+from .base_pipeline import BaseTestingPipeline
+from retrieval.base_retrieval import BaseRetrieval
 
 from celery.result import ResultSet
 
-from minerva.db.result_store import createResultStorers
-from precompute_functions import addPrecomputeExplainFormulas
-from minerva.squad.tasks import precomputeFormulasTask
+from db.result_store import createResultStorers
+from .precompute_functions import addPrecomputeExplainFormulas
+from multi.tasks import precomputeFormulasTask
 
 class PrecomputedPipeline(BaseTestingPipeline):
     """
@@ -25,60 +26,16 @@ class PrecomputedPipeline(BaseTestingPipeline):
     """
 
     def __init__(self, retrieval_class=BaseRetrieval, use_celery=False):
-        super(self.__class__, self).__init__(retrieval_class=retrieval_class, use_celery=use_celery)
+        super(PrecomputedPipeline, self).__init__(retrieval_class=retrieval_class, use_celery=use_celery)
         self.writers={}
 
-
-    def addResult(self, guid, precomputed_query, doc_method, retrieved_results):
+    def createWriterInstances(self):
         """
-            Overrides BaseTestingPipeline.addResult so that for each retrieval result
-            we actually run .explain() on each item and we store the precomputed
-            formula.
+            Initializes the writer instances.
         """
-        doc_list=[hit[1]["guid"] for hit in retrieved_results]
-
-        for zone_type in ["csc_type", "az"]:
-            if precomputed_query.get(zone_type,"") != "":
-                if self.writers[zone_type+"_"+precomputed_query[zone_type].strip()].getResultCount() < self.max_per_class_results:
-                    must_process=True
-                else:
-                    must_process=False
-                    # TODO this is redundant now. Merge this into base_pipeline.py?
-                    print("Too many queries of type %s already" % precomputed_query[zone_type])
-##                  assert(False)
-
-        if not must_process:
-            return
-
-        if self.use_celery:
-            print("Adding subtask to queue...")
-            self.tasks.append(precomputeFormulasTask.apply_async(args=[
-                                                 precomputed_query,
-                                                 doc_method,
-                                                 doc_list,
-                                                 self.tfidfmodels[doc_method].index_name,
-                                                 self.exp["name"],
-                                                 self.exp["experiment_id"],
-                                                 self.exp["max_results_recall"]],
-                                                 queue="precompute_formulas"))
-##            self.tasks.append(precomputeFormulasTask.subtask(args=[
-##                                                 precomputed_query,
-##                                                 doc_method,
-##                                                 doc_list,
-##                                                 self.tfidfmodels[doc_method].index_name,
-##                                                 self.exp["name"],
-##                                                 self.exp["experiment_id"],
-##                                                 self.exp["max_results_recall"]],
-##                                                 queue="precompute_formulas"))
-
-        else:
-            addPrecomputeExplainFormulas(precomputed_query,
-                                         doc_method,
-                                         doc_list,
-                                         self.tfidfmodels[doc_method],
-                                         self.writers,
-                                         self.exp["experiment_id"],
-                                         )
+        self.writers=createResultStorers(self.exp["name"],
+                                   self.exp.get("random_zoning", False),
+                                   self.options.get("clear_existing_prr_results", False))
 
 
     def loadQueriesAndFileList(self):
@@ -91,6 +48,7 @@ class PrecomputedPipeline(BaseTestingPipeline):
 
         if "ALL" in self.exp.get("queries_to_process",["ALL"]):
             self.precomputed_queries=json.load(open(precomputed_queries_file_path,"r"))#[:1]
+            self.precomputed_queries=self.precomputed_queries[self.options.get("start_at",0):]
 ##            precomputed_queries=json.load(open(self.exp["exp_dir"]+"precomputed_queries.json","r"))
         else:
             queries_filename="queries_by_"+self.exp["queries_classification"]+".json"
@@ -106,10 +64,50 @@ class PrecomputedPipeline(BaseTestingPipeline):
         self.files_dict["ALL_FILES"]={}
 
         assert self.exp["name"] != "", "Experiment needs a name!"
+        self.createWriterInstances()
 
-        self.writers=createResultStorers(self.exp["name"],
-                                   self.exp.get("random_zoning", False),
-                                   self.options.get("clear_existing_prr_results", False))
+
+    def addResult(self, file_guid, precomputed_query, doc_method, retrieved_results):
+        """
+            Overrides BaseTestingPipeline.addResult so that for each retrieval result
+            we actually run .explain() on each item and we store the precomputed
+            formula.
+        """
+        doc_list=[hit[1]["guid"] for hit in retrieved_results]
+
+        for zone_type in ["csc_type", "az"]:
+            if precomputed_query.get(zone_type,"") != "":
+                if self.writers[zone_type+"_"+precomputed_query[zone_type].strip()].getResultCount() < self.max_per_class_results:
+                    must_process=True
+                else:
+                    must_process=False
+                    # TODO this is redundant now. Merge this into base_pipeline.py?
+                    print(u"Too many queries of type {} already".format(precomputed_query[zone_type]))
+##                  assert(False)
+
+        if not must_process:
+            return
+
+        if self.use_celery:
+            print("Adding subtask to queue...")
+            self.tasks.append(precomputeFormulasTask.apply_async(args=[
+                                                 precomputed_query,
+                                                 doc_method,
+                                                 doc_list,
+                                                 self.retrieval_models[doc_method].index_name,
+                                                 self.exp["name"],
+                                                 self.exp["experiment_id"],
+                                                 self.exp["max_results_recall"]],
+                                                 queue="precompute_formulas"))
+        else:
+            addPrecomputeExplainFormulas(precomputed_query,
+                                         doc_method,
+                                         doc_list,
+                                         self.retrieval_models[doc_method],
+                                         self.writers,
+                                         self.exp["experiment_id"],
+                                         )
+
 
     def saveResultsAndCleanUp(self):
         """

@@ -6,13 +6,14 @@
 # For license information, see LICENSE.TXT
 
 from __future__ import print_function
+from __future__ import absolute_import
 import sys
 
-from prebuild_functions import prebuildMulti
-from minerva.squad.tasks import prebuildBOWTask
+from .prebuild_functions import prebuildMulti
+from multi.tasks import prebuildBOWTask
 
-import minerva.db.corpora as cp
-from minerva.proc.results_logging import ProgressIndicator
+import db.corpora as cp
+from proc.results_logging import ProgressIndicator
 
 class BasePrebuilder(object):
     """
@@ -38,7 +39,7 @@ class BasePrebuilder(object):
         self.exp=exp
         self.options=options
 
-        maxfiles=options.get("max_files_to_process",sys.maxint)
+        maxfiles=options.get("max_files_to_process",sys.maxsize)
 
         if len(self.exp.get("rhetorical_annotations",[])) > 0:
             print("Loading AZ/CFC classifiers")

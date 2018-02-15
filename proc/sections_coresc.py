@@ -6,6 +6,9 @@
 # For license information, see LICENSE.TXT
 
 
+from __future__ import absolute_import
+from __future__ import print_function
+import six
 def matchGenericSection(header, prev):
     """
         Returns what generic section you're in
@@ -42,7 +45,7 @@ def matchGenericSection(header, prev):
                 if w==w2:
                     scores[s]=scores.get(s,0)+wdict[w]
 
-    res=sorted(scores.iteritems(),key=lambda x:x[1],reverse=True)[0]
+    res=sorted(six.iteritems(scores),key=lambda x:x[1],reverse=True)[0]
     return res[0]
 
 def matchCoreSC(section,prev):
@@ -59,9 +62,9 @@ def matchCoreSC(section,prev):
 
     for c in [c.lower() for c in CSC]:
         if c in header:
-            print "yay",c+"!"
+            print("yay",c+"!")
 
-    print header
+    print(header)
 
 
 def main():
