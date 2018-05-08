@@ -17,8 +17,6 @@ from .nlp_functions import (tokenizeText, tokenizeTextAndRemoveStopwords, stopwo
                             getDictOfTokenCounts, removeStopwords, selectSentencesToAdd,
                             replaceCitationsWithPlaceholders)
 
-# should be using spacy for everything NLP from now on
-from ml.document_features import en_nlp, selectContentWords
 
 ##from nlp_functions import PAR_MARKER, CIT_MARKER, BR_MARKER
 
@@ -311,14 +309,6 @@ class SentenceQueryExtractor(BaseQueryExtractor):
         return res
 
 
-class FilteredSentenceQueryExtractor(SentenceQueryExtractor):
-    def getQueryTextFromSentence(self, sent):
-        doc = en_nlp(sent["text"])
-        words = selectContentWords(doc)
-        text = " ".join(words)
-        return text
-
-
 class SelectedSentenceQueryExtractor(SentenceQueryExtractor):
     """
         class comment
@@ -466,7 +456,7 @@ class SelectedSentenceQueryExtractor(SentenceQueryExtractor):
 EXTRACTOR_LIST = {
     "Window": WindowQueryExtractor(),
     "Sentences": SentenceQueryExtractor(),
-    "Sentences_filtered": FilteredSentenceQueryExtractor(),
+    # "Sentences_filtered": FilteredSentenceQueryExtractor(),
     "SelectedSentences": SelectedSentenceQueryExtractor(),
     ##    "Heuristics":HeuristicsQueryExtractor(),
 }
