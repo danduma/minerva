@@ -24,14 +24,14 @@ class AZannotator:
         self.filepath=os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
         if filename:
-            self.loadClasifier(filename)
+            self.loadClassifier(filename)
         pass
 
-    def saveClasifier(self,clasifier,filename):
-        six.moves.cPickle.dump(classifier,open(filename,"w"))
+    def saveClassifier(self, classifier, filename):
+        six.moves.cPickle.dump(classifier, open(filename, "w"))
 
-    def loadClasifier(self,filename):
-        self.classifier=six.moves.cPickle.load(open(os.path.join(self.filepath,filename),"r"))
+    def loadClassifier(self, filename):
+        self.classifier=six.moves.cPickle.load(open(os.path.join(self.filepath,filename),"rb"))
 
     def annotateDoc(self,doc):
         """

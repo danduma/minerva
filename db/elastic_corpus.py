@@ -17,7 +17,8 @@ import six.moves.urllib.request, six.moves.urllib.parse, six.moves.urllib.error
 
 from proc.general_utils import ensureTrailingBackslash
 from scidoc.scidoc import SciDoc
-from .base_corpus import BaseCorpus
+from .base_corpus import BaseCorpus, TABLE_PAPERS, TABLE_CACHE, TABLE_AUTHORS, TABLE_LINKS, TABLE_MISSING_REFERENCES, \
+    TABLE_SCIDOCS, TABLE_VENUES
 
 ES_INDEX_PAPERS = "papers"
 ES_INDEX_SCIDOCS = "scidocs"
@@ -36,15 +37,15 @@ ES_TYPE_VENUE = "venue"
 ES_TYPE_MISSING_REFERENCES = "missing_reference"
 
 index_equivalence = {
-    "papers": {"index": ES_INDEX_PAPERS, "type": ES_TYPE_PAPER, "source": "metadata",
-               "non_nested_fields": ["norm_title", "author_ids", "has_scidoc"]},
-    "scidocs": {"index": ES_INDEX_SCIDOCS, "type": ES_TYPE_SCIDOC, "source": "scidoc"},
-    "authors": {"index": ES_INDEX_AUTHORS, "type": ES_TYPE_AUTHOR, "source": "author"},
-    "cache": {"index": ES_INDEX_CACHE, "type": ES_TYPE_CACHE, "source": "data"},
-    "links": {"index": ES_INDEX_LINKS, "type": ES_TYPE_LINK, "source": "link"},
-    "venues": {"index": ES_INDEX_VENUES, "type": ES_TYPE_VENUE, "source": "venue"},
-    "missing_references": {"index": ES_INDEX_MISSING_REFERENCES, "type": ES_TYPE_MISSING_REFERENCES,
-                           "source": "missing_reference"},
+    TABLE_PAPERS: {"index": ES_INDEX_PAPERS, "type": ES_TYPE_PAPER, "source": "metadata",
+                   "non_nested_fields": ["norm_title", "author_ids", "has_scidoc"]},
+    TABLE_SCIDOCS: {"index": ES_INDEX_SCIDOCS, "type": ES_TYPE_SCIDOC, "source": "scidoc"},
+    TABLE_AUTHORS: {"index": ES_INDEX_AUTHORS, "type": ES_TYPE_AUTHOR, "source": "author"},
+    TABLE_CACHE: {"index": ES_INDEX_CACHE, "type": ES_TYPE_CACHE, "source": "data"},
+    TABLE_LINKS: {"index": ES_INDEX_LINKS, "type": ES_TYPE_LINK, "source": "link"},
+    TABLE_VENUES: {"index": ES_INDEX_VENUES, "type": ES_TYPE_VENUE, "source": "venue"},
+    TABLE_MISSING_REFERENCES: {"index": ES_INDEX_MISSING_REFERENCES, "type": ES_TYPE_MISSING_REFERENCES,
+                               "source": "missing_reference"},
 }
 
 ES_ALL_INDECES = [ES_INDEX_PAPERS, ES_INDEX_SCIDOCS, ES_INDEX_CACHE,
@@ -105,7 +106,7 @@ class ElasticCorpus(BaseCorpus):
                           "mappings": {index_equivalence[name]["type"]: {"properties": properties}}})
 
         settings = {
-            "number_of_shards": 2,
+            "number_of_shards": 1,
             "number_of_replicas": 0
         }
         properties = {
@@ -217,13 +218,13 @@ class ElasticCorpus(BaseCorpus):
             guid = guid.lower()
             return "idx_" + guid + "_" + index_filename
 
-    def getRecord(self, rec_id, table="papers", source=None):
+    def getRecord(self, rec_id, table=TABLE_PAPERS, source=None):
         """
             Abstracts over getting data from a row in the db. Returns all the
             fields of the record for one type of table, or those specified in source.
 
             :param rec_id: id of the record
-            :param table: table alias, e.g. ["papers", "scidocs"]
+            :param table: table alias, e.g. [TABLE_PAPERS, TABLE_SCIDOCS]
             :param source: fields to return
         """
         self.checkConnectedToDB()
@@ -245,7 +246,7 @@ class ElasticCorpus(BaseCorpus):
             raise IndexError("Can't find record with id %s" % rec_id)
         return res["_source"]
 
-    def setRecord(self, rec_id, body, table="papers", op_type="update"):
+    def setRecord(self, rec_id, body, table=TABLE_PAPERS, op_type="update"):
         """
             Abstracts over setting getting data for a row in the db.
 
@@ -282,7 +283,7 @@ class ElasticCorpus(BaseCorpus):
 
         return
 
-    def getRecordField(self, rec_id, table="papers"):
+    def getRecordField(self, rec_id, table=TABLE_PAPERS):
         """
             Abstracts over getting data from a row in the db. Returns one field
             for one type of table.
@@ -293,7 +294,7 @@ class ElasticCorpus(BaseCorpus):
         return self.getRecord(rec_id, table, source=index_equivalence[table]["source"])[
             index_equivalence[table]["source"]]
 
-    def recordExists(self, rec_id, table="papers"):
+    def recordExists(self, rec_id, table=TABLE_PAPERS):
         """
             Returns True if the specified record exists in the given table, False
             otherwise.
@@ -349,7 +350,7 @@ class ElasticCorpus(BaseCorpus):
 
         return results
 
-    def cachedJsonExists(self, type, guid, params=None):
+    def cachedJsonExists(self, cache_type, guid, params=None):
         """
             True if the cached JSON associated with the given parameters exists
         """
@@ -358,7 +359,7 @@ class ElasticCorpus(BaseCorpus):
         return self.es.exists(
             index=ES_INDEX_CACHE,
             doc_type=ES_TYPE_CACHE,
-            id=self.cachedDataIDString(type, guid, params)
+            id=self.cachedDataIDString(cache_type, guid, params)
         )
 
     def saveCachedJson(self, path, data):
@@ -389,13 +390,13 @@ class ElasticCorpus(BaseCorpus):
 
             :param path: unique ID of resource to load
         """
-        return json.loads(self.getRecordField(path, "cache"))
+        return json.loads(self.getRecordField(path, TABLE_CACHE))
 
     def loadSciDoc(self, guid, ignore_errors=None):
         """
             If a SciDocJSON file exists for guid, it returns it, otherwise None
         """
-        data = json.loads(self.getRecordField(guid, "scidocs"))
+        data = json.loads(self.getRecordField(guid, TABLE_SCIDOCS))
         return SciDoc(data, ignore_errors=ignore_errors)
 
     def saveSciDoc(self, doc):
@@ -458,6 +459,35 @@ class ElasticCorpus(BaseCorpus):
 
         return hits[0]["_source"]["metadata"]
 
+    def setMetadata(self, metadata, op_type="update"):
+        """
+        Updates the metadata for one paper
+
+        """
+        meta = self.getFullPaperData("guid", metadata["guid"])
+        meta["metadata"] = metadata
+        self.setRecord(meta["guid"], meta, op_type=op_type)
+
+    def getFullPaperData(self, field, value):
+        """
+            Returns a paper's metadata
+        """
+        self.checkConnectedToDB()
+
+        query = self.filterQuery("%s:\"%s\"" % (field, value))
+
+        res = self.es.search(
+            index=ES_INDEX_PAPERS,
+            doc_type=ES_TYPE_PAPER,
+            size=1,
+            q=query)
+
+        hits = res["hits"]["hits"]
+        if len(hits) == 0:
+            return None
+
+        return hits[0]["_source"]
+
     def getStatistics(self, guid):
         """
             Easy method to get a paper's statistics
@@ -470,11 +500,12 @@ class ElasticCorpus(BaseCorpus):
         """
         return self.setRecord(guid, {"statistics": stats}, "papers", op_type="update")
 
-    def filterQuery(self, query, table="papers"):
+    def filterQuery(self, query, table=TABLE_PAPERS):
         """
             Adds a global filter to the query so it only matches the selected
             collection, date, etc.
 
+            :param table: only works for TABLE_PAPERS
             :param query: string
         """
         if table != "papers":
@@ -485,7 +516,7 @@ class ElasticCorpus(BaseCorpus):
         else:
             return query
 
-    def listFieldByField(self, field1, field2, value, table="papers", max_results=100):
+    def listFieldByField(self, field1, field2, value, table=TABLE_PAPERS, max_results=100):
         """
             Returns a list: for each paper, field1 if field2==value
         """
@@ -536,7 +567,7 @@ class ElasticCorpus(BaseCorpus):
             else:
                 return [r["_source"] for r in hits]
 
-    def listRecords(self, conditions=None, field="guid", max_results=sys.maxsize, table="papers"):
+    def listRecords(self, conditions=None, field="guid", max_results=sys.maxsize, table=TABLE_PAPERS):
         """
             This is the equivalent of a SELECT clause
         """
@@ -833,7 +864,7 @@ class ElasticCorpus(BaseCorpus):
         """
             Delete the entries from a table that match the query.
 
-            :param record_type: one of the tables that exist, e.g. ["papers","links","authors","scidocs","cached"]
+            :param record_type: one of the tables that exist, e.g. ["papers","links","authors","scidocs","cache"]
             :type record_type: string
             :param query: a query to select documents to delete
             :type query: string

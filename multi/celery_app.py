@@ -12,6 +12,7 @@ from celery import Celery
 from kombu import Queue, Exchange
 from celery.bin import Option
 from .config import *
+
 ##import multi.celeryconfig
 
 # celery worker --app=multi.celery_app:app
@@ -33,7 +34,7 @@ app.conf.update(
     CELERY_ENABLE_UTC=True,
     CELERY_TASK_RESULT_EXPIRES=3600,
 
-    CELERY_QUEUES = (
+    CELERY_QUEUES=(
         Queue('default', Exchange('default'), routing_key='default'),
         Queue('import_xml', Exchange('import_xml'), routing_key='import_xml'),
         Queue('update_references', Exchange('update_references'), routing_key='update_references'),
@@ -44,7 +45,7 @@ app.conf.update(
         Queue('annotate_keywords', Exchange('annotate_keywords'), routing_key='annotate_keywords'),
     ),
 
-    CELERY_ROUTES = {
+    CELERY_ROUTES={
         'importXMLTask': {'queue': 'import_xml', 'routing_key': 'import_xml'},
         'updateReferencesTask': {'queue': 'update_references', 'routing_key': 'update_references'},
         'prebuildBOWTask': {'queue': 'prebuild_bows', 'routing_key': 'prebuild_bows'},

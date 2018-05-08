@@ -297,7 +297,7 @@ class AtharQueryGenerator(QueryGenerator):
 
         for cit in doc["citations"]:
             res.append({"cit":cit,
-                        "match_guid":doc.reference_by_id[cit["ref_id"]]["guid"],
+                        "match_guids":[doc.reference_by_id[cit["ref_id"]]["guid"]],
                         })
 
         for sent in sents_with_multicitations:
@@ -320,7 +320,7 @@ class AtharQueryGenerator(QueryGenerator):
         if not doc:
             raise ValueError("ERROR: Couldn't load SciDoc: %s" % guid)
 
-        doctext=doc.getFullDocumentText() #  store a plain text representation
+        doctext=doc.formatTextForExtraction(doc.getFullDocumentText()) #  store a plain text representation
 
         # load the citations in the document that are resolvable, or generate if necessary
         citations_data=self.getResolvableCitations(guid, doc)

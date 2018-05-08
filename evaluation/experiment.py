@@ -18,6 +18,7 @@ from evaluation.query_generation import QueryGenerator
 from evaluation.base_pipeline import BaseTestingPipeline
 from evaluation.precomputed_pipeline import PrecomputedPipeline
 from evaluation.keyword_pipeline import KeywordTrainingPipeline
+from evaluation.kw_selection_pipeline import KeywordSelectionEvaluationPipeline
 
 from proc.query_extraction import EXTRACTOR_LIST
 
@@ -27,22 +28,6 @@ import evaluation.athar_corpus as athar_corpus
 from proc.general_utils import ensureDirExists
 from evaluation.weight_training import WeightTrainer
 from evaluation.keyword_training import KeywordTrainer
-
-
-def getRootDir(subdir=None):
-    """
-    Returns the root directory for data storage (index, json files, etc.) based on where
-    the script is being run
-
-    :return:
-    """
-    dir_options = ["g:\\nlp\\phd", "c:\\nlp\\phd", "/Users/masterman/NLP/PhD"]
-    for option in dir_options:
-        if os.path.isdir(option):
-            if not subdir:
-                return option
-            else:
-                return os.path.join(option, subdir)
 
 
 def loadExpFromPath(path):
@@ -86,6 +71,8 @@ class Experiment(object):
             self.processCommandLineArguments()
         self.exp["experiment_id"] = datetime.datetime.now().isoformat("/")
         self.query_generator = QueryGenerator()
+        self.query_generator.options["force_regenerate_resolvable_citations"] = self.options.get("force_regenerate_resolvable_citations", False)
+
 
     def processCommandLineArguments(self):
         """
@@ -280,7 +267,7 @@ class Experiment(object):
                 else:
                     prebuild_list = cp.Corpus.listPapers()
             else:
-                prebuild_list = cp.Corpus.listIncollectionReferencesOfList(cp.Corpus.TEST_FILES)
+                prebuild_list = cp.Corpus.listInCollectionReferencesOfList(cp.Corpus.TEST_FILES)
                 prebuild_list.extend(cp.Corpus.TEST_FILES)
 
             cp.Corpus.ALL_FILES = prebuild_list
@@ -304,8 +291,8 @@ class Experiment(object):
         gc.collect()
         queries_file = os.path.join(self.exp["exp_dir"], self.exp["precomputed_queries_filename"])
 
-        if self.options.get("compute_queries", True) and (
-                self.options.get("overwrite_existing_queries", False) or not exists(queries_file)):
+        if (self.options.get("compute_queries", True) and (
+                self.options.get("overwrite_existing_queries", False)) or not exists(queries_file)):
             self.query_generator.precomputeQueries(self.exp)
 
         self.exp["precomputed_queries_file_path"] = queries_file
@@ -319,6 +306,7 @@ class Experiment(object):
             if self.options.get("run_experiment", True):
                 pipeline = BaseTestingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
                 pipeline.runPipeline(self.exp, self.options)
+
         elif self.exp["type"] == "train_weights":
             if self.options.get("run_precompute_retrieval", False):
                 pipeline = PrecomputedPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
@@ -326,6 +314,7 @@ class Experiment(object):
             if self.options.get("run_experiment", True):
                 weight_trainer = WeightTrainer(self.exp, self.options)
                 weight_trainer.trainWeights()
+
         elif self.exp["type"] == "extract_kw":
             pipeline = KeywordTrainingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
             if self.options.get("run_precompute_retrieval", False):
@@ -336,9 +325,9 @@ class Experiment(object):
             if self.options.get("run_experiment", True):
                 kw_trainer = KeywordTrainer(self.exp, self.options)
                 kw_trainer.trainExtractors()
+
         elif self.exp["type"] == "test_kw_selection":
-            assert False, "Not implemented yet"
-            pipeline = KeywordTrainingPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
+            pipeline = KeywordSelectionEvaluationPipeline(retrieval_class=self.retrieval_class, use_celery=self.use_celery)
             if self.options.get("run_precompute_retrieval", False):
                 pipeline.runPipeline(self.exp, self.options)
             if self.options.get("refresh_results_cache", False):
@@ -365,6 +354,8 @@ class Experiment(object):
         # PREBUILD BOWS
         self.prebuildBOWs()
 
+        from db.base_corpus import BUILDING_STATS
+        print("Building stats: ", BUILDING_STATS)
         # BUILD INDEX
         self.buildIndex()
 

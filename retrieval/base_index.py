@@ -26,16 +26,18 @@ from proc.nlp_functions import CORESC_LIST
 
 from multi.tasks import addToindexTask
 
-ES_TYPE_DOC="doc"
+ES_TYPE_DOC = "doc"
+
 
 class BaseIndexer(object):
     """
         Prebuilds BOWs etc. for tests
     """
+
     def __init__(self, use_celery=False):
         """
         """
-        self.use_celery=use_celery
+        self.use_celery = use_celery
 
     def buildIndexes(self, testfiles, methods):
         """
@@ -46,41 +48,41 @@ class BaseIndexer(object):
         """
         self.initializeIndexer()
 
-        count=0
+        count = 0
         for guid in testfiles:
-            count+=1
-            print("Building index: paper ",count,"/",len(testfiles),":",guid)
+            count += 1
+            print("Building index: paper ", count, "/", len(testfiles), ":", guid)
 
-            fwriters={}
-            doc=cp.Corpus.loadSciDoc(guid)
+            fwriters = {}
+            doc = cp.Corpus.loadSciDoc(guid)
             if not doc:
                 print("Error loading SciDoc for", guid)
                 continue
 
-            indexNames=getDictOfLuceneIndeces(methods)
+            indexNames = getDictOfLuceneIndeces(methods)
 
             for indexName in indexNames:
-                actual_dir=cp.Corpus.getRetrievalIndexPath(guid, indexName, full_corpus=False)
-                fwriters[indexName]=self.createIndexWriter(actual_dir)
+                actual_dir = cp.Corpus.getRetrievalIndexPath(guid, indexName, full_corpus=False)
+                fwriters[indexName] = self.createIndexWriter(actual_dir)
 
             # old way, assuming the documents are fine and one can just load all in-collection references
             # ...NOT! must select them using the same method that gets the resolvable CITATIONS
             # updated! Should work well now
-##            for ref in doc["references"]:
-##                match=cp.Corpus.matcher.matchReference(ref)
-##                if match:
-##                    ref_guid=match["guid"]
+            ##            for ref in doc["references"]:
+            ##                match=cp.Corpus.matcher.matchReference(ref)
+            ##                if match:
+            ##                    ref_guid=match["guid"]
             # even newer way: just use the precomputed metadata.outlinks
-            outlinks=cp.Corpus.getMetadataByGUID(guid)["outlinks"]
+            outlinks = cp.Corpus.getMetadataByGUID(guid)["outlinks"]
             for ref_guid in outlinks:
-                addBOWsToIndex(ref_guid,indexNames,9999,fwriters)
+                addBOWsToIndex(ref_guid, indexNames, 9999, fwriters)
                 # TODO integrate this block below into addBOWsToIndex
-##                for indexName in indexNames:
-##                    # get the maximum year to create inlink_context descriptions from
-##                    if indexNames[indexName]["options"].get("max_year",False) == True:
-##                        max_year=cp.Corpus.getMetadataByGUID(test_guid)["year"]
-##                    else:
-##                        max_year=None
+            ##                for indexName in indexNames:
+            ##                    # get the maximum year to create inlink_context descriptions from
+            ##                    if indexNames[indexName]["options"].get("max_year",False) == True:
+            ##                        max_year=cp.Corpus.getMetadataByGUID(test_guid)["year"]
+            ##                    else:
+            ##                        max_year=None
 
             for fwriter in fwriters:
                 fwriters[fwriter].close()
@@ -98,45 +100,47 @@ class BaseIndexer(object):
         elif index_data["type"] in ["inlink_context"]:
             pass
         elif index_data["type"] in ["ilc_mashup"]:
-            return CORESC_LIST + ["ilc_CSC_"+zone for zone in CORESC_LIST]
+            return CORESC_LIST + ["ilc_CSC_" + zone for zone in CORESC_LIST]
         elif index_data["type"] in ["standard_multi"]:
             if index_data["method"] in ["az_annotated", "ilc_annotated"]:
-                return CORESC_LIST + ["ilc_CSC_"+zone for zone in CORESC_LIST]
+                return CORESC_LIST + ["ilc_CSC_" + zone for zone in CORESC_LIST]
             else:
                 # this is the standard BOW name
                 return ["text"]
             pass
 
-
     def buildGeneralIndex(self, exp, options):
         """
             Creates one index for each method and parameter, adding all files to each
         """
-        print ("Building global index...")
-        fwriters={}
+        print("Building global index...")
+        fwriters = {}
 
-        index_max_year=exp.get("index_max_year",None)
+        index_max_year = exp.get("index_max_year", None)
 
-        indexNames=getDictOfLuceneIndeces(exp["prebuild_general_indexes"])
+        indexNames = getDictOfLuceneIndeces(exp["prebuild_general_indexes"])
         for entry_name in indexNames:
-            entry=indexNames[entry_name]
-            entry["function_name"]=exp["prebuild_bows"][entry["bow_name"]]["function_name"]
+            entry = indexNames[entry_name]
+            if "bow_name" in entry:
+                entry["function_name"] = exp["prebuild_bows"][entry["bow_name"]]["function_name"]
+            else:
+                print("WARNING No bow_name in entry {} : ilc_mashup?".format(entry_name))
 
-        max_results=options.get("max_files_to_process",sys.maxsize)
+        max_results = options.get("max_files_to_process", sys.maxsize)
 
-        ALL_GUIDS=cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year,  max_results=max_results)
+        ALL_GUIDS = cp.Corpus.listPapers("metadata.year:<=%d" % index_max_year, max_results=max_results)
         for indexName in indexNames:
-            actual_dir=cp.Corpus.getRetrievalIndexPath("ALL_GUIDS", indexName, full_corpus=True)
-            fields=self.listFieldsToIndex(indexNames[indexName])
-            self.createIndex(actual_dir,fields)
-            fwriters[indexName]=self.createIndexWriter(actual_dir)
+            actual_dir = cp.Corpus.getRetrievalIndexPath("ALL_GUIDS", indexName, full_corpus=True)
+            fields = self.listFieldsToIndex(indexNames[indexName])
+            self.createIndex(actual_dir, fields, options.get("rebuild_indexes", False))
+            fwriters[indexName] = self.createIndexWriter(actual_dir)
 
-        print("Adding",len(ALL_GUIDS),"files:")
+        print("Adding", len(ALL_GUIDS), "files:")
 
         if not self.use_celery:
-##            widgets = ['Adding file: ', SimpleProgress(), ' ', Bar(), ' ', ETA()]
-##            progress = ProgressBar(widgets=widgets, maxval=100).start()
-            progress=ProgressIndicator(True, len(ALL_GUIDS), print_out=False)
+            ##            widgets = ['Adding file: ', SimpleProgress(), ' ', Bar(), ' ', ETA()]
+            ##            progress = ProgressBar(widgets=widgets, maxval=100).start()
+            progress = ProgressIndicator(True, len(ALL_GUIDS), print_out=False)
             for guid in ALL_GUIDS:
                 addBOWsToIndex(guid, indexNames, index_max_year, fwriters)
                 progress.showProgressReport("Adding papers to index")
@@ -146,16 +150,15 @@ class BaseIndexer(object):
             print("Queueing up files for import...")
             for guid in ALL_GUIDS:
                 addToindexTask.apply_async(args=[
-                                                guid,
-                                                indexNames,
-                                                index_max_year,
-                                                ],
-                                            queue="add_to_index")
+                    guid,
+                    indexNames,
+                    index_max_year,
+                ],
+                    queue="add_to_index")
 
-
-#-------------------------------------------------------------------------------
-#  Methods to be overriden in descendant classes
-#-------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------
+    #  Methods to be overriden in descendant classes
+    # -------------------------------------------------------------------------------
 
     def initializeIndexer(self):
         """
@@ -163,7 +166,7 @@ class BaseIndexer(object):
         """
         pass
 
-    def createIndex(self, index_name, fields):
+    def createIndex(self, index_name, fields, force_recreate=False):
         """
             Create the actual index. Elastic requires this in order to
             specify the mapping, Lucene doesn't
@@ -175,6 +178,7 @@ class BaseIndexer(object):
             Returns an IndexWriter object created for the actual_dir specified
         """
         raise NotImplementedError
+
 
 ##    def addDocument(self, writer, new_doc, metadata, fields_to_process, bow_info):
 ##        """
@@ -193,6 +197,7 @@ class BaseIndexer(object):
 
 def main():
     pass
+
 
 if __name__ == '__main__':
     main()

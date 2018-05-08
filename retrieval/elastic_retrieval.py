@@ -18,35 +18,38 @@ from .stored_formula import StoredFormula
 from proc.structured_query import StructuredQuery
 from six.moves import range
 
-ES_TYPE_DOC="doc"
-QUERY_TIMEOUT=500 # this is in seconds!
+ES_TYPE_DOC = "doc"
+QUERY_TIMEOUT = 500  # this is in seconds!
+
 
 class ElasticRetrieval(BaseRetrieval):
     """
         Interfaces with the Elasticsearch API
     """
-    def __init__(self, index_name, method, logger=None, use_default_similarity=True, max_results=None, es_instance=None, save_terms=False):
-        self.index_name=index_name
+
+    def __init__(self, index_name, method, logger=None, use_default_similarity=True, max_results=None, es_instance=None,
+                 save_terms=False):
+        self.index_name = index_name
         if es_instance:
-            self.es=es_instance
+            self.es = es_instance
         else:
             if cp.Corpus.__class__.__name__ == "ElasticCorpus":
-                self.es=cp.Corpus.es
+                self.es = cp.Corpus.es
             else:
-                self.es=Elasticsearch()
+                self.es = Elasticsearch()
 
         if max_results:
-            self.max_results=max_results
+            self.max_results = max_results
         else:
-            self.max_results=MAX_RESULTS_RECALL
+            self.max_results = MAX_RESULTS_RECALL
 
-        self.method=method # never used!
-        self.logger=logger
-        self.last_query={}
-        self.save_terms=save_terms
-        self.default_field="text"
-        self.tie_breaker=0
-        self.multi_match_type="best_fields"
+        self.method = method  # never used!
+        self.logger = logger
+        self.last_query = {}
+        self.save_terms = save_terms
+        self.default_field = "text"
+        self.tie_breaker = 0
+        self.multi_match_type = "best_fields"
 
     def rewriteQueryAsDSL(self, structured_query, parameters):
         """
@@ -57,91 +60,169 @@ class ElasticRetrieval(BaseRetrieval):
             :param parameters: dict of [field]=weight to replace in the query
         """
         if "structured_query" in structured_query:
-            structured_query=structured_query["structured_query"]
+            structured_query = structured_query["structured_query"]
 
-        if not isinstance(structured_query,StructuredQuery):
-            structured_query=StructuredQuery(structured_query)
+        if not isinstance(structured_query, StructuredQuery):
+            structured_query = StructuredQuery(structured_query)
 
         if not structured_query or len(structured_query) == 0:
             return None
 
-        self.last_query=structured_query
+        self.last_query = structured_query
 
-        lucene_query=""
+        lucene_query = ""
 
         for token in structured_query:
             # TODO proper computing of the boost formula. Different methods?
-##            boost=token["boost"]*token["count"]
-            boost=token.boost*token.count
-##            bool_val=token.get("bool", None) or ""
-            bool_val=token.bool or ""
+            ##            boost=token["boost"]*token["count"]
+            boost = token.boost * token.count
+            ##            bool_val=token.get("bool", None) or ""
+            bool_val = token.bool or ""
 
-##            lucene_query+="%s%s" % (bool_val,token["token"])
-            lucene_query+="%s%s " % (bool_val,token.token)
-##            if boost != 1:
-##                lucene_query+="^%s" %str(boost)
+            ##            lucene_query+="%s%s" % (bool_val,token["token"])
+            token_text = token.token
+            if " " in token_text: # if token is a phrase
+                token_text = "\"" + token_text + "\""
+
+            lucene_query += "%s%s " % (bool_val, token_text)
+            ##            if boost != 1:
+            ##                lucene_query+="^%s" %str(boost)
             if boost > 1:
-                token_str=token.token+" "
-                lucene_query+=bool_val + (token_str * int(boost-1))
+                token_str = token_text + " "
+                lucene_query += bool_val + (token_str * int(boost - 1))
 
-            lucene_query=lucene_query.strip()
-            lucene_query+=" "
+            lucene_query = lucene_query.strip()
+            lucene_query += " "
 
-        lucene_query=lucene_query.replace("  "," ")
+        lucene_query = lucene_query.replace("  ", " ")
 
-        fields=[]
+        fields = []
         for param in parameters:
-            fields.append(param+"^"+str(parameters[param]))
+            fields.append(param + "^" + str(parameters[param]))
 
-        dsl_query={
-          "multi_match" : {
-            "query": lucene_query,
-            "type":  self.multi_match_type,
-            "fields": fields,
-            "operator": "or",
-          }
+        dsl_query = {
+            "multi_match": {
+                "query": lucene_query,
+                "type": self.multi_match_type,
+                "fields": fields,
+                "operator": "or",
+            }
         }
 
-##        print(dsl_query)
+        ##        print(dsl_query)
 
         if self.tie_breaker:
-            dsl_query["multi_match"]["tie_breaker"]=self.tie_breaker
+            dsl_query["multi_match"]["tie_breaker"] = self.tie_breaker
 
         return dsl_query
 
+    def rewriteQueryAsDSL2(self, structured_query, parameters):
+        """
+            Creates a multi_match DSL query for elasticsearch. Version 2
+
+            :param structured_query: a StructuredQuery dict, optionally under the
+                key "structured_query"
+            :param parameters: dict of [field]=weight to replace in the query
+        """
+        if "structured_query" in structured_query:
+            structured_query = structured_query["structured_query"]
+
+        if not isinstance(structured_query, StructuredQuery):
+            structured_query = StructuredQuery(structured_query)
+
+        if not structured_query or len(structured_query) == 0:
+            return None
+
+        self.last_query = structured_query
+
+        lucene_query = ""
+
+        # {
+        #     "term": {
+        #         "status": {
+        #             "value": "urgent",
+        #             "boost": 2.0
+        #         }
+        #     }
+        # },
+
+
+        for token in structured_query:
+            ##            boost=token["boost"]*token["count"]
+            # term_dict={"term":}
+            boost = token.boost * token.count
+            ##            bool_val=token.get("bool", None) or ""
+            bool_val = token.bool or ""
+
+            ##            lucene_query+="%s%s" % (bool_val,token["token"])
+            token_text = token.token
+            if " " in token_text: # if token is a phrase
+                token_text = "\"" + token_text + "\""
+
+            lucene_query += "%s%s " % (bool_val, token_text)
+            ##            if boost != 1:
+            ##                lucene_query+="^%s" %str(boost)
+            if boost > 1:
+                token_str = token_text + " "
+                lucene_query += bool_val + (token_str * int(boost - 1))
+
+            lucene_query = lucene_query.strip()
+            lucene_query += " "
+
+        elastic_query = {"bool": {"should": []}}
+
+        fields = []
+        for param in parameters:
+            fields.append(param + "^" + str(parameters[param]))
+
+        dsl_query = {
+            "multi_match": {
+                "query": lucene_query,
+                "type": self.multi_match_type,
+                "fields": fields,
+                "operator": "or",
+            }
+        }
+
+        ##        print(dsl_query)
+
+        if self.tie_breaker:
+            dsl_query["multi_match"]["tie_breaker"] = self.tie_breaker
+
+        return dsl_query
 
     def runQuery(self, structured_query, max_results=None):
         """
             Interfaces with the elasticsearch query API
         """
-        if not structured_query or len(structured_query) == 0 :
+        if not structured_query or len(structured_query) == 0:
             return []
 
         if not max_results:
-            max_results=self.max_results
+            max_results = self.max_results
 
-        self.last_query=dict(structured_query)
-        dsl_query=self.rewriteQueryAsDSL(structured_query["structured_query"], [self.default_field])
+        self.last_query = dict(structured_query)
+        dsl_query = self.rewriteQueryAsDSL(structured_query["structured_query"], [self.default_field])
 
-        res=self.es.search(
-            body={"query":dsl_query},
+        res = self.es.search(
+            body={"query": dsl_query},
             size=max_results,
             index=self.index_name,
             doc_type=ES_TYPE_DOC,
             request_timeout=QUERY_TIMEOUT,
-            )
+        )
 
-        structured_query["dsl_query"]=dsl_query
-        hits=res["hits"]["hits"]
-##        print("Found %d document(s) that matched query '%s':" % (res['hits']['total'], query))
+        structured_query["dsl_query"] = dsl_query
+        hits = res["hits"]["hits"]
+        ##        print("Found %d document(s) that matched query '%s':" % (res['hits']['total'], query))
 
-##        if len(hits.scoreDocs) ==0:
-##            print "Original query:",original_query
-##            print "Query:", query
-        result=[]
+        ##        if len(hits.scoreDocs) ==0:
+        ##            print "Original query:",original_query
+        ##            print "Query:", query
+        result = []
         for hit in hits:
-            metadata= hit["_source"]["metadata"]
-            result.append((hit["_score"],metadata))
+            metadata = hit["_source"]["metadata"]
+            result.append((hit["_score"], metadata))
         return result
 
     def formulaFromExplanation(self, query, doc_id):
@@ -153,41 +234,44 @@ class ElasticRetrieval(BaseRetrieval):
             :param doc_id: id of document to run .explain() for
             :returns:
         """
-        explanation=None
-        retries=0
-        while retries < 2:
+        explanation = None
+        retries = 0
+        while retries < 1:
             try:
-                explanation=self.es.explain(
+                explanation = self.es.explain(
                     index=self.index_name,
                     doc_type=ES_TYPE_DOC,
-                    body={"query":query["dsl_query"]},
+                    body={"query": query["dsl_query"]},
                     id=doc_id,
                     request_timeout=QUERY_TIMEOUT,
-                    )
+                )
                 break
             except Exception as e:
-##                logging.error("Exception, retrying...")
-                retries+=1
+                ##                logging.error("Exception, retrying...")
+                retries += 1
 
         if retries > 0:
-            if retries == 2:
-                logging.error("Retried 3 times, failed to retrieve.")
+            if retries == 1:
+                logging.error("Retried {} times, failed to retrieve.".format(retries + 1))
             else:
-                logging.warning("Retried %d times, retrieved successfuly." % (retries+1))
+                logging.warning("Retried %d times, retrieved successfuly." % (retries + 1))
 
-        formula=StoredFormula()
+        formula = StoredFormula()
         if explanation:
             formula.fromElasticExplanation(explanation, self.save_terms)
         return formula
+
 
 class ElasticRetrievalBoost(ElasticRetrieval):
     """
         Use ElasticSearch for retrieval boosting different (AZ) fields differently
     """
 
-    def __init__(self, index_name, method, logger=None, use_default_similarity=True, max_results=None, es_instance=None, save_terms=False):
-        super(self.__class__,self).__init__(index_name, method, logger, use_default_similarity, max_results, es_instance, save_terms)
-        self.return_fields=["guid"]
+    def __init__(self, index_name, method, logger=None, use_default_similarity=True, max_results=None, es_instance=None,
+                 save_terms=False):
+        super(self.__class__, self).__init__(index_name, method, logger, use_default_similarity, max_results,
+                                             es_instance, save_terms)
+        self.return_fields = ["guid"]
 
     def runQuery(self, structured_query, parameters=None, test_guid=None, max_results=None):
         """
@@ -197,56 +281,56 @@ class ElasticRetrievalBoost(ElasticRetrieval):
             :param parameters: dict with [key]=weight for searching different fields w/different weights
             :param test_guid: the GUID of the file that we've extracted the queries from
         """
-        if not structured_query or len(structured_query) == 0 :
+        if not structured_query or len(structured_query) == 0:
             return []
 
         if not max_results:
-            max_results=self.max_results
+            max_results = self.max_results
 
-        self.last_query=structured_query
+        self.last_query = structured_query
 
-        query_text=self.rewriteQuery(structured_query,parameters,test_guid)
-        dsl_query=self.rewriteQueryAsDSL(structured_query, parameters)
+        query_text = self.rewriteQuery(structured_query, parameters, test_guid)
+        dsl_query = self.rewriteQueryAsDSL(structured_query, parameters)
 
-        if query_text=="":
+        if query_text == "":
             print("MAAAC! Empty query!")
-            hits=[]
+            hits = []
         else:
-##            assert(False)
+            ##            assert(False)
             try:
-                res=self.es.search(
-                    body={"query":dsl_query},
+                res = self.es.search(
+                    body={"query": dsl_query},
                     size=max_results,
                     index=self.index_name,
                     doc_type=ES_TYPE_DOC,
                     _source=self.return_fields,
                     request_timeout=QUERY_TIMEOUT,
-                    )
+                )
 
-                hits=res["hits"]["hits"]
-                structured_query["dsl_query"]=dsl_query
+                hits = res["hits"]["hits"]
+                structured_query["dsl_query"] = dsl_query
             except ConnectionError as e:
                 logging.exception("Error connecting to ES. Timeout?")
                 print("Exception:", sys.exc_info()[:2])
-                cp.Corpus.global_counters["query_error"]=cp.Corpus.global_counters.get("query_error",0)+1
-                print("Query error. Query len: ",len(query_text))
-                hits=[]
+                cp.Corpus.global_counters["query_error"] = cp.Corpus.global_counters.get("query_error", 0) + 1
+                print("Query error. Query len: ", len(query_text))
+                hits = []
             except TransportError as e:
                 logging.exception("Error in query:")
                 print("Exception:", sys.exc_info()[:2])
-                hits=[]
+                hits = []
 
         # explain the query
         if self.logger:
-            self.logger.logReport(query_text+"\n")
+            self.logger.logReport(query_text + "\n")
 
             if self.logger.full_citation_id in self.logger.citations_extra_info:
-                max_explanations=len(hits)
+                max_explanations = len(hits)
             else:
-                max_explanations=1
+                max_explanations = 1
 
             for index in range(max_explanations):
-                explanation=self.es.explain(
+                explanation = self.es.explain(
                     body=dsl_query,
                     size=max_results,
                     index=self.index_name,
@@ -254,20 +338,21 @@ class ElasticRetrievalBoost(ElasticRetrieval):
                 )
                 self.logger.logReport(explanation)
 
-        result=[]
+        result = []
         for hit in hits:
-##            metadata= hit["_source"]["metadata"]
-##            result.append((hit["_score"],{"guid":hit["_source"]["guid"]}))
-            result.append((hit["_score"],hit["_source"]))
+            ##            metadata= hit["_source"]["metadata"]
+            ##            result.append((hit["_score"],{"guid":hit["_source"]["guid"]}))
+            result.append((hit["_score"], hit["_source"]))
 
         if self.logger and self.logger.full_citation_id in self.logger.citations_extra_info:
-            print(query_text,"\n", hits, "\n", result, "\n")
+            print(query_text, "\n", hits, "\n", result, "\n")
 
         return result
 
 
 def main():
     pass
+
 
 if __name__ == '__main__':
     main()

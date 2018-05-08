@@ -67,7 +67,7 @@ class SciDocRenderer(object):
         for count in range(2):
             text=re.sub(r"(<cit.*?/>)\s*?(<cit.*?/>)",r"\1, \2",text,0,re.IGNORECASE|re.DOTALL)
 
-        text=re.sub(r"<cit\sid=\"?(.+?)\"?\s*?/>",r"__cit__\1",text, flags=re.DOTALL|re.IGNORECASE)
+        text=re.sub(r"<cit\sid=\"?(.+?)\"?\s*?/>",r"__cit\1",text, flags=re.DOTALL|re.IGNORECASE)
         text=text_formatting_function(text, glob)
 
         for cit_id in s.get("citations",[]):
@@ -80,7 +80,7 @@ class SciDocRenderer(object):
             else:
                 sub="[MISSING REFERENCE "+cit_id+")] "
 
-            text=re.sub(r"__cit__"+str(cit_id),sub,text, flags=re.DOTALL|re.IGNORECASE)
+            text=re.sub(r"__cit"+str(cit_id),sub,text, flags=re.DOTALL|re.IGNORECASE)
 
         text=text.strip()
         if len(text) > 0 and text[-1] not in [".",",","!","?",":",";"]:

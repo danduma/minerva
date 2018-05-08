@@ -16,7 +16,7 @@ import six.moves.cPickle, random
 from bs4 import BeautifulStoneSoup
 
 from proc.nlp_functions import sentenceSplit
-from proc.general_utils import (writeFileText, pathSelect, cleanxml)
+from proc.general_utils import (writeFileText, pathSelect, cleanXML)
 
 from scidoc.scidoc import SciDoc
 from scidoc.render_content import SciDocRenderer
@@ -435,7 +435,7 @@ class JATSXMLReader(BaseSciDocXMLReader):
                 if given_names and surname:
                     authorlist.append({"given": given_names.text, "family": surname.text})
                 else:
-                    astring=cleanxml(astring)
+                    astring=cleanXML(astring)
                     authorlist.append(guessNamesOfPlainTextAuthor(astring))
         else:
             srnms=ref.findAll("surname")

@@ -1,4 +1,4 @@
-# Automate the tagging of each sentence in each document with its AZ/CoreSC
+# Fix broken references in PMC papers
 #
 # Copyright (C) 2015 Daniel Duma
 # Author: Daniel Duma <danielduma@gmail.com>

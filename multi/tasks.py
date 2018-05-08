@@ -1,40 +1,32 @@
-# <purpose>
+# Celery task definitions
 #
 # Copyright:   (c) Daniel Duma 2015
 # Author: Daniel Duma <danielduma@gmail.com>
 
 # For license information, see LICENSE.TXT
 
-# AAC corpus importer
-#
-# Copyright:   (c) Daniel Duma 2015
-# Author: Daniel Duma <danielduma@gmail.com>
-
-# For license information, see LICENSE.TXT
-
-from __future__ import print_function
 from __future__ import absolute_import
+from __future__ import print_function
 
 import logging
 
-import requests
-
 import db.corpora as cp
+import requests
+from celery.utils.log import get_task_logger
 from db.elastic_corpus import ElasticCorpus
-from retrieval.elastic_retrieval import ElasticRetrieval
-
-from importing.importing_functions import (convertXMLAndAddToCorpus,
-                                           updatePaperInCollectionReferences)
+from db.result_store import createResultStorers, ElasticResultStorer
+from evaluation.keyword_functions import annotateKeywords
 from evaluation.prebuild_functions import prebuildMulti
 from evaluation.precompute_functions import addPrecomputeExplainFormulas
-from db.result_store import createResultStorers
-from retrieval.index_functions import addBOWsToIndex
 from evaluation.statistics_functions import computeAnnotationStatistics
-from evaluation.keyword_functions import annotateKeywords
+from importing.importing_functions import (convertXMLAndAddToCorpus,
+                                           updatePaperInCollectionReferences)
+from retrieval.elastic_retrieval import ElasticRetrieval
+from retrieval.index_functions import addBOWsToIndex
+from ml.document_features import DocumentFeaturesAnnotator
 
 from . import celery_app
 from .celery_app import app
-from celery.utils.log import get_task_logger
 
 logger = get_task_logger(__name__)
 
@@ -105,13 +97,12 @@ def updateReferencesTask(self, doc_id, import_options):
 
 
 @app.task(ignore_result=True, bind=True)
-def prebuildBOWTask(self, method_name, parameters, function, guid, overwrite_existing_bows, rhetorical_annotations):
+def prebuildBOWTask(self, method_name, parameters, function, guid, overwrite_existing_bows, filter_options, force_rebuild):
     """
         Builds the BOW for a single paper
     """
     try:
-        prebuildMulti(method_name, parameters, function, None, None, guid, overwrite_existing_bows,
-                      rhetorical_annotations)
+        prebuildMulti(method_name, parameters, function, None, None, guid, overwrite_existing_bows, filter_options, force_rebuild)
     except Exception as e:
         logging.exception("Error running prebuildMulti")
         self.retry(countdown=120, max_retries=4)
@@ -177,8 +168,9 @@ def annotateKeywordsTask(self, precomputed_query,
     try:
         model = ElasticRetrieval(index_name, doc_method, max_results=max_results, es_instance=cp.Corpus.es)
         writers = {"ALL": ElasticResultStorer(self.exp["name"], "kw_data", endpoint=cp.Corpus.endpoint)}
+        annotator=DocumentFeaturesAnnotator()
         annotateKeywords(precomputed_query, doc_method, doc_list, model, writers, experiment_id, context_extraction,
-                         extraction_parameter, keyword_selection_method, keyword_selection_parameters, weights)
+                         extraction_parameter, keyword_selection_method, keyword_selection_parameters, weights, annotator)
     except:
         logging.exception("Error running annotateKeywords")
         self.retry(countdown=120, max_retries=4)

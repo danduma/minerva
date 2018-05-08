@@ -85,8 +85,8 @@ def testExplanation():
 ##    print(formula.computeScore(None, None, None))
     print((formula.computeScore(None, None, {"susceptibility":20})))
 
-    from evaluation.best_keyword_selection import getFormulaTermWeights
-    print((get({"match_guid":doc_ids[0],"formulas":[{"guid":doc_ids[0],"formula":formula.formula}]})))
+    # from evaluation.best_keyword_selection import getFormulaTermWeights
+    # print((get({"match_guids":doc_ids[0],"formulas":[{"guid":doc_ids[0],"formula":formula.formula}]})))
 
 
 def main():

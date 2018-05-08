@@ -53,7 +53,7 @@ def annotate_one(guid):
         doc=cp.Corpus.loadSciDoc(guid)
         cache_save(cached_filename, doc)
 
-    annotator.annotate(doc)
+    annotator.annotate_scidoc(doc)
 
 ##    parse=en_nlp(u"")
 ##    parse.from_bytes(base64.decodestring(doc.allsentences[0]["parse"]))

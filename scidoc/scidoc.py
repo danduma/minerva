@@ -11,7 +11,11 @@ from __future__ import print_function
 from __future__ import absolute_import
 import json, sys, re
 from copy import deepcopy
-from .citation_utils import CITATION_FORM
+
+from proc.general_utils import cleanXML
+from proc.nlp_functions import rx_word_boundaries, replaceXMLCitationsWithUnderscoreCitations, AUTHOR_MARKER, CIT_MARKER
+from scidoc.citation_utils import CITATION_FORM
+from scidoc.reference_formatting import formatAPACitationAuthors, formatReference
 import six
 
 SENTENCE_TYPES = ["s", "fig-caption", "s-li"]
@@ -69,6 +73,7 @@ class SciDoc(object):
         # global variables to keep track of importing/exporting
         self.glob = {}
         self.ignore_errors = ignore_errors if ignore_errors else []
+        self.known_author_strings = None
 
         if data:
             if isinstance(data, six.string_types):
@@ -383,7 +388,7 @@ class SciDoc(object):
         """
 
         def num_words_in_line(line):
-            return len(_re_word_boundaries.findall(line)) >> 1
+            return len(rx_word_boundaries.findall(line)) >> 1
 
         for s in self.allsentences:
             s["wordlen"] = num_words_in_line(s["text"])
@@ -405,9 +410,9 @@ class SciDoc(object):
         """
         text = ""
         if headers:
-            text += [section["header"]]
+            text += section.get("header","") + "\n"
 
-        for element_id in section["content"]:
+        for element_id in section.get("content",[]):
             element = self.element_by_id[element_id]
             if self.isSection(element):
                 text += self.getSectionText(element, headers)
@@ -471,33 +476,55 @@ class SciDoc(object):
 
         return text
 
-    # TODO: Figure out why function is different from the one originally in this module.
-    ##    def countMultiCitations(newSent, newDocument):
-    ##        """
-    ##            <Function comes from read_jatsxml.py>
-    ##            Locate and cluster together multiple citations in a single sentence,
-    ##            i.e. (Johns & Smith (2005), Bla and Bla (2007))
-    ##        """
-    ##        cits=[]
-    ##        ed=newSent["text"]
-    ##
-    ##        match=1
-    ##
-    ##        while match:
-    ##            match=re.search(r"(<cit\sid=(.{1,6})\s?/>).{0,7}<cit\sid=(.{1,6})\s?/>",ed,re.IGNORECASE)
-    ##            if match:
-    ##                cits.append(match.group(2).strip())
-    ##                cits.append(match.group(3).strip())
-    ##                ed=ed[:match.start(1)]+ed[match.end(1):]
-    ##
-    ##        cits=list(set(cits))
-    ##        for cit in cits:
-    ##    ##        cit=int(str(cit).replace("\"", "").replace("'", ""))
-    ##            for cit_id in newSent.get("citations",[]):
-    ##                if cit_id ==cit:
-    ##                    ref=newDocument.citation_by_id[cit_id]
-    ##                    ref["multi"]=len(cits)
-    ##                    ref["group"]=cits
+    def formatTextForExtraction(self, text):
+        """
+        Returns the text with the citation placeholders substituted by a single token
+         __cit and every author reference replaced with __author.
+
+        This prepares the text for query extraction, context extraction and KW Selection
+
+        :return: text ready for extraction
+        """
+
+        if not self.known_author_strings:
+            self.prepareGazetteer()
+
+        # text = re.sub(r"<CIT.+?/>", CIT_MARKER, text)
+        text = replaceXMLCitationsWithUnderscoreCitations(text)
+        text = cleanXML(text)
+
+        for author_regex in self.known_author_strings:
+            text = re.sub(author_regex + "(\s*\,?\s*\d+\w?)?", AUTHOR_MARKER, text)
+            text = re.sub(author_regex + "(\s*\(\d+\w?\))?", AUTHOR_MARKER, text)
+
+        text = re.sub("\(\s*\_\_author\s*\.\)?", "(" + AUTHOR_MARKER + ")", text)
+        text = re.sub("(\w)" + re.escape(CIT_MARKER), r"\1 " + CIT_MARKER, text)
+        text = re.sub(re.escape(AUTHOR_MARKER) + "\s*\(\d+\w?\)", AUTHOR_MARKER, text)
+        # text = re.sub(re.escape(CIT_MARKER+CIT_MARKER), CIT_MARKER+" "+CIT_MARKER, text)
+        return text
+
+    def prepareGazetteer(self):
+        """
+        Populates the gazetteer of author names to replace with __author
+        """
+        inline_ref_mentions = []
+        for ref in self.references:
+            # inline_ref_mentions.extend(ref["surnames"])
+            # print(formatAPACitationAuthors(ref))
+            text = formatAPACitationAuthors(ref)
+            if text.strip() == "?":
+                continue
+
+            text = re.escape(text)
+            text = text.replace("al\.", "al\.?\,?")
+            text = text.replace(r"\ and\ ", "\ (and|\&amp\;|\&)\ ")
+            text = text.replace("\\ ", "\\s*")
+            # print(text)
+            inline_ref_mentions.append(text)
+            # names_from_institution=ref["institution"].replace()
+
+        inline_ref_mentions = set(inline_ref_mentions)
+        self.known_author_strings = list(inline_ref_mentions)
 
     def countMultiCitations(self, newSent):
         """

@@ -20,7 +20,7 @@ prebuild_bows={
 ##"passage":{"function":"getDocBOWpassagesMulti", "parameters":[150,175,200,250,300,350,400,450]},
 ##"inlink_context":{"function":"generateDocBOWInlinkContext", "parameters":[200] },
 
-"ilc_annotated":{"function":"generateDocBOW_ILC_Annotated",
+    "ilc_annotated":{"function":"generateDocBOW_ILC_Annotated",
     "parameters":
         ["2up_2down",
          "1up_1down",

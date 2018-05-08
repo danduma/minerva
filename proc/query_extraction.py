@@ -12,10 +12,14 @@ import re
 ##from collections import defaultdict, OrderedDict
 
 from .nlp_functions import (tokenizeText, tokenizeTextAndRemoveStopwords, stopwords,
-unTokenize, ESTIMATED_AVERAGE_WORD_LENGTH, removeCitations,
-AZ_ZONES_LIST, CORESC_LIST, formatSentenceForIndexing,
-getDictOfTokenCounts, removeStopwords, selectSentencesToAdd,
-replaceCitationsWithPlaceholders)
+                            unTokenize, ESTIMATED_AVERAGE_WORD_LENGTH, removeCitations,
+                            AZ_ZONES_LIST, CORESC_LIST, formatSentenceForIndexing,
+                            getDictOfTokenCounts, removeStopwords, selectSentencesToAdd,
+                            replaceCitationsWithPlaceholders)
+
+# should be using spacy for everything NLP from now on
+from ml.document_features import en_nlp, selectContentWords
+
 ##from nlp_functions import PAR_MARKER, CIT_MARKER, BR_MARKER
 
 from .general_utils import removeSymbols
@@ -23,18 +27,19 @@ from .structured_query import StructuredQuery
 from az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
 import six
 from six.moves import range
+import collections
 
 # this is for adding fields to a document in Lucene. These fields are not to be indexed
-FIELDS_TO_IGNORE=["left_start","right_end","params","guid_from","year_from",
-                  "query_method_id", "sentences", "structured_query"]
+FIELDS_TO_IGNORE = ["left_start", "right_end", "params", "guid_from", "year_from",
+                    "query_method_id", "sentences", "structured_query"]
+
 
 def getFieldSpecialTestName(fieldname, test_guid):
     """
         Returns the name of a "Special" test field. This is to enable splitting
         training data and testing data while at the same time
     """
-    return fieldname+"_special_"+test_guid
-
+    return fieldname + "_special_" + test_guid
 
 
 class BaseQueryExtractor(object):
@@ -49,26 +54,26 @@ class BaseQueryExtractor(object):
     def __init__(self):
         pass
 
-    def cleanupQuery(self,query):
+    def cleanupQuery(self, query):
         """
             Remove symbols from the query that can lead to errors when parsing the query
         """
-##        rep_list=["~","^","\"","+","-","(",")", "{","}","[","]","?",":","*"]
-##        rep_list.extend(punctuation)
-        query=query.lower()
-##        for r in rep_list:
-##            query=query.replace(r," ")
-        query=removeSymbols(query)
-        query=re.sub(r"\s+"," ",query)
-        query=query.strip()
+        ##        rep_list=["~","^","\"","+","-","(",")", "{","}","[","]","?",":","*"]
+        ##        rep_list.extend(punctuation)
+        query = query.lower()
+        ##        for r in rep_list:
+        ##            query=query.replace(r," ")
+        query = removeSymbols(query)
+        query = re.sub(r"\s+", " ", query)
+        query = query.strip()
         return query
 
     def filterTokens(self, tokens):
         """
             Removes single numbers that should not be in a query
         """
-        res=[]
-        rx_bad_token=re.compile(r"\d+")
+        res = []
+        rx_bad_token = re.compile(r"\d+")
         for t in tokens:
             if not rx_bad_token.match(t):
                 res.append(t)
@@ -85,15 +90,15 @@ class BaseQueryExtractor(object):
             Returns:
                 intermediate_query: a list of token data
         """
-        query_text=self.cleanupQuery(query_text)
-        if query_text=="":
+        query_text = self.cleanupQuery(query_text)
+        if query_text == "":
             return None
 
-        tokens=tokenizeTextAndRemoveStopwords(query_text)
-        tokens=self.filterTokens(tokens)
-        query_tokens=getDictOfTokenCounts(tokens)
+        tokens = tokenizeTextAndRemoveStopwords(query_text)
+        tokens = self.filterTokens(tokens)
+        query_tokens = getDictOfTokenCounts(tokens)
 
-        res=StructuredQuery()
+        res = StructuredQuery()
         for token in query_tokens:
             res.addToken(token, query_tokens[token])
 
@@ -103,11 +108,11 @@ class BaseQueryExtractor(object):
         """
             Returns the identification string for the current combination of parameters
         """
-        current_parameter=params["current_parameter"]
-        if isinstance(current_parameter,list) or isinstance(current_parameter,tuple):
-            return "%s%d_%d" % (params["method_name"],current_parameter[0],current_parameter[1])
-        elif isinstance(current_parameter,six.string_types):
-            return "%s_%s" % (params["method_name"],current_parameter)
+        current_parameter = params["current_parameter"]
+        if isinstance(current_parameter, list) or isinstance(current_parameter, tuple):
+            return "%s%d_%d" % (params["method_name"], current_parameter[0], current_parameter[1])
+        elif isinstance(current_parameter, six.string_types):
+            return "%s_%s" % (params["method_name"], current_parameter)
         else:
             raise NotImplementedError
 
@@ -130,19 +135,19 @@ class WindowQueryExtractor(BaseQueryExtractor):
         """
             Optimize the extraction of context by limiting the amount of characters and pre-tokenizing
         """
-        doctext=params["doctext"]
-        left_start=max(0,params["match_start"]-((params["wleft"]+15)*ESTIMATED_AVERAGE_WORD_LENGTH))
-        right_end=params["match_end"]+((params["wright"]+15)*ESTIMATED_AVERAGE_WORD_LENGTH)
+        doctext = params["doctext"]
+        left_start = max(0, params["match_start"] - ((params["wleft"] + 15) * ESTIMATED_AVERAGE_WORD_LENGTH))
+        right_end = params["match_end"] + ((params["wright"] + 15) * ESTIMATED_AVERAGE_WORD_LENGTH)
 
-        left=doctext[left_start:params["match_start"]] # tokenize!
-        left=tokenizeText(removeCitations(left))
-        left=removeStopwords(left)
+        left = doctext[left_start:params["match_start"]]  # tokenize!
+        left = tokenizeText(removeCitations(left))
+        left = removeStopwords(left)
 
-        right=doctext[params["match_end"]:right_end] # tokenize!
-        right=tokenizeText(removeCitations(right))
-        right=removeStopwords(right)
+        right = doctext[params["match_end"]:right_end]  # tokenize!
+        right = tokenizeText(removeCitations(right))
+        right = removeStopwords(right)
 
-        return {"left":left,"right":right,"left_start":left_start,"right_end":right_end}
+        return {"left": left, "right": right, "left_start": left_start, "right_end": right_end}
 
     def joinCitationContext(self, leftwords, rightwords, extract_dict):
         """
@@ -155,14 +160,14 @@ class WindowQueryExtractor(BaseQueryExtractor):
             Returns:
                 dict{text: concatenated context}
         """
-        assert isinstance(leftwords,list)
-        assert isinstance(rightwords,list)
-        allwords=[]
+        assert isinstance(leftwords, list)
+        assert isinstance(rightwords, list)
+        allwords = []
         allwords.extend(leftwords)
         allwords.extend(rightwords)
-        allwords=[token for token in allwords if token.lower() not in stopwords]
+        allwords = [token for token in allwords if token.lower() not in stopwords]
         # Always convert in-text citations to placeholders
-        extract_dict["text"]=replaceCitationsWithPlaceholders(unTokenize(allwords))
+        extract_dict["text"] = replaceCitationsWithPlaceholders(unTokenize(allwords))
         return extract_dict
 
     def selectTokensFromContext(self, context, params):
@@ -172,16 +177,18 @@ class WindowQueryExtractor(BaseQueryExtractor):
             Returns:
                 query dict
         """
-        leftwords=context["left"][-params["wleft"]:]
-        rightwords=context["right"][:params["wright"]]
-        left_start=params["match_start"]-sum([len(context["left"][-x])+1 for x in range(min(len(context["left"]),params["wleft"]))])
-        right_end=params["match_end"]+sum([len(context["right"][x])+1 for x in range(min(len(context["right"]),params["wright"]))])
-        extract_dict={
-            "left_start":left_start,
-            "right_end":right_end,
-            "params":(params["wleft"],params["wright"])
-            }
-        extracted_query=self.joinCitationContext(leftwords,rightwords,extract_dict)
+        leftwords = context["left"][-params["wleft"]:]
+        rightwords = context["right"][:params["wright"]]
+        left_start = params["match_start"] - sum(
+            [len(context["left"][-x]) + 1 for x in range(min(len(context["left"]), params["wleft"]))])
+        right_end = params["match_end"] + sum(
+            [len(context["right"][x]) + 1 for x in range(min(len(context["right"]), params["wright"]))])
+        extract_dict = {
+            "left_start": left_start,
+            "right_end": right_end,
+            "params": (params["wleft"], params["wright"])
+        }
+        extracted_query = self.joinCitationContext(leftwords, rightwords, extract_dict)
         return extracted_query
 
     def extract(self, params):
@@ -196,30 +203,40 @@ class WindowQueryExtractor(BaseQueryExtractor):
         """
             Default method, up to x words left, x words right
 
-            :returns: dict {"left_start","right_end", "query_method_id", "structured_query"}
+            :returns: dict {"left_start", "right_end", "query_method_id", "structured_query"}
         """
-##match, doctext, parameters=[(20,20)], options={"jump_paragraphs":True}
-        context_params={
-            "wleft":max([x[0] for x in params["parameters"]]),
-            "wright":max([x[1] for x in params["parameters"]]),
+        ##match, doctext, parameters=[(20,20)], options={"jump_paragraphs":True}
+        new_params = []
+        for param in params["parameters"]:
+            if not isinstance(param,tuple) or isinstance(param, list) or isinstance(param, str):
+                param = (param, param)
+            new_params.append(param)
+
+        params["parameters"] = new_params
+
+        context_params = {
+            "wleft": max([x[0] for x in params["parameters"]]),
+            "wright": max([x[1] for x in params["parameters"]]),
             "match_start": params["match_start"],
             "match_end": params["match_end"],
             "doctext": params["doctext"],
-            }
-        context=self.tokenizeContext(context_params)
+        }
+        context = self.tokenizeContext(context_params)
 
-        res=[]
+        res = []
 
         for parameter in params["parameters"]:
-            params["wleft"]=parameter[0]
-            params["wright"]=parameter[1]
-            params["current_parameter"]=parameter
+            params["wleft"] = parameter[0]
+            params["wright"] = parameter[1]
+            params["current_parameter"] = parameter
 
-            extracted_query=self.selectTokensFromContext(context, params)
-            extracted_query["query_method_id"]=self.methodName(params)
-            extracted_query["structured_query"]=self.generateStructuredQuery(extracted_query["text"])
+            extracted_query = self.selectTokensFromContext(context, params)
+            if not params.get("extract_only_plain_text", False):
+                extracted_query["query_method_id"] = self.methodName(params)
+                extracted_query["structured_query"] = self.generateStructuredQuery(extracted_query["text"])
             res.append(extracted_query)
         return res
+
 
 class SentenceQueryExtractor(BaseQueryExtractor):
     """
@@ -228,6 +245,14 @@ class SentenceQueryExtractor(BaseQueryExtractor):
 
     def __init__(self):
         pass
+
+    def getQueryTextFromSentence(self, sent):
+        """
+
+        :param sent: sentence dict
+        :return:
+        """
+        return formatSentenceForIndexing(sent)
 
     def extract(self, params):
         """
@@ -240,31 +265,31 @@ class SentenceQueryExtractor(BaseQueryExtractor):
                 separate_by_tag: "az", "csc" or None
                 dict_key: which key in the dict leads to the text
         """
-        to_add=selectSentencesToAdd(params["docfrom"], params["cit"], params["current_parameter"])
+        to_add = selectSentencesToAdd(params["docfrom"], params["cit"], params["current_parameter"])
 
-        if params["separate_by_tag"]=="az":
-            extracted_query={"ilc_AZ_"+zone:"" for zone in AZ_ZONES_LIST}
-        elif params["separate_by_tag"]=="csc":
-            extracted_query={"ilc_CSC_"+zone:"" for zone in CORESC_LIST}
+        if params["separate_by_tag"] == "az":
+            extracted_query = {"ilc_AZ_" + zone: "" for zone in AZ_ZONES_LIST}
+        elif params["separate_by_tag"] == "csc":
+            extracted_query = {"ilc_CSC_" + zone: "" for zone in CORESC_LIST}
         else:
-            extracted_query={params["dict_key"]:""}
+            extracted_query = {params["dict_key"]: ""}
 
         for sent_id in to_add:
-            sent=params["docfrom"].element_by_id[sent_id]
-            text=formatSentenceForIndexing(sent)
-            if params.get("separate_by_tag","")=="az":
-                extracted_query["ilc_AZ_"+sent["az"]]+=text+" "
-            elif params.get("separate_by_tag","")=="csc":
-                extracted_query["ilc_CSC_"+sent["csc_type"]]+=text+" "
+            sent = params["docfrom"].element_by_id[sent_id]
+            text = self.getQueryTextFromSentence(sent)
+            if params.get("separate_by_tag", "") == "az":
+                extracted_query["ilc_AZ_" + sent["az"]] += text + " "
+            elif params.get("separate_by_tag", "") == "csc":
+                extracted_query["ilc_CSC_" + sent["csc_type"]] += text + " "
             else:
-                extracted_query[params["dict_key"]]+=text+" "
+                extracted_query[params["dict_key"]] += text + " "
 
-        if params.get("options",{}).get("add_full_sentences", False):
-            extracted_query["sentences"]=to_add
+        if params.get("options", {}).get("add_full_sentences", False):
+            extracted_query["sentences"] = to_add
 
-        extracted_query["params"]=params["current_parameter"]
-        extracted_query["query_method_id"]=self.methodName(params)
-        extracted_query["structured_query"]=self.generateStructuredQuery(extracted_query["text"])
+        extracted_query["params"] = params["current_parameter"]
+        extracted_query["query_method_id"] = self.methodName(params)
+        extracted_query["structured_query"] = self.generateStructuredQuery(extracted_query["text"])
         return extracted_query
 
     def extractMulti(self, params):
@@ -278,12 +303,21 @@ class SentenceQueryExtractor(BaseQueryExtractor):
                 separate_by_tag: "az" or none
                 dict_key: which key in the dict leads to the text
         """
-##        docfrom, cit, params, separate_by_tag=None, dict_key="text"
-        res=[]
+        ##        docfrom, cit, params, separate_by_tag=None, dict_key="text"
+        res = []
         for parameter in params["parameters"]:
-            params["current_parameter"]=parameter
+            params["current_parameter"] = parameter
             res.append(self.extract(params))
         return res
+
+
+class FilteredSentenceQueryExtractor(SentenceQueryExtractor):
+    def getQueryTextFromSentence(self, sent):
+        doc = en_nlp(sent["text"])
+        words = selectContentWords(doc)
+        text = " ".join(words)
+        return text
+
 
 class SelectedSentenceQueryExtractor(SentenceQueryExtractor):
     """
@@ -292,7 +326,6 @@ class SelectedSentenceQueryExtractor(SentenceQueryExtractor):
 
     def __init__(self):
         pass
-
 
     def extract(self, params):
         """
@@ -303,37 +336,38 @@ class SelectedSentenceQueryExtractor(SentenceQueryExtractor):
             Args:
 
         """
-##        docfrom, cit, to_include={"p","n","o"}, to_exclude={"x"}, dict_key="text"
-        to_exclude={"x"}
-        to_add=selectSentencesToAdd(params["docfrom"], params["cit"], "4up_4down_crosspara")
-        to_include=params["current_parameter"]
-        if not isinstance(to_include,set):
-            to_include=set(to_include)
+        ##        docfrom, cit, to_include={"p","n","o"}, to_exclude={"x"}, dict_key="text"
+        to_exclude = {"x"}
+        to_add = selectSentencesToAdd(params["docfrom"], params["cit"], "4up_4down_crosspara")
+        to_include = params["current_parameter"]
+        if not isinstance(to_include, set):
+            to_include = set(to_include)
 
-        extracted_query={}
-        extracted_query["text"]=""
+        extracted_query = {}
+        extracted_query["text"] = ""
         for sent_id in to_add:
-            sent=params["docfrom"].element_by_id[sent_id]
-            feel=sent["sentiment"]
+            sent = params["docfrom"].element_by_id[sent_id]
+            feel = sent["sentiment"]
             if feel:
-                feel=set([c for c in sent["sentiment"]])
+                feel = set([c for c in sent["sentiment"]])
             else:
-                feel=set()
+                feel = set()
 
-            intersection=(to_include & feel)
+            intersection = (to_include & feel)
 
             if len(intersection) > 0 and len(to_exclude & feel) == 0:
                 # TODO remove names of authors from text
-                text=formatSentenceForIndexing(sent)
-                if params.get("separate_by_tag","")=="sentiment":
-                    extracted_query[six.text_type(intersection)]+=text+" "
+                text = formatSentenceForIndexing(sent)
+                if params.get("separate_by_tag", "") == "sentiment":
+                    extracted_query[six.text_type(intersection)] += text + " "
                 else:
-                    extracted_query[params["dict_key"]]+=text+" "
+                    extracted_query[params["dict_key"]] += text + " "
 
-        extracted_query["params"]=params["current_parameter"]
-        extracted_query["query_method_id"]=self.methodName(params)
-        extracted_query["structured_query"]=self.generateStructuredQuery(extracted_query["text"])
+        extracted_query["params"] = params["current_parameter"]
+        extracted_query["query_method_id"] = self.methodName(params)
+        extracted_query["structured_query"] = self.generateStructuredQuery(extracted_query["text"])
         return extracted_query
+
 
 ##class HeuristicsQueryExtractor(WindowQueryExtractor):
 ##    """
@@ -429,16 +463,18 @@ class SelectedSentenceQueryExtractor(SentenceQueryExtractor):
 ##        return res
 
 
-EXTRACTOR_LIST={
-    "Window":WindowQueryExtractor(),
-    "Sentences":SentenceQueryExtractor(),
-    "SelectedSentences":SelectedSentenceQueryExtractor(),
-##    "Heuristics":HeuristicsQueryExtractor(),
-    }
+EXTRACTOR_LIST = {
+    "Window": WindowQueryExtractor(),
+    "Sentences": SentenceQueryExtractor(),
+    "Sentences_filtered": FilteredSentenceQueryExtractor(),
+    "SelectedSentences": SelectedSentenceQueryExtractor(),
+    ##    "Heuristics":HeuristicsQueryExtractor(),
+}
+
 
 def main():
-
     pass
+
 
 if __name__ == '__main__':
     main()

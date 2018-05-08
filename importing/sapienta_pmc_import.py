@@ -118,7 +118,7 @@ def test_read_doc(filename):
     with open(filename,"r") as f:
         xml=f.read()
     doc=reader.read(xml, filename)
-    cp.Corpus.selectDocResolvableCitations(doc,year="2000b")
+    cp.Corpus.selectDocResolvableCitations(doc, max_year="2000b")
     print (doc)
 
 

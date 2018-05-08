@@ -6,12 +6,12 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 from __future__ import absolute_import
-import os
-from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST
+# from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST
 
 import db.corpora as cp
 
-from evaluation.experiment import Experiment, getRootDir
+from evaluation.experiment import Experiment
+from proc.general_utils import getRootDir
 
 # BOW files to prebuild for generating document representation.
 prebuild_bows = {
@@ -62,7 +62,7 @@ qmethods = {
         ##                "2up_2down",
         "2up_2down"
     ],
-        "method": "Sentences",
+        "method": "Sentences_filtered",
     },
 
     ##            "annotated_sentence":{"parameters":[
@@ -146,13 +146,33 @@ experiment = {
     # this is the classifier type we are training
     "keyword_extractor_class": "SKLearnExtractor",
     # this is the classifier subtype. In the case of sklearn, which actual classifier
-    "keyword_extractor_subclass": "MLPClassifier",
+    "keyword_extractor_subclass": "RandomForestClassifier",
     # parameters for the extractor
-    "keyword_extractor_parameters": {"verbose":True, "hidden_layer_sizes":(100, 50)},
+    # "keyword_extractor_parameters": {"verbose":True, "hidden_layer_sizes":(100, 50)},
+    "keyword_extractor_parameters": {"verbose":True},
     # how many folds to use for training/evaluation
     "cross_validation_folds": 4,
     # an upper limit on the number of data points to use
     ##    "max_data_points": 50000,
+
+    "filter_options_resolvable":{
+        # Should resolvable citations exclude those that have the same first author as the test document?
+        "exclude_self_citation": True,
+        # How many authors can the citing and cited paper maximally overlap on?
+        "max_overlapping_authors": None,        # How many authors can the citing and cited paper maximally overlap on?
+        # What's the max year for considering a citation? Should match index_max_year above
+        "max_year": 2010,
+    },
+
+    "filter_options_ilc": {
+        # Should resolvable citations exclude those that have the same first author as the test document?
+        "exclude_self_citation": True,
+        # How many authors can the citing and cited paper maximally overlap on?
+        "max_overlapping_authors": None,  # How many authors can the citing and cited paper maximally overlap on?
+        # What's the max year for considering a citation? Should match index_max_year above
+        "max_year": 2010,
+    }
+
 }
 
 options = {
@@ -160,18 +180,19 @@ options = {
     "overwrite_existing_bows": 0,  # if a BOW exists already, should we overwrite it?
     "rebuild_indexes": 0,  # rebuild indices?
     "compute_queries": 0,  # precompute the queries?
+    "force_regenerate_resolvable_citations": 1,  # find again the resolvable citations in a file?
     "overwrite_existing_queries": 0,  # force rebuilding of queries too?
-    "clear_existing_prr_results": 0,  # delete previous precomputed results? i.e. start from scratch
 
-    "run_precompute_retrieval": 0,
+    "clear_existing_prr_results": 1,  # delete previous precomputed results? i.e. start from scratch
+    "run_precompute_retrieval": 1,
 # only applies if type == "train_weights" or "extract_kw". This is necessary for run_feature_annotation! And this is because each pipeline may do different annotation
-    "run_feature_annotation": 0,  # annotate documents with features for keyword extraction? By default, False
-    "refresh_results_cache": 0,  # should we clean the offline reader cache and redownload it all from elastic?
+    "run_feature_annotation": False,  # annotate scidocs with document-wide features for keyword extraction? By default, False
+    "refresh_results_cache": 1,  # should we clean the offline reader cache and redownload it all from elastic?
     "run_experiment": 1,  # must be set to 1 for "run_package_features" to work
-    "run_package_features": 0,
+    "run_package_features": 1,
 # should we read the cache and repackage all feature information, or use it if it exists already?
-
     "start_at": 0,
+    "list_missing_files":1,
 }
 
 

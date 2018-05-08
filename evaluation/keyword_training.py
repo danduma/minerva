@@ -5,105 +5,23 @@
 
 # For license information, see LICENSE.TXT
 
-from __future__ import print_function
 from __future__ import absolute_import
+from __future__ import print_function
 
-import gc, os, json
+import gc
+import json
+import os
 from collections import defaultdict, Counter
-from sklearn import model_selection
-import pandas as pd
 
+import ml.keyword_extraction as extractors
 from db.result_store import OfflineResultReader, ResultIncrementalReader
 from evaluation.pipeline_functions import getDictOfTestingMethods
-import ml.keyword_extraction as extractors
+from ml.keyword_support import saveFeatureData, saveAllKeywordSelectionTrace, getMatrixFromTokenList, saveMatrix, loadMatrix, loadFeatureData, saveOfflineKWSelectionTraceToCSV
 from proc.results_logging import ResultsLogger
 from six.moves import range
+from sklearn import model_selection
 
 GLOBAL_FILE_COUNTER = 0
-
-
-def saveFeatureData(precomputed_contexts, path):
-    """
-        Calls prepareFeatureData() and dumps prepared data to json file
-    """
-    feature_data = extractors.prepareFeatureData(precomputed_contexts)
-    json.dump(feature_data, open(path, "w"))
-    return feature_data
-
-
-def saveKeywordSelectionScores(reader, exp_dir):
-    """
-        Saves a CSV to measure the performance of keyword selection
-    """
-
-    def getScoreDataLine(kw_data):
-        """
-            Returns a single dict/line for writing to a CSV
-        """
-        return {
-            "precision_score": kw_data["precision_score"],
-            "mrr_score": kw_data["mrr_score"],
-            "rank": kw_data["rank"],
-            "ndcg_score": kw_data["ndcg_score"],
-
-            "precision_score_kw": kw_data["kw_selection_scores"]["precision_score"],
-            "mrr_score_kw": kw_data["kw_selection_scores"]["mrr_score"],
-            "rank_kw": kw_data["kw_selection_scores"]["rank"],
-            "ndcg_score_kw": kw_data["kw_selection_scores"]["ndcg_score"],
-
-            "precision_score_kw_weight": kw_data["kw_selection_weight_scores"]["precision_score"],
-            "mrr_score_kw_weight": kw_data["kw_selection_weight_scores"]["mrr_score"],
-            "rank_kw_weight": kw_data["kw_selection_weight_scores"]["rank"],
-            "ndcg_score_kw_weight": kw_data["kw_selection_weight_scores"]["ndcg_score"],
-        }
-
-    lines = []
-    for kw_data in reader:
-        lines.append(getScoreDataLine(kw_data))
-
-    data = pd.DataFrame(lines)
-    data.to_csv(os.path.join(exp_dir, "kw_selection_scores.csv"))
-
-
-def saveAllKeywordSelectionTrace(reader, exp_dir):
-    """
-        Saves a CSV to trace everything that happened, inspect the dataset
-    """
-
-    def getScoreDataLine(kw_data):
-        """
-            Returns a single dict/line for writing to a CSV
-        """
-        context = u" ".join([s["text"] for s in kw_data["context"]])
-        return {
-            "cit_id": kw_data["cit_id"],
-            "context": context,
-            "file_guid": kw_data.get("file_guid", ""),
-            "match_guid": kw_data["match_guid"],
-            "best_kws": [kw[0] for kw in kw_data["best_kws"]],
-
-            "precision_score": kw_data["precision_score"],
-            "mrr_score": kw_data["mrr_score"],
-            "rank": kw_data["rank"],
-            "ndcg_score": kw_data["ndcg_score"],
-
-            "precision_score_kw": kw_data["kw_selection_scores"]["precision_score"],
-            "mrr_score_kw": kw_data["kw_selection_scores"]["mrr_score"],
-            "rank_kw": kw_data["kw_selection_scores"]["rank"],
-            "ndcg_score_kw": kw_data["kw_selection_scores"]["ndcg_score"],
-
-            "precision_score_kw_weight": kw_data["kw_selection_weight_scores"]["precision_score"],
-            "mrr_score_kw_weight": kw_data["kw_selection_weight_scores"]["mrr_score"],
-            "rank_kw_weight": kw_data["kw_selection_weight_scores"]["rank"],
-            "ndcg_score_kw_weight": kw_data["kw_selection_weight_scores"]["ndcg_score"],
-        }
-
-    lines = []
-    for kw_data in reader:
-        lines.append(getScoreDataLine(kw_data))
-
-    data = pd.DataFrame(lines)
-    data.to_csv(os.path.join(exp_dir, "kw_selection_trace.csv"), encoding="utf-8")
 
 
 def listAllKeywordsToExtractFromReader(reader):
@@ -140,22 +58,27 @@ class KeywordTrainer(object):
         self.all_doc_methods = {}
         self.extractor_class = getattr(extractors, self.exp["keyword_extractor_class"])
 
-        features_filename = os.path.join(self.exp["exp_dir"], "feature_data.json")
+        features_filename = os.path.join(self.exp["exp_dir"], "feature_data.json.gz")
+        features_numpy_filename = os.path.join(self.exp["exp_dir"], "feature_data.npy.gz")
 
         if self.options.get("run_package_features", False) or not os.path.isfile(features_filename):
             print("Prepackaging features...")
-            self.reader = OfflineResultReader("kw_data", os.path.join(self.exp["exp_dir"], "cache"))
-            ##            print("\n From OfflineResultReader:",listAllKeywordsToExtractFromReader(self.reader))
-            ##            saveKeywordSelectionScores(self.reader, self.exp["exp_dir"])
-            saveAllKeywordSelectionTrace(self.reader, self.exp["exp_dir"])
-            ##            print("\n After saving kw selection data:",listAllKeywordsToExtractFromReader(self.reader))
+
+            saveOfflineKWSelectionTraceToCSV("kw_data", os.path.join(self.exp["exp_dir"], "cache"), self.exp["exp_dir"])
+
             self.reader = saveFeatureData(self.reader, features_filename)
+            self.matrix = getMatrixFromTokenList(self.reader)
+            saveMatrix(features_numpy_filename, self.matrix)
         ##            print("\n After saving feature data:",listAllKeywordsToExtractFromReader(self.reader))
         else:
             print("Loading prepackaged features...")
-            self.reader = json.load(open(features_filename, "r"))
+            self.reader = loadFeatureData(features_filename)
+            self.matrix = loadMatrix(features_numpy_filename)
 
-        self.reader = self.reader[:self.exp.get("max_data_points", len(self.reader))]
+        max_data_points = self.exp.get("max_data_points", len(self.reader))
+        if max_data_points > len(self.reader):
+            self.reader = self.reader[:max_data_points]
+            self.matrix.resize((max_data_points, self.matrix.shape[1]))
         self.scores = []
 
     def trainExtractor(self, current_split_fold):
@@ -209,7 +132,7 @@ class KeywordTrainer(object):
                                              self.exp.get("keyword_extractor_parameters", {}),
                                              fold=current_split_fold,
                                              exp=self.exp)
-        trained_model.learnFeatures(self.reader, self.exp.get("keyword_ignore_features",[]))
+        trained_model.learnFeatures(self.reader, self.exp.get("keyword_ignore_features", []))
         trained_model.train(train_set)
         self.scores.append(trained_model.test(test_set))
 
@@ -229,6 +152,8 @@ class KeywordTrainer(object):
 
         if options.get("override_metric", None):
             self.exp["metric"] = options["override_metric"]
+
+        self.reader = self.extractor_class.processReader(self.reader)
 
         numfolds = self.exp.get("cross_validation_folds", 4)
 

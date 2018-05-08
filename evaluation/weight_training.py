@@ -344,7 +344,7 @@ class WeightTrainer(object):
                          "doc_method":method,
                          "az":result["az"],
                          "cfc":result["cfc"],
-                         "match_guid":result["match_guid"]}
+                         "match_guids":result["match_guids"]}
 
             if not retrieved or len(retrieved)==0:    # the query was empty or something
 ##                print "Error: ", doc_method , qmethod,retrieval_models[method].indexDir

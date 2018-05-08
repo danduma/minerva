@@ -3,76 +3,19 @@
 # Copyright:   (c) Daniel Duma 2016
 # Author: Daniel Duma <danielduma@gmail.com>
 
+from __future__ import absolute_import
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
-from __future__ import absolute_import
-from sklearn.feature_extraction import DictVectorizer
-from sklearn import metrics
-from proc.nlp_functions import removeStopwords
-from proc.results_logging import ProgressIndicator
-import os, six.moves.cPickle
+import os
+
+import six.moves.cPickle
+from ml.keyword_support import filterFeatures, unPadTokens, getTokenListFromContexts
 from six.moves import range
 from six.moves import zip
-
 from sklearn import ensemble, svm, neural_network
-
-SENTENCE_FEATURES_TO_COPY = ["az", "csc_type"]
-
-
-def buildFeatureSetForContext(all_token_features, all_keywords):
-    """
-        Returns a list of (token_features_dict,{True,False}) tuples. For each
-        token, based on its features, the token is annotated as to-be-extracted or not
-    """
-    res = []
-    for token in all_token_features:
-        extract = (token["text"] in list(all_keywords.keys()))
-        weight = token.get("weight", 0.0)
-        try:
-            del token["weight"]
-            del token["extract"]
-        except:
-            pass
-        res.append((token, extract, weight))
-    return res
-
-
-def prepareFeatureData(precomputed_contexts):
-    """
-        Extracts just the features, prepares the data in a format ready for training
-        classifiers, just one very long list of (token_features_dict, {True,False})
-    """
-
-    all_token_features = []
-
-    progress = ProgressIndicator(True, len(precomputed_contexts), True)
-    for context in precomputed_contexts:
-        all_keywords = {t[0]: t[1] for t in context["best_kws"]}
-        for sentence in context["context"]:
-            for feature in SENTENCE_FEATURES_TO_COPY:
-                for token_feature in sentence["token_features"]:
-                    token_feature[feature] = sentence.get(feature, "")
-        ##            for token_feature in sentence["token_features"]:
-        ##                for key in token_feature:
-        ##                    if key.startswith("dist_cit_"):
-        all_token_features.extend(buildFeatureSetForContext(sentence["token_features"], all_keywords))
-        progress.showProgressReport("Preparing feature data")
-    return all_token_features
-
-
-def filterFeatures(features, ignore_features):
-    """
-    Returns a dict lacking the features in ignore_features
-
-    """
-    if len(ignore_features) == 0:
-        return features
-
-    new_dict = {}
-    for feature in [f for f in features if f not in set(ignore_features)]:
-        new_dict[feature] = features[feature]
-    return new_dict
+from sklearn import metrics
+from sklearn.feature_extraction import DictVectorizer
 
 
 class BaseKeywordExtractor(object):
@@ -84,6 +27,10 @@ class BaseKeywordExtractor(object):
         """
         """
         self.filepath = ""
+
+    @classmethod
+    def processReader(self, reader):
+        return reader
 
     def learnFeatures(self, all_token_features):
         """
@@ -122,6 +69,10 @@ class TFIDFKeywordExtractor(BaseKeywordExtractor):
         """
         """
 
+    @classmethod
+    def processReader(self, reader):
+        return reader
+
     def train(self, train_set, params={}):
         """
         """
@@ -135,7 +86,7 @@ class TFIDFKeywordExtractor(BaseKeywordExtractor):
     def extract(self, doc, cit, params={}):
         """
         """
-        doctext = doc.getFullDocumentText(True, False)
+        doctext = doc.formatTextForExtraction(doc.getFullDocumentText(True, False))
 
 
 class SKLearnExtractor(BaseKeywordExtractor):
@@ -171,11 +122,16 @@ class SKLearnExtractor(BaseKeywordExtractor):
 
         return self.subclass(**self.params)
 
+    @classmethod
+    def processReader(self, reader):
+        return unPadTokens(getTokenListFromContexts(reader))
+
     def learnFeatures(self, all_token_features, ignore_features=[]):
         """
             Prepares the vectorizer, teaches it all of the features. Needed
             as each possible lemma becomes an individual feature
         """
+
         features, labels, weights = list(zip(*all_token_features))
 
         self.vectorizer.fit([filterFeatures(f, ignore_features) for f in features])
@@ -258,6 +214,7 @@ class SKLearnExtractor(BaseKeywordExtractor):
 
         print("Classification report for classifier %s:\n%s\n"
               % (self.classifier, metrics.classification_report(labels, predicted)))
+        print("AUC:\n%f" % metrics.roc_auc_score(labels, predicted, average="weighted"))
         print("Confusion matrix:\n%s" % metrics.confusion_matrix(labels, predicted))
 
 
