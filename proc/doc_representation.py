@@ -130,8 +130,15 @@ def addFieldsFromDicts(d1, d2):
             # !TODO temporary fix to lack of separation of sentences. Remove this when done.
             d1[key] = d1.get(key, "") + " " + d2[key].replace(".", " . ")
 
-
-##            d1[key]=d1.get(key,"")+" "+d2[key]
+def addDocBOWFullTextField(doc, res_dict, doctext=None):
+    """
+        Adds the _full_text field
+    """
+    if not doctext:
+        doctext = doc.formatTextForExtraction(doc.getFullDocumentText(doc))
+    doctext = removeCitations(doctext).lower()
+    tokens = tokenizeText(doctext)
+    res_dict["_full_text"] = unTokenize(tokens)
 
 def joinTogetherContextExcluding(context_list, exclude_files=[], filter_options={}):
     """
@@ -294,7 +301,7 @@ def extractILCSentences(docfrom, doc_target, ref_id, parameters, all_contexts):
                 all_contexts[generated_context["params"][0]].append(context)  # ["params"][0] is wleft
 
 
-def generateDocBOWInlinkContext(doc_target, parameters, doctext=None, filter_options={}):
+def generateDocBOWInlinkContext(doc_target, parameters, doctext=None, filter_options={}, force_rebuild=False):
     """
         Create a BOW from all the inlink contexts of a given document.
 
@@ -530,7 +537,7 @@ def getDocBOWfull(doc, parameters=None, doctext=None, filter_options={}, force_r
     return {1: [new_doc]}  # all functions must take a list of parameters and return dict[parameter]=list of BOWs
 
 
-def getDocBOWpassagesMulti(doc, parameters=[100], doctext=None,  filter_options={}):
+def getDocBOWpassagesMulti(doc, parameters=[100], doctext=None,  filter_options={}, force_rebuild=False):
     """
         Get BOW for document using full text minus references and section titles
 
@@ -561,7 +568,7 @@ def getDocBOWpassagesMulti(doc, parameters=[100], doctext=None,  filter_options=
     return res
 
 
-def getDocBOWTitleAbstract(doc, parameters=None, doctext=None, filter_options={}):
+def getDocBOWTitleAbstract(doc, parameters=None, doctext=None, filter_options={}, force_rebuild=False):
     """
         Get BOW for document made up of only title and abstract
     """
@@ -577,7 +584,7 @@ def getDocBOWTitleAbstract(doc, parameters=None, doctext=None, filter_options={}
     return {1: [{"text": unTokenize(tokens)}]}
 
 
-def getDocBOWannotated(doc, parameters=None, doctext=None, keys=["az", "csc_type"], filter_options={}):
+def getDocBOWannotated(doc, parameters=None, doctext=None, keys=["az", "csc_type"], filter_options={}, force_rebuild=False):
     """
         Get BOW for document with AZ/CSC
     """
@@ -593,7 +600,7 @@ def getDocBOWannotated(doc, parameters=None, doctext=None, keys=["az", "csc_type
     return {1: [res]}
 
 
-def getDocBOWrandomZoning(doc, parameters=None, doctext=None, keys=["az", "csc_type"], filter_options={}):
+def getDocBOWrandomZoning(doc, parameters=None, doctext=None, keys=["az", "csc_type"], filter_options={}, force_rebuild=False):
     """
         Get BOW for document with randomized AZ/CSC
     """
@@ -607,7 +614,7 @@ def getDocBOWrandomZoning(doc, parameters=None, doctext=None, keys=["az", "csc_t
     return {1: [res]}
 
 
-def getDocBOWannotatedSections(doc, parameters=None, doctext=None, ilter_options={}):
+def getDocBOWannotatedSections(doc, parameters=None, doctext=None, filter_options={}, force_rebuild=False):
     """
         Returns a dict where each key should be a field for the document in
         the Lucene index
@@ -632,17 +639,6 @@ def getDocBOWannotatedSections(doc, parameters=None, doctext=None, ilter_options
     res["text"] = removeCitations(paper_text).lower()
     addDocBOWFullTextField(doc, res, doctext)
     return {1: [res]}
-
-
-def addDocBOWFullTextField(doc, res_dict, doctext=None, filter_options={}):
-    """
-        Adds the _full_text field
-    """
-    if not doctext:
-        doctext = doc.formatTextForExtraction(doc.getFullDocumentText(doc))
-    doctext = removeCitations(doctext).lower()
-    tokens = tokenizeText(doctext)
-    res_dict["_full_text"] = unTokenize(tokens)
 
 
 def main():
