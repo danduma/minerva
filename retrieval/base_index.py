@@ -8,23 +8,18 @@
 from __future__ import print_function
 
 from __future__ import absolute_import
-import sys, json, datetime, math
-from copy import deepcopy
+import sys
 import logging
-##from tqdm import tqdm
-##from progressbar import ProgressBar, SimpleProgress, Bar, ETA
 from proc.results_logging import ProgressIndicator
 
 import db.corpora as cp
-import evaluation.base_pipeline as doc_representation
-from evaluation.base_pipeline import getDictOfTestingMethods
 from proc.doc_representation import getDictOfLuceneIndeces
-from proc.general_utils import loadFileText, writeFileText, ensureDirExists
 from .index_functions import addBOWsToIndex
 
 from proc.nlp_functions import CORESC_LIST
 
 from multi.tasks import addToindexTask
+from celery import group
 
 ES_TYPE_DOC = "doc"
 
@@ -148,15 +143,26 @@ class BaseIndexer(object):
                 fwriters[fwriter].close()
         else:
             print("Queueing up files for import...")
-            progress = ProgressIndicator(True, len(ALL_GUIDS), print_out=False)
-            for guid in ALL_GUIDS:
-                addToindexTask.apply_async(args=[
+            # progress = ProgressIndicator(True, len(ALL_GUIDS), print_out=False)
+            all_tasks=[]
+
+            for guid in ALL_GUIDS[:3]:
+                # all_tasks.append(addToindexTask.s(args=[
+                #     guid,
+                #     indexNames,
+                #     index_max_year,
+                # ],
+                #     queue="add_to_index"))
+               all_tasks.append(addToindexTask.s(
                     guid,
                     indexNames,
-                    index_max_year,
-                ],
-                    queue="add_to_index")
-                progress.showProgressReport("Queueing up ")
+                    index_max_year))
+                # progress.showProgressReport("Queueing up ")
+
+            jobs = group(all_tasks)
+
+            result = jobs.apply_async(queue="add_to_index", exchange="add_to_index", route_name="add_to_index")
+            result.join()
 
     # -------------------------------------------------------------------------------
     #  Methods to be overriden in descendant classes

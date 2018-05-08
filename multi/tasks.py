@@ -40,7 +40,7 @@ def checkCorpusConnection(local_corpus_dir="",
         Connects this worker to the elasticsearch server. By default, uses
         values from celery_app.py
     """
-    if not isinstance(cp.Corpus, ElasticCorpus):
+    if not cp.Corpus.connectedToDB():
         cp.useElasticCorpus()
         cp.Corpus.connectCorpus(local_corpus_dir, corpus_endpoint)
 

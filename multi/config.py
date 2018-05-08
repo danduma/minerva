@@ -22,7 +22,7 @@ ES_USER=config.get("Elasticsearch","user")
 ES_PASS=config.get("Elasticsearch","password")
 ##MINERVA_FILE_SERVER_URL="http://%s:5599" % WORKSTATION_IP
 MINERVA_FILE_SERVER_URL="http://%s:5599" % WORKSTATION_IP
-MINERVA_AMQP_SERVER_URL="amqp://minerva:minerva@%s:5672//" % SERVER_IP
+MINERVA_RPC_SERVER_URL= "amqp://minerva:minerva@%s:5672//" % SERVER_IP
 MINERVA_ELASTICSEARCH_SERVER_IP=SERVER_IP
 MINERVA_ELASTICSEARCH_SERVER_PORT=9200
 if ES_USER:
