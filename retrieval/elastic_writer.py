@@ -38,7 +38,7 @@ class ElasticWriter(object):
         """
         id = doc["metadata"]["guid"]
         # print("Indexing {} in index {}".format(id, self.index_name))
-        print(doc)
+
         self.es.index(
             index=self.index_name,
             doc_type=ES_TYPE_DOC,
