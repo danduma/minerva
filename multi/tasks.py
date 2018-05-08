@@ -23,7 +23,7 @@ from importing.importing_functions import (convertXMLAndAddToCorpus,
                                            updatePaperInCollectionReferences)
 from retrieval.elastic_retrieval import ElasticRetrieval
 from retrieval.index_functions import addBOWsToIndex
-from ml.document_features import DocumentFeaturesAnnotator
+# from ml.document_features import DocumentFeaturesAnnotator
 
 from . import celery_app
 from .celery_app import app
@@ -165,11 +165,13 @@ def annotateKeywordsTask(self, precomputed_query,
     """
         Runs one precomputed query, extracts explain formulas and from them
         picks best keywords for the citation/query, stores the keyword-annotated context
+
+        FIXME: CAN'T RUN ON staff.compute right now because the spacy model is too big to fit on AFS FFS
     """
     try:
         model = ElasticRetrieval(index_name, doc_method, max_results=max_results, es_instance=cp.Corpus.es)
         writers = {"ALL": ElasticResultStorer(self.exp["name"], "kw_data", endpoint=cp.Corpus.endpoint)}
-        annotator=DocumentFeaturesAnnotator()
+        # annotator=DocumentFeaturesAnnotator()
         annotateKeywords(precomputed_query, doc_method, doc_list, model, writers, experiment_id, context_extraction,
                          extraction_parameter, keyword_selection_method, keyword_selection_parameters, weights, annotator)
     except:
