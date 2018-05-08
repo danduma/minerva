@@ -10,6 +10,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 import logging
 from copy import deepcopy
+import json
 
 import db.corpora as cp
 import proc.doc_representation as doc_representation
@@ -28,6 +29,9 @@ def defaultAddDocument(writer, new_doc, metadata, fields_to_process, bow_info):
         :param fields_to_process: only add these fields from the doc dict
         :type fields_to_process:list
     """
+
+    if not isinstance(bow_info, str):
+        bow_info=json.dumps(bow_info)
 
     body = {"guid": metadata["guid"],
             "metadata": metadata,
