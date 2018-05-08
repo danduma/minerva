@@ -148,6 +148,7 @@ class BaseIndexer(object):
                 fwriters[fwriter].close()
         else:
             print("Queueing up files for import...")
+            progress = ProgressIndicator(True, len(ALL_GUIDS), print_out=False)
             for guid in ALL_GUIDS:
                 addToindexTask.apply_async(args=[
                     guid,
@@ -155,6 +156,7 @@ class BaseIndexer(object):
                     index_max_year,
                 ],
                     queue="add_to_index")
+                progress.showProgressReport("Queueing up ")
 
     # -------------------------------------------------------------------------------
     #  Methods to be overriden in descendant classes

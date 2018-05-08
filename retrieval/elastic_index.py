@@ -44,13 +44,12 @@ class ElasticIndexer(BaseIndexer):
         properties["guid"] = {"type": "string", "index": "not_analyzed"}
         properties["bow_info"] = {"type": "string", "index": "analyzed", "store": True}
 
-        index_exists = self.es.indices.exists(index=index_name)
-        if index_exists:
+        if self.es.indices.exists(index=index_name):
             if force_recreate:
                 self.es.indices.delete(index=index_name, ignore=[400, 404])
                 print(("Deleting existing index %s" % index_name))
 
-        if not index_exists:
+        if not self.es.indices.exists(index=index_name):
             print(("Creating index %s " % index_name))
             self.es.indices.create(
                 index=index_name,

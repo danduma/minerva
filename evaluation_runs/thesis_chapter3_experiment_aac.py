@@ -227,7 +227,7 @@ def main():
     corpus = ez_connect("AAC")
     # experiment["test_files"] = cp.Corpus.listPapers("year:>=2011")
 
-    exp = Experiment(experiment, options)
+    exp = Experiment(experiment, options, use_celery=True)
     exp.run()
     pass
 

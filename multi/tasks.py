@@ -114,6 +114,7 @@ def addToindexTask(self, guid, indexNames, index_max_year):
         Adds one paper to the index for all indexes. If its BOW has not already
         been built, it builds it too.
     """
+    logging.error("processing ", guid, indexNames, index_max_year)
     try:
         addBOWsToIndex(guid, indexNames, index_max_year)
     except Exception as e:
