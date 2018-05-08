@@ -530,7 +530,7 @@ def getDocBOWfull(doc, parameters=None, doctext=None, filter_options={}, force_r
     return {1: [new_doc]}  # all functions must take a list of parameters and return dict[parameter]=list of BOWs
 
 
-def getDocBOWpassagesMulti(doc, parameters=[100], doctext=None):
+def getDocBOWpassagesMulti(doc, parameters=[100], doctext=None,  filter_options={}):
     """
         Get BOW for document using full text minus references and section titles
 
@@ -561,7 +561,7 @@ def getDocBOWpassagesMulti(doc, parameters=[100], doctext=None):
     return res
 
 
-def getDocBOWTitleAbstract(doc, parameters=None, doctext=None):
+def getDocBOWTitleAbstract(doc, parameters=None, doctext=None, filter_options={}):
     """
         Get BOW for document made up of only title and abstract
     """
@@ -577,7 +577,7 @@ def getDocBOWTitleAbstract(doc, parameters=None, doctext=None):
     return {1: [{"text": unTokenize(tokens)}]}
 
 
-def getDocBOWannotated(doc, parameters=None, doctext=None, keys=["az", "csc_type"]):
+def getDocBOWannotated(doc, parameters=None, doctext=None, keys=["az", "csc_type"], filter_options={}):
     """
         Get BOW for document with AZ/CSC
     """
@@ -593,7 +593,7 @@ def getDocBOWannotated(doc, parameters=None, doctext=None, keys=["az", "csc_type
     return {1: [res]}
 
 
-def getDocBOWrandomZoning(doc, parameters=None, doctext=None, keys=["az", "csc_type"]):
+def getDocBOWrandomZoning(doc, parameters=None, doctext=None, keys=["az", "csc_type"], filter_options={}):
     """
         Get BOW for document with randomized AZ/CSC
     """
@@ -607,7 +607,7 @@ def getDocBOWrandomZoning(doc, parameters=None, doctext=None, keys=["az", "csc_t
     return {1: [res]}
 
 
-def getDocBOWannotatedSections(doc, parameters=None, doctext=None):
+def getDocBOWannotatedSections(doc, parameters=None, doctext=None, ilter_options={}):
     """
         Returns a dict where each key should be a field for the document in
         the Lucene index
@@ -634,7 +634,7 @@ def getDocBOWannotatedSections(doc, parameters=None, doctext=None):
     return {1: [res]}
 
 
-def addDocBOWFullTextField(doc, res_dict, doctext=None):
+def addDocBOWFullTextField(doc, res_dict, doctext=None, filter_options={}):
     """
         Adds the _full_text field
     """

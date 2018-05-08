@@ -11,6 +11,7 @@ import sys
 
 from .prebuild_functions import prebuildMulti
 from multi.tasks import prebuildBOWTask
+from celery import group
 
 import db.corpora as cp
 from proc.results_logging import ProgressIndicator
@@ -52,12 +53,13 @@ class BasePrebuilder(object):
 
         if self.use_celery:
             print("Queueing tasks...")
-            tasks = []
+
+            all_tasks = []
             for guid in cp.Corpus.ALL_FILES[:maxfiles]:
                 for method_name in self.exp["prebuild_bows"]:
                     # run_annotators=self.exp.get("rhetorical_annotations",[]) if self.exp.get("run_rhetorical_annotators",False) else []
 
-                    tasks.append(prebuildBOWTask.apply_async(args=[
+                    all_tasks.append(prebuildBOWTask.s(
                         method_name,
                         self.exp["prebuild_bows"][method_name]["parameters"],
                         self.exp["prebuild_bows"][method_name]["function_name"],
@@ -65,9 +67,13 @@ class BasePrebuilder(object):
                         self.options["overwrite_existing_bows"],
                         self.exp.get("filter_options_ilc",{}),
                         self.options.get("overwrite_existing_bows")
-                    ],
-                        queue="prebuild_bows"))
+                        ))
 
+            jobs = group(all_tasks)
+
+            result = jobs.apply_async(queue="prebuild_bows", exchange="prebuild_bows", route_name="prebuild_bows")
+            print("Waiting for tasks to complete...")
+            result.join()
         else:
             progress = ProgressIndicator(True, numfiles, False)
             for guid in cp.Corpus.ALL_FILES[:maxfiles]:

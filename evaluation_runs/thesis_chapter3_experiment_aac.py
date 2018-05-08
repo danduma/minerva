@@ -20,7 +20,7 @@ from db.ez_connect import ez_connect
 # BOW files to prebuild for generating document representation.
 prebuild_bows = {
     # "full_text": {"function": "getDocBOWfull", "parameters": [1]},
-    ##"title_abstract":{"function":"getDocBOWTitleAbstract", "parameters":[1]},
+    "title_abstract": {"function": "getDocBOWTitleAbstract", "parameters": [1]},
     ##"passage":{"function":"getDocBOWpassagesMulti", "parameters":[150,175,200,250,300,350,400,450]},
     "inlink_context": {"function": "getDocBOWInlinkContextCache",
                        "parameters": [30, 40, 50, 100, "1only",
@@ -42,6 +42,7 @@ prebuild_indeces = {
 
 prebuild_general_indexes = {
     # "full_text_aac_2010": {"type": "standard_multi", "bow_name": "full_text", "parameters": [1]},
+    "title_abstract_aac_2010": {"type": "standard_multi", "bow_name": "title_abstract", "parameters": [1]},
     "inlink_context_aac_2010": {"type": "standard_multi",
                                 "bow_name": "inlink_context",
                                 "parameters": [30, 40, 50, 100, "1only",
@@ -63,15 +64,21 @@ prebuild_general_indexes = {
 }
 
 doc_methods = {
-    # "full_text": {"type": "standard_multi", "index": "full_text_aac_2010", "parameters": [1],
-    #               "runtime_parameters": ["text"]},
-    ##    "title_abstract":{"type":"standard_multi", "index":"title_abstract_aac_2010", "parameters":[1], "runtime_parameters":{"text":"1"}},
+    "full_text": {"type": "standard_multi", "index": "full_text_aac_2010", "parameters": [1],
+                  "runtime_parameters": ["text"]},
+    "title_abstract": {"type": "standard_multi", "index": "title_abstract_aac_2010", "parameters": [1],
+                       "runtime_parameters": {"text": "1"}},
     ##    "passage":{"type":"standard_multi", "index":"passage_aac_2010", "parameters":[250,350,400], "runtime_parameters":{"text":"1"}},
     ##
-    # "inlink_context": {"type": "standard_multi",
-    #                    "index": "inlink_context_aac_2010",
-    #                    "parameters": [30, 40, 50, 100],
-    #                    "runtime_parameters": {"text": "1"}},
+    "inlink_context": {"type": "standard_multi",
+                       "index": "inlink_context_aac_2010",
+                       "parameters": [30, 40, 50, 100, "1only",
+                                      "paragraph",
+                                      "1up",
+                                      "0up_1down",
+                                      "1up_1down",
+                                      "2up_2down"],
+                       "runtime_parameters": {"text": "1"}},
 
     "ilc_full_text": {"type": "ilc_mashup",
                       "index": "ilc_full_text_aac_2010",
@@ -200,7 +207,7 @@ experiment = {
 }
 
 options = {
-    "run_prebuild_bows": 0,  # should the whole BOW building process run?
+    "run_prebuild_bows": 1,  # should the whole BOW building process run?
     "overwrite_existing_bows": 0,  # if a BOW exists already, should we overwrite it?
     "rebuild_indexes": 1,  # rebuild indices?
     "compute_queries": 1,  # precompute the queries?

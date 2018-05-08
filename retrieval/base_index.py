@@ -146,22 +146,16 @@ class BaseIndexer(object):
             # progress = ProgressIndicator(True, len(ALL_GUIDS), print_out=False)
             all_tasks=[]
 
-            for guid in ALL_GUIDS[:3]:
-                # all_tasks.append(addToindexTask.s(args=[
-                #     guid,
-                #     indexNames,
-                #     index_max_year,
-                # ],
-                #     queue="add_to_index"))
+            for guid in ALL_GUIDS:
                all_tasks.append(addToindexTask.s(
                     guid,
                     indexNames,
                     index_max_year))
-                # progress.showProgressReport("Queueing up ")
 
             jobs = group(all_tasks)
 
             result = jobs.apply_async(queue="add_to_index", exchange="add_to_index", route_name="add_to_index")
+            print("Waiting for tasks to complete...")
             result.join()
 
     # -------------------------------------------------------------------------------
