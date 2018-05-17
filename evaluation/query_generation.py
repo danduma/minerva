@@ -17,6 +17,7 @@ from proc.results_logging import ProgressIndicator
 # from tqdm import tqdm
 from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
 from proc.doc_representation import findCitationInFullTextXML, findCitationInFullTextUnderscores
+from scidoc.citation_utils import getAuthorNamesAsOneString
 from .base_pipeline import getDictOfTestingMethods
 from importing.fix_citations import fixDocRemovedCitations
 
@@ -31,11 +32,12 @@ class QueryGenerator(object):
     """
 
     def __init__(self):
-        """
-        """
+        self.citations_processed = 0
         self.options = {"jump_paragraphs": True,
                         "add_full_sentences": False,
                         "force_regenerate_resolvable_citations": False}
+        self.exclude_sources_targets={}
+        self.precomputed_queries=[]
 
     def saveAllQueries(self):
         """
@@ -70,6 +72,8 @@ class QueryGenerator(object):
         if self.exp.get("random_zoning", False):
             json.dump(queries_by["rz7"], open(os.path.join(self.exp["exp_dir"], "queries_by_rz7.json"), "w"))
             json.dump(queries_by["rz11"], open(os.path.join(self.exp["exp_dir"], "queries_by_rz11.json"), "w"))
+
+        json.dump(self.exclude_sources_targets, open(os.path.join(self.exp["exp_dir"], "exclude_sources_targets.json"), "w"))
 
     def loadDocAndResolvableCitations(self, guid):
         """
@@ -233,9 +237,21 @@ class QueryGenerator(object):
                                  "match_guids": citation["match_guids"],
                                  "citation_multi": citation["cit"].get("multi", 1),
                                  }
-            self.precomputed_queries.extend(self.generateQueriesForCitation(citation, doc, doctext, precomputed_query))
+            for match_guid in citation["match_guids"]:
+                self.exclude_sources_targets[match_guid] = self.exclude_sources_targets.get(match_guid, {"authors":[], "guids_from":[]})
+                authors=getAuthorNamesAsOneString(doc.metadata)
+                self.exclude_sources_targets[match_guid]["authors"].append(authors[0])
+                self.exclude_sources_targets[match_guid]["guids_from"].append(doc.metadata["guid"])
 
-    def precomputeQueries(self, exp):
+            if self.citations_processed >= self.exp.get("max_queries_generated",10000000):
+                return 
+            self.precomputed_queries.extend(self.generateQueriesForCitation(citation,
+                                                                            doc,
+                                                                            doctext,
+                                                                            precomputed_query))
+            self.citations_processed += 1
+
+    def generateQueries(self, exp):
         """
             Precompute all queries for all annotated citation contexts
 
@@ -243,7 +259,7 @@ class QueryGenerator(object):
             :type exp: dict
         """
         self.exp = exp
-        print("Precomputing queries...")
+        print("Generating queries...")
         logger = ProgressIndicator(True, numitems=len(exp["test_files"]))  # init all the logging/counting
         logger.numchunks = exp.get("numchunks", 10)
 
@@ -273,6 +289,8 @@ class QueryGenerator(object):
                 print("Can't load SciDoc ", guid)
                 continue
 
+            if self.citations_processed >= self.exp.get("max_queries_generated",10000000):
+                break
             logger.showProgressReport(guid)  # prints out info on how it's going
 
         self.saveAllQueries()

@@ -73,7 +73,11 @@ class BasePrebuilder(object):
 
             result = jobs.apply_async(queue="prebuild_bows", exchange="prebuild_bows", route_name="prebuild_bows")
             print("Waiting for tasks to complete...")
-            result.join()
+            try:
+                result.join()
+            except KeyboardInterrupt:
+                print("KeyboardInterrupt: Skipping to next stage")
+                pass
         else:
             progress = ProgressIndicator(True, numfiles, False)
             for guid in cp.Corpus.ALL_FILES[:maxfiles]:

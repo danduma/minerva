@@ -7,7 +7,7 @@
 
 from __future__ import absolute_import
 import sqlite3, os, glob
-from general_utils import *
+from proc.general_utils import *
 
 import corpus_ingest
 from . import aan_metadata

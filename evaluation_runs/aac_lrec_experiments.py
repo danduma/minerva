@@ -7,7 +7,7 @@
 from __future__ import print_function
 
 from __future__ import absolute_import
-from az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST
 
 import db.corpora as cp
 

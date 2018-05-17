@@ -133,7 +133,7 @@ def getAuthorNamesAsOneString(metadata):
     return author_names
 
 
-def isSelfCitation(authors1, authors2):
+def isSameFirstAuthor(authors1, authors2):
     """
     If the first author strings of the first list and second list match, returns true
 
@@ -199,7 +199,6 @@ def fixNumberCitations(text):
         """
             Returns a range of citations
         """
-        global replacements
         try:
             id_1 = int(match.group(2))
             id_2 = int(match.group(3))

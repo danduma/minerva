@@ -10,7 +10,7 @@ from __future__ import absolute_import
 import os, json
 
 ##import proc.context_extract as context_extract
-from az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST
 
 import db.corpora as cp
 from evaluation.athar_corpus import AtharQueryGenerator

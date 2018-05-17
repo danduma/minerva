@@ -39,20 +39,21 @@ def compile_corpus_metadata(collection):
                "num_in_collection_references": meta.get("num_in_collection_references"),
                "num_inlinks": len(meta.get("inlinks")),
                "num_outlinks": len(meta.get("outlinks")),
+               "num_references": len(doc.references),
                "num_self_references":meta.get("num_self_references",0),
                "num_refs_with_overlapping_authors":meta.get("num_refs_with_overlapping_authors",0),
                }
         for az_type in AZ_ZONES_LIST:
             res[az_type] = 0
         for csc_type in CORESC_LIST:
-            res[csc_type] = 0
+            res[csc_type.lower()] = 0
 
         for sent in doc.allsentences:
             if sent.get("az") and sent.get("az") != "":
                 res[sent["az"].upper()] += 1
 
             if sent.get("csc_type") and sent.get("csc_type") != "":
-                res[sent["csc_type"].upper()] += 1
+                res[sent["csc_type"].lower()] += 1
 
         results.append(res)
 
@@ -69,7 +70,7 @@ def main():
     # df = pd.DataFrame(get_corpus_metadata("AAC"))
     # df = df.transpose()
     # df.to_csv("aac_stats.csv")
-    compile_corpus_metadata("AAC")
+    compile_corpus_metadata("PMC_CSC")
 
 
 if __name__ == '__main__':

@@ -219,6 +219,8 @@ class BaseTestingPipeline(object):
         """
         result_dict = self.newResultDict(file_guid, precomputed_query, doc_method)
         self.logger.measureScoreAndLog(retrieved_results, precomputed_query["citation_multi"], result_dict)
+        if result_dict["mrr_score"] < 0.1:
+            print("FUCK. FIX THIS", result_dict["mrr_score"], doc_method)
 
     ##        rank_per_method[result["doc_method"]].append(result["rank"])
     ##        precision_per_method[result["doc_method"]].append(result["precision_score"])
@@ -252,7 +254,7 @@ class BaseTestingPipeline(object):
                 if self.per_class_count[q_type] < self.max_per_class_results:
                     self.per_class_count[q_type] += 1
                 else:
-                    print("Too many queries of type %s already" % q_type)
+                    # print("Too many queries of type %s already" % q_type)
                     return
 
         guid = precomputed_query["file_guid"]
@@ -278,6 +280,9 @@ class BaseTestingPipeline(object):
             ##                self.logger.logReport("Citation: "+precomputed_query["citation_id"]+"\n Query method:"+precomputed_query["query_method"]+" \nDoc method: "+doc_method +"\n")
             ##                self.logger.logReport(precomputed_query["query_text"]+"\n")
 
+            # if doc_method == "inlink_context_1only":
+            #     print("Here something fails")
+
             # ACTUAL RETRIEVAL HAPPENING - run query
             retrieval_results = self.retrieval_models[doc_method].runQuery(
                 precomputed_query,
@@ -293,7 +298,7 @@ class BaseTestingPipeline(object):
         if self.exp.get("add_random_control_result", False):
             self.addRandomControlResult(guid, precomputed_query)
 
-        self.logger.showProgressReport(guid)  # prints out info on how it's going
+        self.logger.showProgressReport("Running queries")  # prints out info on how it's going
 
     def processAllQueries(self):
         """

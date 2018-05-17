@@ -51,6 +51,8 @@ index_equivalence = {
 ES_ALL_INDECES = [ES_INDEX_PAPERS, ES_INDEX_SCIDOCS, ES_INDEX_CACHE,
                   ES_INDEX_LINKS, ES_INDEX_AUTHORS]
 
+EXCLUDE_INDEX = "exclude_"
+
 
 class ElasticCorpus(BaseCorpus):
     """
@@ -567,7 +569,7 @@ class ElasticCorpus(BaseCorpus):
             else:
                 return [r["_source"] for r in hits]
 
-    def listRecords(self, conditions=None, field="guid", max_results=sys.maxsize, table=TABLE_PAPERS):
+    def listRecords(self, conditions=None, field="guid", max_results=sys.maxsize, table=TABLE_PAPERS, sort=None):
         """
             This is the equivalent of a SELECT clause
         """
@@ -589,17 +591,18 @@ class ElasticCorpus(BaseCorpus):
             q=query,
             index=es_index,
             doc_type=es_type,
+            sort=sort,
             _source=field,
         )
         self.max_results = prev_max_results
 
         return self.abstractNestedResults(query, hits, field)
 
-    def listPapers(self, conditions=None, field="guid", max_results=sys.maxsize):
+    def listPapers(self, conditions=None, field="guid", max_results=sys.maxsize, sort=None):
         """
             Return a list of GUIDs in papers table where [conditions]
         """
-        return self.listRecords(conditions, field, max_results, "papers")
+        return self.listRecords(conditions, field, max_results, "papers", sort)
 
     def runSingleValueQuery(self, query):
         raise NotImplementedError
@@ -948,12 +951,11 @@ class ElasticCorpus(BaseCorpus):
             Sets the filter query to limit all queries to a collection (corpus)
             or an import date
 
-            :param collection: identifier of corpus, e.g. "ACL" or "PMC". This is set at import time.
-            :type collection:basestring
+            :param collection_id: identifier of corpus, e.g. "ACL" or "PMC". This is set at import time.
+            :type collection_id:basestring
             :param import: identifier of import, e.g. "initial"
-            :type import:basestring
+            :type import_id:basestring
             :param date: comparison with a date, e.g. ">[date]", "<[date]",
-            :type collection:basestring
         """
         query_items = []
         if collection_id:
@@ -965,6 +967,39 @@ class ElasticCorpus(BaseCorpus):
 
         self.query_filter = " AND ".join(query_items) + " AND "
 
+    def resetExcludeData(self, experiment_id):
+        exclude_index_name = EXCLUDE_INDEX + experiment_id
+        self.es.indices.delete(index=exclude_index_name, ignore=[400, 404])
+        settings = {
+            "number_of_shards": 1,
+            "number_of_replicas": 0
+        }
+
+        self.es.indices.create(
+            index=exclude_index_name,
+            body={"settings": settings,})
+
+    def addExcludeData(self, experiment_id, guid, exclude_data):
+        exclude_index_name = EXCLUDE_INDEX + experiment_id
+        self.es.index(
+            index=exclude_index_name,
+            doc_type="exclude",
+            op_type="index",
+            id=guid,
+            body=exclude_data
+        )
+
+    def getExcludeData(self, experiment_id, guid):
+        exclude_index_name = EXCLUDE_INDEX + experiment_id
+
+        res = self.es.get(
+            index=exclude_index_name,
+            doc_type="exclude",
+            id=guid,
+            _source=["authors", "guids_from"]
+        )
+
+        return res["_source"]
 
 DOCTEST = False
 

@@ -42,7 +42,7 @@ class StructuredQuery(list):
         assert(isinstance(data,list))
         for token in data:
             if isinstance(token,dict):
-                self.addToken()
+                # self.addToken()
                 self.addToken(token["token"],
                               token.get("count",1),
                               token.get("boost",1),

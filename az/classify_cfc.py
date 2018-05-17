@@ -8,26 +8,16 @@
 
 from __future__ import absolute_import
 from __future__ import print_function
-from scidoc import SciDoc
-from scidoc.xmlformats.azscixml import *
-
-import itertools
-import collections
-import random
-
-import nltk
-from nltk.collocations import BigramCollocationFinder
-from nltk.metrics import BigramAssocMeasures
-
-import nltk.classify.util, nltk.metrics
-from nltk.classify import NaiveBayesClassifier, MaxentClassifier
-
-import context_extract
-from .az_features import *
 
 import glob
 import os
+
+import nltk.classify.util
+import nltk.metrics
 import six.moves.cPickle
+
+from scidoc.xmlformats.azscixml import *
+from .az_features import *
 
 # For maxent training
 MIN_LL_DELTA=0.0005 # minimum increment per step

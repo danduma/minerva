@@ -6,12 +6,17 @@
 # For license information, see LICENSE.TXT
 
 from __future__ import absolute_import
-import os, sys, re, json, glob, codecs, uuid, unicodedata
-from proc.general_utils import (AttributeDict, ensureTrailingBackslash,
-                                ensureDirExists, normalizeTitle, removeSymbols)
-from scidoc.citation_utils import getAuthorNamesAsOneString, isSelfCitation, getOverlappingAuthors
-from scidoc.scidoc import SciDoc
+
+import os
+import re
+import unicodedata
+import uuid
+
 import six
+
+from proc.general_utils import (AttributeDict, normalizeTitle, removeSymbols)
+from scidoc.citation_utils import getAuthorNamesAsOneString, isSameFirstAuthor, getOverlappingAuthors
+from scidoc.scidoc import SciDoc
 
 TABLE_PAPERS = "papers"
 TABLE_SCIDOCS = "scidocs"
@@ -25,6 +30,7 @@ CACHE_RESOLVABLE = "resolvable"
 CACHE_BOW = "bow"
 
 BUILDING_STATS = {}
+
 
 class BaseReferenceMatcher(object):
     """
@@ -144,21 +150,23 @@ def shouldIgnoreCitation(source_metadata, target_metadata, filter_options):
 
     :param source_metadata:
     :param target_metadata:
-    :param max_year:
-    :param exclude_self_citation:
+    :param exclude_same_first_author:
     :param max_overlapping_authors:
-    :return:
+    :param filter_options: options for filtering, including max year for paper, same authors
+    :return:xw
     """
     max_overlapping_authors = filter_options.get("max_overlapping_authors")
-    exclude_self_citation = filter_options.get("exclude_self_citation", False)
+    exclude_same_first_author = filter_options.get("exclude_same_first_author", False)
 
     BUILDING_STATS["bows_checked"] = BUILDING_STATS.get("bows_checked", 0) + 1
 
-    if int(target_metadata["year"]) > filter_options.get("max_year", 9999):
+    if int(source_metadata["year"]) > filter_options.get("max_year", 9999):
         BUILDING_STATS["self_citation"] = BUILDING_STATS.get("self_citation", 0) + 1
-        print("Ignoring ", source_metadata["guid"], " because of year cut-off",target_metadata["year"]," > ", filter_options.get("max_year"))
+        print("Ignoring ", source_metadata["guid"], " because of YEAR cut-off", source_metadata["year"], " > ",
+              filter_options.get("max_year"))
         return True
-    if exclude_self_citation or max_overlapping_authors is not None:
+
+    if exclude_same_first_author or max_overlapping_authors is not None:
         authors1 = getAuthorNamesAsOneString(source_metadata)
         authors2 = getAuthorNamesAsOneString(target_metadata)
         if max_overlapping_authors is not None and getOverlappingAuthors(
@@ -167,7 +175,8 @@ def shouldIgnoreCitation(source_metadata, target_metadata, filter_options):
             BUILDING_STATS["author_overlap"] = BUILDING_STATS.get("author_overlap", 0) + 1
             print("Ignoring ", source_metadata["guid"], " because of author overlap")
             return True
-        if exclude_self_citation and isSelfCitation(authors1, authors2):
+
+        if exclude_same_first_author and isSameFirstAuthor(authors1, authors2):
             BUILDING_STATS["self_citation"] = BUILDING_STATS.get("self_citation", 0) + 1
             print("Ignoring", source_metadata["guid"], "self citation", authors1[0])
             return True
@@ -348,9 +357,8 @@ class BaseCorpus(object):
 
             :param doc: SciDoc
             :type doc: SciDoc
+            :param filter_options: max_year: Maximum year to select from. exclude_same_first_author: if target document has same first author as ilc_source document
             :returns: tuple of (resolvable_citations, outlinks, missing_references)
-            :param max_year: Maximum year to select from
-            :param exclude_self_citation: if target document
         """
 
         resolvable = []
@@ -358,8 +366,7 @@ class BaseCorpus(object):
 
         sents_with_multicitations = []
         missing_references = []
-        if not filter_options.get("max_year"):
-            max_year = 9999
+        max_year= filter_options.get("max_year", 9999)
 
         cit_to_guid = {}
 
@@ -622,7 +629,7 @@ class BaseCorpus(object):
         """
         raise NotImplementedError
 
-    def listPapers(self, conditions):
+    def listPapers(self, conditions=None):
         """
             Return a list of GUIDs in papers table where [conditions]. It's a
             SELECT query

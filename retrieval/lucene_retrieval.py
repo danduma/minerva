@@ -25,7 +25,7 @@ from org.apache.lucene.util import Version as LuceneVersion
 from org.apache.lucene.index import IndexWriterConfig
 from org.apache.lucene.index import DirectoryReader
 from org.apache.lucene.search import IndexSearcher
-from org.apache.lucene.search import TopScoreDocCollector;
+from org.apache.lucene.search import TopScoreDocCollector
 from java.io import File
 
 from collections import namedtuple

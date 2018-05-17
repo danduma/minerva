@@ -129,7 +129,7 @@ def generateGraph(docs):
 			if match:
 				if doc.get("graph_num",0)==0:
 					group+=1
- 					nodes.append({"name":makeDocFullInfo(doc),"fullinfo":makeDocFullInfo(doc),"group":1})
+					nodes.append({"name":makeDocFullInfo(doc),"fullinfo":makeDocFullInfo(doc),"group":1})
 					doc["graph_num"]=len(nodes)-1
 
 				#print "  MATCH! ", match["title"], match["metadata"]["fileno"]
@@ -137,7 +137,7 @@ def generateGraph(docs):
 ##				links.append({"source":doc["graph_num"],"target":len(nodes),"value":1})
 				if match.get("graph_num",0)==0:
 ## 					nodes.append({"name":match["title"],"group":2})
- 					nodes.append({"name":makeDocFullInfo(match),"group":2})
+					nodes.append({"name":makeDocFullInfo(match),"group":2})
 					match["graph_num"]=len(nodes)-1
 				links.append({"source":doc["graph_num"],"target":match["graph_num"],"type":most_common(r.get("AZ",["TXT"]))})
 			else:
@@ -164,7 +164,7 @@ def testMakeGraph():
 
 
 def main():
-    pass
+	pass
 
 if __name__ == '__main__':
-    main()
+	main()

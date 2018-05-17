@@ -106,7 +106,7 @@ def annotateKeywords(precomputed_query,
 
     kw_data["best_kws"] = selected_keywords
     if len(kw_data["best_kws"]) == 0:
-        addMissingFile(docfrom, precomputed_query, cit)  # for debugging purposes, keep a list of missing files
+        addMissingFile(docfrom, precomputed_query, cit, precomputed_query["match_guids"])  # for debugging purposes, keep a list of missing files
         return
 
     all_kws = {x[0]: x[1] for x in kw_data["best_kws"]}
@@ -204,7 +204,7 @@ def runVariousKeywordSelections(precomputed_query,
         kw_data_copy["best_kws"] = selected_keywords
 
         if len(kw_data_copy["best_kws"]) == 0:
-            addMissingFile(docfrom, precomputed_query, cit)  # for debugging purposes, keep a list of missing files
+            addMissingFile(docfrom, precomputed_query, cit, precomputed_query["match_guids"])  # for debugging purposes, keep a list of missing files
             return
 
         runQueryAndMeasureKeywordSelection(precomputed_query,

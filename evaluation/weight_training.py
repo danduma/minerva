@@ -236,7 +236,7 @@ class WeightTrainer(object):
                     print("Number of results is smaller than number of folds for zone type ", query_type)
                     continue
 
-                cv = model_selection.KFold(len(retrieval_results), n_splits=numfolds, shuffle=False, random_state=None)
+                cv = model_selection.KFold( n_splits=numfolds, shuffle=False, random_state=None)
                 cv=[k for k in cv] # run the generator
                 traincv, testcv=cv[split_fold]
                 if isinstance(retrieval_results, ResultIncrementalReader):

@@ -5,21 +5,18 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
 from __future__ import print_function
 
-from __future__ import absolute_import
-from scidoc.scidoc import SciDoc
-from scidoc.xmlformats.azscixml import *
-
-import collections, random, nltk
-import nltk.classify.util, nltk.metrics
-from nltk.classify import NaiveBayesClassifier, MaxentClassifier
-
-from .az_features import buildAZFeatureSetForDoc
-
 import glob
-import os
+
+import nltk
+import nltk.classify.util
+import nltk.metrics
 import six.moves.cPickle
+
+from scidoc.xmlformats.azscixml import *
+from .az_features import buildAZFeatureSetForDoc
 
 # For maxent training
 MIN_LL_DELTA = 0.0005  # minimum increment per step

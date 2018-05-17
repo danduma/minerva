@@ -1,35 +1,32 @@
-# Reimplementation of the equivalent ACL14 experiments
+# Reimplementation of the equivalent ACL14 experiments for Chapter 3 of thesis
 #
-# Copyright:   (c) Daniel Duma 2016
+# Copyright:   (c) Daniel Duma 2016-18
 # Author: Daniel Duma <danielduma@gmail.com>
 
 # For license information, see LICENSE.TXT
+
 from __future__ import print_function
 
 from __future__ import absolute_import
-import os, json
-
-from az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
-
-import db.corpora as cp
 
 from evaluation.experiment import Experiment
-from evaluation.query_generation import QueryGenerator
 from db.ez_connect import ez_connect
 
 # BOW files to prebuild for generating document representation.
 prebuild_bows = {
     # "full_text": {"function": "getDocBOWfull", "parameters": [1]},
-    "title_abstract": {"function": "getDocBOWTitleAbstract", "parameters": [1]},
+    # "title_abstract": {"function": "getDocBOWTitleAbstract", "parameters": [1]},
     ##"passage":{"function":"getDocBOWpassagesMulti", "parameters":[150,175,200,250,300,350,400,450]},
     "inlink_context": {"function": "getDocBOWInlinkContextCache",
-                       "parameters": [30, 40, 50, 100, "1only",
+                       "parameters": [
+                                      # 30, 40, 50, 100,
+                                      "1only",
                                       "paragraph",
                                       "1up",
                                       "0up_1down",
                                       "1up_1down",
-                                      "2up_2down"]},
-    # "inlink_context": {"function": "getDocBOWInlinkContextCache", "parameters": [100]},
+                                      "2up_2down"
+                       ]},
     ##"ilc_AZ":{"function":"generateDocBOW_ILC_Annotated", "parameters":["paragraph","1up_1down","1up","1only"] },
     ##"az_annotated":{"function":"getDocBOWannotated", "parameters":[1]},
     ##"section_annotated":{"function":"getDocBOWannotatedSections", "parameters":[1]},
@@ -42,52 +39,64 @@ prebuild_indeces = {
 
 prebuild_general_indexes = {
     # "full_text_aac_2010": {"type": "standard_multi", "bow_name": "full_text", "parameters": [1]},
-    "title_abstract_aac_2010": {"type": "standard_multi", "bow_name": "title_abstract", "parameters": [1]},
+    # "title_abstract_aac_2010": {"type": "standard_multi", "bow_name": "title_abstract", "parameters": [1]},
     "inlink_context_aac_2010": {"type": "standard_multi",
                                 "bow_name": "inlink_context",
-                                "parameters": [30, 40, 50, 100, "1only",
+                                "parameters": [
+                                               # 30, 40, 50, 100,
+                                              "1only",
                                                "paragraph",
                                                "1up",
                                                "0up_1down",
                                                "1up_1down",
-                                               "2up_2down"]},
+                                               "2up_2down"
+                                ]},
     "ilc_full_text_aac_2010": {"type": "ilc_mashup",
                                "ilc_method": "inlink_context",
                                "mashup_method": "full_text",
-                               "ilc_parameters": [30, 40, 50, 100, "1only",
+                               "ilc_parameters": [
+                                                  # 30, 40, 50, 100,
+                                                  "1only",
                                                   "paragraph",
                                                   "1up",
                                                   "0up_1down",
                                                   "1up_1down",
-                                                  "2up_2down"],
+                                                  "2up_2down"
+                               ],
                                "parameters": [1]},
 }
 
 doc_methods = {
-    "full_text": {"type": "standard_multi", "index": "full_text_aac_2010", "parameters": [1],
-                  "runtime_parameters": ["text"]},
-    "title_abstract": {"type": "standard_multi", "index": "title_abstract_aac_2010", "parameters": [1],
-                       "runtime_parameters": {"text": "1"}},
+    # "full_text": {"type": "standard_multi", "index": "full_text_aac_2010", "parameters": [1],
+    #               "runtime_parameters": ["text"]},
+    # "title_abstract": {"type": "standard_multi", "index": "title_abstract_aac_2010", "parameters": [1],
+    #                    "runtime_parameters": {"text": "1"}},
     ##    "passage":{"type":"standard_multi", "index":"passage_aac_2010", "parameters":[250,350,400], "runtime_parameters":{"text":"1"}},
     ##
     "inlink_context": {"type": "standard_multi",
                        "index": "inlink_context_aac_2010",
-                       "parameters": [30, 40, 50, 100, "1only",
+                       "parameters": [
+                                        # 30, 40, 50, 100,
+                                      "1only",
                                       "paragraph",
                                       "1up",
                                       "0up_1down",
                                       "1up_1down",
-                                      "2up_2down"],
+                                      "2up_2down"
+                                      ],
                        "runtime_parameters": {"text": "1"}},
 
     "ilc_full_text": {"type": "ilc_mashup",
                       "index": "ilc_full_text_aac_2010",
-                      "ilc_parameters": [30, 40, 50, 100, "1only",
+                      "ilc_parameters": [
+                                         # 30, 40, 50, 100,
+                                         "1only",
                                          "paragraph",
                                          "1up",
                                          "0up_1down",
                                          "1up_1down",
-                                         "2up_2down"],
+                                         "2up_2down"
+                      ],
                       "parameters": ["1"],
                       "runtime_parameters": {"text": "1"}},
 
@@ -114,6 +123,8 @@ qmethods = {
         (20, 10),
         (10, 20),
         (30, 30),
+        (30, 20),
+        (20, 30),
         (50, 50),
         (100, 100),
         ##                (500,500),
@@ -152,6 +163,8 @@ experiment = {
     "test_files": [],
     # SQL condition to automatically generate the list above
     "test_files_condition": "metadata.num_in_collection_references:>0 AND metadata.year:>2010",
+    # how to sort test files
+    "test_files_sort":"metadata.num_in_collection_references:desc",
     # This lets us pick just the first N files from which to generate queries
     "max_test_files": 1000,
     # Use Lucene DefaultSimilarity? As opposed to FieldAgnosticSimilarity
@@ -173,8 +186,12 @@ experiment = {
     "output_filename": "results.csv",
     "pivot_table": "",
     "max_results_recall": 200,
-    # should queries be classified based on some rhetorical class of the sentence: "az", "csc"
-    "queries_classification": None,
+    # should queries be classified based on some rhetorical class of the sentence: "az", "csc", "query_method"
+    "queries_classification": "query_method",
+    # do not process more than this number of queries of the same type (type on line above)
+    "max_per_class_results": 1000,
+    # do not generate queries for more than this number of citations
+    "max_queries_generated": 1000,
     # of all precomputed queries, which classes should be processed/evaluated?
     "queries_to_process": ["ALL"],
     # what "zones" to try to train weights for
@@ -188,7 +205,7 @@ experiment = {
 
     "filter_options_resolvable": {
         # Should resolvable citations exclude those that have the same first author as the test document?
-        "exclude_self_citation": True,
+        "exclude_same_first_author": True,
         # How many authors can the citing and cited paper maximally overlap on?
         "max_overlapping_authors": None,  # None == no limit
         # What's the max year for considering a citation? Should match index_max_year above
@@ -196,8 +213,8 @@ experiment = {
     },
 
     "filter_options_ilc": {
-        # Should resolvable citations exclude those that have the same first author as the test document?
-        "exclude_self_citation": True,
+        # Should ILC_BOWS exclude papers that have the same first author as the TARGET document?
+        "exclude_same_first_author": True,
         # How many authors can the citing and cited paper maximally overlap on?
         "max_overlapping_authors": None,  # How many authors can the citing and cited paper maximally overlap on?
         # What's the max year for considering a citation? Should match index_max_year above
@@ -208,10 +225,10 @@ experiment = {
 
 options = {
     "run_prebuild_bows": 1,  # should the whole BOW building process run?
-    "overwrite_existing_bows": 0,  # if a BOW exists already, should we overwrite it?
+    "overwrite_existing_bows": 1,  # if a BOW exists already, should we overwrite it?
     "rebuild_indexes": 1,  # rebuild indices?
-    "compute_queries": 1,  # precompute the queries?
-    "force_regenerate_resolvable_citations": 1,  # find again the resolvable citations in a file?
+    "generate_queries": 0,  # precompute the queries?
+    "force_regenerate_resolvable_citations": 0,  # find again the resolvable citations in a file?
     "overwrite_existing_queries": 1,  # force rebuilding of queries too?
 
     "clear_existing_prr_results": 1,  # delete previous precomputed results? i.e. start from scratch
@@ -234,7 +251,7 @@ def main():
     corpus = ez_connect("AAC")
     # experiment["test_files"] = cp.Corpus.listPapers("year:>=2011")
 
-    exp = Experiment(experiment, options, use_celery=True)
+    exp = Experiment(experiment, options, use_celery=False)
     exp.run()
     pass
 

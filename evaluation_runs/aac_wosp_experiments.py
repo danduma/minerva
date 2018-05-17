@@ -7,7 +7,7 @@
 from __future__ import print_function
 
 from __future__ import absolute_import
-from az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST
 
 import db.corpora as cp
 
@@ -251,8 +251,6 @@ experiment={
     "add_random_control_result": False,
     "precomputed_queries_filename":"precomputed_queries.json",
     "files_dict_filename":"files_dict.json",
-    # maximum number of queries of the same AZ/CSC type to process
-    "max_per_class_results":1000,
     # Type of experiment. "compute_once","train_weights" or "" to do nothing
     "type":"train_weights",
 }
@@ -262,7 +260,7 @@ options={
     "run_prebuild_bows":0, # should the whole BOW building process run?
     "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
     "rebuild_indexes":0,   # rebuild indices?
-    "compute_queries":0,  # should we compute the queries?
+    "generate_queries":0,  # should we compute the queries?
     "overwrite_existing_queries":0,  # force rebuilding of queries too?
     "run_precompute_retrieval":0,  # only applies if type == "train_weights"
     "clear_existing_prr_results":0, # delete previous precomputed results? i.e. start from scratch

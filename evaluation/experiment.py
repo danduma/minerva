@@ -105,7 +105,7 @@ class Experiment(object):
                 self.options["run_prebuild_bows"] = True
                 self.options["overwrite_existing_bows"] = True
                 self.options["rebuild_indexes"] = False
-                self.options["compute_queries"] = False
+                self.options["generate_queries"] = False
                 self.options["overwrite_existing_queries"] = False
                 self.options["run_precompute_retrieval"] = False
                 self.options["run_experiment"] = False
@@ -113,7 +113,7 @@ class Experiment(object):
                 self.options["run_prebuild_bows"] = False
                 self.options["overwrite_existing_bows"] = False
                 self.options["rebuild_indexes"] = True
-                self.options["compute_queries"] = False
+                self.options["generate_queries"] = False
                 self.options["overwrite_existing_queries"] = False
                 self.options["run_precompute_retrieval"] = False
                 self.options["run_experiment"] = False
@@ -121,7 +121,7 @@ class Experiment(object):
                 self.options["run_prebuild_bows"] = False
                 self.options["overwrite_existing_bows"] = False
                 self.options["rebuild_indexes"] = False
-                self.options["compute_queries"] = True
+                self.options["generate_queries"] = True
                 self.options["overwrite_existing_queries"] = True
                 self.options["run_precompute_retrieval"] = False
                 self.options["run_experiment"] = False
@@ -129,7 +129,7 @@ class Experiment(object):
                 self.options["run_prebuild_bows"] = False
                 self.options["overwrite_existing_bows"] = False
                 self.options["rebuild_indexes"] = False
-                self.options["compute_queries"] = False
+                self.options["generate_queries"] = False
                 self.options["overwrite_existing_queries"] = False
                 self.options["clear_existing_prr_results"] = True
                 self.options["run_precompute_retrieval"] = True
@@ -138,7 +138,7 @@ class Experiment(object):
                 self.options["run_prebuild_bows"] = False
                 self.options["overwrite_existing_bows"] = False
                 self.options["rebuild_indexes"] = False
-                self.options["compute_queries"] = False
+                self.options["generate_queries"] = False
                 self.options["overwrite_existing_queries"] = False
                 self.options["run_precompute_retrieval"] = False
                 self.options["run_experiment"] = True
@@ -148,7 +148,7 @@ class Experiment(object):
                 self.options["run_prebuild_bows"] = False
                 self.options["overwrite_existing_bows"] = False
                 self.options["rebuild_indexes"] = False
-                self.options["compute_queries"] = False
+                self.options["generate_queries"] = False
                 self.options["overwrite_existing_queries"] = False
                 self.options["run_precompute_retrieval"] = True
                 self.options["run_experiment"] = False
@@ -227,7 +227,7 @@ class Experiment(object):
             if self.exp["test_files_condition"] == "":
                 raise ValueError("No test_files specified or test_files_condition")
 
-            cp.Corpus.TEST_FILES = cp.Corpus.listPapers(self.exp["test_files_condition"])
+            cp.Corpus.TEST_FILES = cp.Corpus.listPapers(self.exp["test_files_condition"], sort=self.exp.get("test_files_sort"))
             if self.exp.get("max_test_files", None):
                 cp.Corpus.TEST_FILES = cp.Corpus.TEST_FILES[:self.exp["max_test_files"]]
             self.exp["test_files"] = cp.Corpus.TEST_FILES
@@ -284,16 +284,16 @@ class Experiment(object):
             if self.options["rebuild_indexes"] and len(self.exp["prebuild_indeces"]) > 0:
                 self.indexer.buildIndexes(cp.Corpus.TEST_FILES, self.exp["prebuild_indeces"], self.options)
 
-    def computeQueries(self):
+    def generateQueries(self):
         """
             Compute or load the queries
         """
         gc.collect()
         queries_file = os.path.join(self.exp["exp_dir"], self.exp["precomputed_queries_filename"])
 
-        if (self.options.get("compute_queries", True) and (
+        if (self.options.get("generate_queries", True) and (
                 self.options.get("overwrite_existing_queries", False)) or not exists(queries_file)):
-            self.query_generator.precomputeQueries(self.exp)
+            self.query_generator.generateQueries(self.exp)
 
         self.exp["precomputed_queries_file_path"] = queries_file
         gc.collect()
@@ -351,6 +351,9 @@ class Experiment(object):
         # TEST FILES
         self.selectTestFiles()
 
+        # GENERATE QUERIES
+        self.generateQueries()
+
         # PREBUILD BOWS
         self.prebuildBOWs()
 
@@ -358,9 +361,6 @@ class Experiment(object):
         print("Building stats: ", BUILDING_STATS)
         # BUILD INDEX
         self.buildIndex()
-
-        # COMPUTE QUERIES
-        self.computeQueries()
 
         # TESTING PIPELINE
         self.runTestingPipeline()

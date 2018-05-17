@@ -75,6 +75,7 @@ def measureScores(result_guids, match_guids, result_dict, prepend_text=""):
 
             found_guids.add(guid)
 
+        # here we cannot treat rank as 1 just because they're all equally prioritary
         precision_at.append(len(found_guids) / float(rank))
         if len(found_guids) == len(match_guids):
             break
@@ -199,6 +200,7 @@ class ResultsLogger(ProgressIndicator):
         self.total_citations = 0
         self.numchunks = 0
         self.report_file = None
+        self.dump_file = None
         if results_file:
             ensureDirExists(cp.Corpus.paths.output)
             self.report_file = codecs.open(os.path.join(cp.Corpus.paths.output, "report.txt"), "w")
@@ -217,7 +219,7 @@ class ResultsLogger(ProgressIndicator):
             Creates a dump .csv file, writes the first line
         """
         filename = getSafeFilename(getTimestampedFilename(self.output_filename, self.start_time))
-        self.dump_file = codecs.open(filename, "w", "utf-8", errors="replace")
+        self.dump_file = codecs.open(filename, "w", "utf-8", errors="replace", buffering=0)
 
         line = u"".join([c + u"\t" for c in self.csv_columns])
         line = line.strip(u"\t")
@@ -304,7 +306,7 @@ class ResultsLogger(ProgressIndicator):
         if not self.dump_straight_to_disk:
             if filename:
                 self.output_filename = filename
-            self.output_filename = getSafeFilename(getTimestampedFilename(self.output_filename))
+            self.output_filename = getSafeFilename(getTimestampedFilename(self.output_filename, self.start_time))
             writeDictToCSV(self.csv_columns, self.overall_results, filename)
         else:
             self.dump_file.close()

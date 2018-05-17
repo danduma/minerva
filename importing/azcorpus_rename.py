@@ -36,11 +36,11 @@ def renameAZFilesToACL(dir):
 		newnum=renamelist[num]
 		print("copy ",az,dir+newnum+".xml")
 		print("copy ",az.replace(".annot",".txt"),dir+newnum+".txt")
-		shutil.copyfile()
+		# shutil.copyfile()
 
 def main():
 	renameAZFilesToACL("C:\NLP\PhD\RAZ-master\input\\")
 	pass
 
 if __name__ == '__main__':
-    main()
+	main()

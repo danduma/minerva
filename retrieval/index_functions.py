@@ -31,7 +31,7 @@ def defaultAddDocument(writer, new_doc, metadata, fields_to_process, bow_info):
     """
 
     if not isinstance(bow_info, str):
-        bow_info=json.dumps(bow_info)
+        bow_info = json.dumps(bow_info)
 
     body = {"guid": metadata["guid"],
             "metadata": metadata,
@@ -54,16 +54,16 @@ def docIsAlreadyInIndex(guid, index_name):
     return cp.Corpus.es.exists(id=guid, index=index_name, doc_type=ES_TYPE_DOC)
 
 
-def addBOWsToIndex(guid, indexNames, index_max_year, fwriters=None, full_corpus=True):
+def addBOWsToIndex(guid, indexNames, index_max_year, fwriters=None, full_corpus=True, force_add=False):
     """
         For one guid, add all its BOWs to the given index
+
+        CHANGES: No longer builds the BOWs. If they're not there, they aren't
 
         :param guid: guid of the paper
         :param indexNames: a fully expanded dict of doc_methods
         :param index_max_year: the max year to accept to add a file to the index
     """
-    force_add = False
-
     meta = cp.Corpus.getMetadataByGUID(guid)
     if not meta:
         logging.error("Error: can't load metadata for paper %s" % guid)
@@ -76,7 +76,7 @@ def addBOWsToIndex(guid, indexNames, index_max_year, fwriters=None, full_corpus=
             fwriters[indexName] = ElasticWriter(actual_dir, cp.Corpus.es)
 
     for indexName in indexNames:
-        if docIsAlreadyInIndex(guid, indexName) and not force_add:
+        if not force_add and docIsAlreadyInIndex(guid, indexName):
             continue
 
         index_data = indexNames[indexName]
@@ -84,14 +84,21 @@ def addBOWsToIndex(guid, indexNames, index_max_year, fwriters=None, full_corpus=
         parameter = index_data["parameter"]
         ilc_parameter = index_data.get("ilc_parameter", "")
 
-        if index_data["type"] in ["standard_multi"]:  # annotated_boost?
+        if index_data["type"] in ["standard_multi", "inlink_context"]:  # annotated_boost?
             if index_max_year:
                 if int(meta["year"]) > int(index_max_year):
                     continue
-            addOrBuildBOWToIndex(fwriters[indexName], guid, index_data)
-        elif index_data["type"] in ["inlink_context"]:
-            addOrBuildBOWToIndexExcludingCurrent(fwriters[indexName], guid, cp.Corpus.TEST_FILES, index_max_year,
-                                                 method, parameter)
+            # addOrBuildBOWToIndex(fwriters[indexName], guid, index_data)
+            bow_filename = cp.Corpus.cachedDataIDString("bow", guid, index_data)
+            try:
+                bows = cp.Corpus.loadCachedJson(bow_filename)
+                addLoadedBOWsToIndex(fwriters[indexName], guid, bows, index_data)
+            except:
+                print("ERROR: Couldn't load BOW ", bow_filename)
+
+        # elif index_data["type"] in ["inlink_context"]:
+        #     addOrBuildBOWToIndexExcludingCurrent(fwriters[indexName], guid, cp.Corpus.TEST_FILES, index_max_year,
+        #                                          method, parameter)
         elif index_data["type"] == "ilc_mashup":
             bows = doc_representation.mashupBOWinlinkMethods(guid, [guid], index_max_year, indexNames[indexName],
                                                              full_corpus=True)
@@ -102,7 +109,7 @@ def addBOWsToIndex(guid, indexNames, index_max_year, fwriters=None, full_corpus=
             addLoadedBOWsToIndex(fwriters[indexName], guid, bows, index_data)
 
 
-def addOrBuildBOWToIndex(writer, guid, index_data, full_corpus=False):
+def addOrBuildBOWToIndex(writer, guid, index_data, full_corpus=False, filter_options={}):
     """
         Loads JSON file with BOW data to doc in index, NOT filtering for anything
     """
@@ -120,7 +127,9 @@ def addOrBuildBOWToIndex(writer, guid, index_data, full_corpus=False):
                              None,
                              None,
                              guid,
-                             False)  # !TODO rhetorical_annotations here?
+                             False,
+                             filter_options=filter_options
+                             )  # !TODO rhetorical_annotations here?
         # Note: prebuildMulti will return a dict[param]=list of bows
         bows = bows[index_data["parameter"]]
 
@@ -152,7 +161,8 @@ def addOrBuildBOWToIndexExcludingCurrent(writer, guid, exclude_list, max_year, i
                              doc=None,
                              doctext=None,
                              guid=guid,
-                             overwrite_existing_bows=False)  # !TODO rhetorical_annotations here?
+                             overwrite_existing_bows=False,
+                             filter_options={})  # !TODO rhetorical_annotations here?
 
     assert isinstance(bows, list)
 

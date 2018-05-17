@@ -6,6 +6,19 @@
 # For license information, see LICENSE.TXT
 
 from __future__ import absolute_import
+
+if __name__ == "__main__" and __package__ is None:
+    __package__ = "db"
+
+import sys
+import os
+
+
+# https://stackoverflow.com/questions/14132789/relative-imports-for-the-billionth-time
+PACKAGE_PARENT = '..'
+SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
+sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
+
 from .elastic_corpus import ElasticCorpus
 
 ec=ElasticCorpus()
@@ -13,7 +26,7 @@ from multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
 ec.connectCorpus("",endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 ##
 ##ec.deleteIndex("wosp16_experiments_prr_*")
-ec.deleteIndex("idx_az_annotated_pmc_2013_1")
+ec.deleteIndex("*_lrec_experiments_*")
 
 ##ec.deleteByQuery("cache", "_id:resolvable_*")
 ##ec.deleteByQuery("cache", "_id:bow_*")

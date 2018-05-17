@@ -116,7 +116,7 @@ def splitMassiveBobIntoFiles(filename, subdir):
 				f2.close()
 
 			newdoc=""
- 			count+=1
+			count+=1
 
 		else:
 			newdoc+=line
@@ -196,4 +196,4 @@ def main():
 	pass
 
 if __name__ == '__main__':
-    main()
+	main()

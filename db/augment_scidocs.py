@@ -8,10 +8,9 @@
 
 from __future__ import absolute_import
 from __future__ import print_function
-from proc.general_utils import *
-from scidoc.scidoc import SciDoc
 
 import db.corpora as cp
+from proc.general_utils import *
 
 
 def augmentSciDocWithAZ(guid):
@@ -31,8 +30,7 @@ def augmentAllSciDocsWithAZ():
     """
     guids = cp.Corpus.listPapers()
     for guid in guids:
-        print()
-        guid
+        print(guid)
         augmentSciDocWithAZ(guid)
 
 
@@ -63,8 +61,7 @@ def augmentAllSciDocsWithSapienta(sapienta_output_dir):
     sapienta_output_dir = ensureTrailingBackslash(sapienta_output_dir)
     guids = cp.Corpus.listPapers()
     for guid in guids:
-        print()
-        guid
+        print(guid)
         doc = cp.Corpus.loadSciDoc(guid)
         filename = doc.metadata["filename"]
         sapienta_output_dir = ensureTrailingBackslash(sapienta_output_dir)

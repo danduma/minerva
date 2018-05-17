@@ -5,13 +5,10 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
 from __future__ import print_function
 
-from __future__ import absolute_import
-from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST
-
 import db.corpora as cp
-
 from evaluation.experiment import Experiment
 from proc.general_utils import getRootDir
 
@@ -174,7 +171,7 @@ options = {
     "run_prebuild_bows": 0,  # should the whole BOW building process run?
     "overwrite_existing_bows": 0,  # if a BOW exists already, should we overwrite it?
     "rebuild_indexes": 0,  # rebuild indices?
-    "compute_queries": 1,  # precompute the queries?
+    "generate_queries": 1,  # precompute the queries?
     "overwrite_existing_queries": 1,  # force rebuilding of queries too?
 
     "clear_existing_prr_results": 1,  # delete previous precomputed results? i.e. start from scratch

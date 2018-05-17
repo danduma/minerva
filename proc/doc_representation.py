@@ -19,7 +19,7 @@ from .nlp_functions import (tokenizeText, stemText, stopwords, stemTokens,
 from proc.query_extraction import WindowQueryExtractor, SentenceQueryExtractor
 from proc.general_utils import getListAnyway
 from importing.fix_citations import fixDocRemovedCitations
-from az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST
 import db.corpora as cp
 from db.base_corpus import shouldIgnoreCitation
 from six.moves import range
@@ -130,6 +130,7 @@ def addFieldsFromDicts(d1, d2):
             # !TODO temporary fix to lack of separation of sentences. Remove this when done.
             d1[key] = d1.get(key, "") + " " + d2[key].replace(".", " . ")
 
+
 def addDocBOWFullTextField(doc, res_dict, doctext=None):
     """
         Adds the _full_text field
@@ -140,7 +141,8 @@ def addDocBOWFullTextField(doc, res_dict, doctext=None):
     tokens = tokenizeText(doctext)
     res_dict["_full_text"] = unTokenize(tokens)
 
-def joinTogetherContextExcluding(context_list, exclude_files=[], filter_options={}):
+
+def joinTogetherContextExcluding(context_list, exclude_files=[], exclude_authors=[], filter_options={}):
     """
         Concatenate all contexts, excluding the ones for guids in exclude_files and also ignoring
         whatever matches the filter_options using shouldIgnoreCitation()
@@ -158,21 +160,6 @@ def joinTogetherContextExcluding(context_list, exclude_files=[], filter_options=
     for cont in context_list:
         metadata = cont["_metadata"]
         if metadata["guid_from"] not in exclude_files:
-            # if "authors_from" in metadata:
-            #     meta_from = {"authors": metadata["authors_from"],
-            #                  "year": metadata["year_from"],
-            #                  "guid": metadata["guid_from"]}
-            #     meta_to = {"authors": metadata["authors_to"],
-            #                "year": metadata["year_to"],
-            #                "guid": metadata["guid_to"]}
-            # else:
-            #     meta_from = cp.Corpus.getMetadataByGUID(metadata["guid_from"])
-            #     meta_to = cp.Corpus.getMetadataByGUID(metadata["guid_to"])
-            #
-            # if shouldIgnoreCitation(meta_from, meta_to, filter_options):
-            #     # print("Ignored citation: ", metadata)
-            #     continue
-
             addFieldsFromDicts(res, cont)
         else:
             ##            print "Excluded", cont["guid_from"]
@@ -184,7 +171,7 @@ def joinTogetherContextExcluding(context_list, exclude_files=[], filter_options=
     return res
 
 
-def filterInlinkContext(context_list, exclude_list=[], full_corpus=False, filter_options={}):
+def filterInlinkContext(context_list, exclude_files=[], exclude_authors=[], full_corpus=False, filter_options={}):
     """
         Deals with the difference between a per-test-file-index and a full cp.Corpus index,
         creating the appropriate
@@ -199,7 +186,8 @@ def filterInlinkContext(context_list, exclude_list=[], full_corpus=False, filter
     ##        bows=[joinTogetherContextExcluding(context_list, exclude_list, max_year)]
     # TODO exclude authors: take out of this method? Do it before, assume the exclude_list already contains this filtering?
     bows = [joinTogetherContextExcluding(context_list,
-                                         exclude_list,
+                                         exclude_files,
+                                         exclude_authors,
                                          filter_options=filter_options)]
     return bows
 
@@ -294,11 +282,12 @@ def extractILCSentences(docfrom, doc_target, ref_id, parameters, all_contexts):
                       "cit": cit,
                       "dict_key": "text",
                       "extract_only_plain_text": True,
+                      "method_name": "inlink_context"
                       }
             contexts = extractor.extractMulti(params)
             for generated_context in contexts:
                 context = addILCMetadata({"text": generated_context["text"]}, docfrom, doc_target)
-                all_contexts[generated_context["params"][0]].append(context)  # ["params"][0] is wleft
+                all_contexts[generated_context["params"]].append(context)  # ["params"][0] is wleft
 
 
 def generateDocBOWInlinkContext(doc_target, parameters, doctext=None, filter_options={}, force_rebuild=False):
@@ -353,6 +342,13 @@ def generateDocBOWInlinkContext(doc_target, parameters, doctext=None, filter_opt
         if len(window_parameters) > 0:
             extractILCWindow(docfrom, doc_target, ref_id, doctext, window_parameters, all_contexts)
 
+        if len(sentence_parameters) > 0:
+            extractILCSentences(docfrom, doc_target, ref_id, sentence_parameters, all_contexts)
+
+    # if all_contexts[30] != [] and all_contexts["1only"] == []:
+    #     print("FUCK. FIX THIS")
+    # elif all_contexts["1only"]:
+    #     print(all_contexts["1only"])
     return all_contexts
 
 
@@ -362,8 +358,8 @@ def generateDocBOW_ILC_Annotated(doc_target, parameters, doctext=None, filter_op
         Extracts SENTENCES around the citation, annotated with their AZ/CSC
 
         :param doc_target: for compatibility, SciDoc or dict with .metadata["guid"]
-        :param parameters: {"full_paragraph":True,"sent_left":1, "sent_right":1}?
-        :param doctext: text of the target document. For compatibility, this function doesn't care.
+        :param parameters: {"full_paragraph":True, "sent_left":1, "sent_right":1}?
+        :param doctext: text of the target document. For compatibility. this function doesn't care.
         :param filter_options: dict with options for incoming links to ignore by year, author, etc.
         :param force_rebuild: always rebuilds, this parameter has no effect
         :return: list of contexts. Each context is a dict.
@@ -479,7 +475,8 @@ def getJustTextFromILCBOW(bow):
     return bow["inlink_context"]
 
 
-def getDocBOWInlinkContextCache(doc_incoming, parameters, doctext=None, exclude_files=[], filter_options={},
+def getDocBOWInlinkContextCache(doc_incoming, parameters, doctext=None, exclude_files=[], exclude_authors=[],
+                                filter_options={},
                                 force_rebuild=False):
     """
         Same as generateDocBOWInlinkContext, uses prebuilt inlink contexts from disk
@@ -504,21 +501,34 @@ def getDocBOWInlinkContextCache(doc_incoming, parameters, doctext=None, exclude_
             # bow[0] would be necessary if the function returns a list of BOWs for each param
 
             # FIXME: DO I STILL NEED THIS?
-            joined_context = joinTogetherContextExcluding(bow,
-                                                          exclude_files,
-                                                          filter_options=filter_options)
+            joined_context = \
+                joinTogetherContextExcluding(bow,
+                                             exclude_files=exclude_files,
+                                             exclude_authors=exclude_authors,
+                                             filter_options=filter_options)
             result[param] = [{"text": getJustTextFromILCBOW(joined_context)}]
 
-    if not force_rebuild and len(newparam) > 0:
-        print("New parameters I don't have prebuilt BOWs for:", newparam)
+    # if not force_rebuild and len(newparam) > 0:
+    #     print("New parameters I don't have prebuilt BOWs for:", newparam)
 
-    new = generateDocBOWInlinkContext(doc_incoming, newparam, doctext, filter_options=filter_options)
+    new = generateDocBOWInlinkContext(doc_incoming,
+                                      newparam,
+                                      doctext,
+                                      filter_options=filter_options)
+
     for param in new:
-        ilc_text = getJustTextFromILCBOW(joinTogetherContextExcluding(new[param],
-                                                                      exclude_files,
-                                                                      filter_options=filter_options))
+        ilc_text = getJustTextFromILCBOW(
+            joinTogetherContextExcluding(new[param],
+                                         exclude_files=exclude_files,
+                                         exclude_authors=exclude_authors,
+                                         filter_options=filter_options))
+
         result[param] = [{"text": ilc_text}]
 
+    # if result[30][0]["text"] != "" and result["1only"][0]["text"] == "":
+    #     print("FUCK. FIX THIS")
+    # elif result["1only"][0]["text"] != "":
+    #     print(result["1only"][0]["text"])
     return result
 
 
@@ -537,7 +547,7 @@ def getDocBOWfull(doc, parameters=None, doctext=None, filter_options={}, force_r
     return {1: [new_doc]}  # all functions must take a list of parameters and return dict[parameter]=list of BOWs
 
 
-def getDocBOWpassagesMulti(doc, parameters=[100], doctext=None,  filter_options={}, force_rebuild=False):
+def getDocBOWpassagesMulti(doc, parameters=[100], doctext=None, filter_options={}, force_rebuild=False):
     """
         Get BOW for document using full text minus references and section titles
 
@@ -584,7 +594,8 @@ def getDocBOWTitleAbstract(doc, parameters=None, doctext=None, filter_options={}
     return {1: [{"text": unTokenize(tokens)}]}
 
 
-def getDocBOWannotated(doc, parameters=None, doctext=None, keys=["az", "csc_type"], filter_options={}, force_rebuild=False):
+def getDocBOWannotated(doc, parameters=None, doctext=None, keys=["az", "csc_type"], filter_options={},
+                       force_rebuild=False):
     """
         Get BOW for document with AZ/CSC
     """
@@ -600,7 +611,8 @@ def getDocBOWannotated(doc, parameters=None, doctext=None, keys=["az", "csc_type
     return {1: [res]}
 
 
-def getDocBOWrandomZoning(doc, parameters=None, doctext=None, keys=["az", "csc_type"], filter_options={}, force_rebuild=False):
+def getDocBOWrandomZoning(doc, parameters=None, doctext=None, keys=["az", "csc_type"], filter_options={},
+                          force_rebuild=False):
     """
         Get BOW for document with randomized AZ/CSC
     """

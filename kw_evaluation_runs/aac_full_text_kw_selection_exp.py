@@ -161,7 +161,7 @@ experiment = {
 
     "filter_options_resolvable": {
         # Should resolvable citations exclude those that have the same first author as the test document?
-        "exclude_self_citation": True,
+        "exclude_same_first_author": True,
         # How many authors can the citing and cited paper maximally overlap on?
         "max_overlapping_authors": None,  # How many authors can the citing and cited paper maximally overlap on?
         # What's the max year for considering a citation? Should match index_max_year above
@@ -170,7 +170,7 @@ experiment = {
 
     "filter_options_ilc": {
         # Should resolvable citations exclude those that have the same first author as the test document?
-        "exclude_self_citation": True,
+        "exclude_same_first_author": True,
         # How many authors can the citing and cited paper maximally overlap on?
         "max_overlapping_authors": None,  # How many authors can the citing and cited paper maximally overlap on?
         # What's the max year for considering a citation? Should match index_max_year above
@@ -182,7 +182,7 @@ options = {
     "run_prebuild_bows": 0,  # should the whole BOW building process run?
     "overwrite_existing_bows": 0,  # if a BOW exists already, should we overwrite it?
     "rebuild_indexes": 0,  # rebuild indices?
-    "compute_queries": 1,  # precompute the queries?
+    "generate_queries": 1,  # precompute the queries?
     "overwrite_existing_queries": 0,  # force rebuilding of queries too?
     "force_regenerate_resolvable_citations": 0,  # find again the resolvable citations in a file?
     "clear_existing_prr_results": 1,  # delete previous precomputed results? i.e. start from scratch

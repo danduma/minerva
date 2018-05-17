@@ -17,12 +17,11 @@ from .nlp_functions import (tokenizeText, tokenizeTextAndRemoveStopwords, stopwo
                             getDictOfTokenCounts, removeStopwords, selectSentencesToAdd,
                             replaceCitationsWithPlaceholders)
 
-
 ##from nlp_functions import PAR_MARKER, CIT_MARKER, BR_MARKER
 
 from .general_utils import removeSymbols
 from .structured_query import StructuredQuery
-from az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST
 import six
 from six.moves import range
 import collections
@@ -206,7 +205,7 @@ class WindowQueryExtractor(BaseQueryExtractor):
         ##match, doctext, parameters=[(20,20)], options={"jump_paragraphs":True}
         new_params = []
         for param in params["parameters"]:
-            if not isinstance(param,tuple) or isinstance(param, list) or isinstance(param, str):
+            if not isinstance(param, tuple) or isinstance(param, list) or isinstance(param, str):
                 param = (param, param)
             new_params.append(param)
 
@@ -265,9 +264,9 @@ class SentenceQueryExtractor(BaseQueryExtractor):
         """
         to_add = selectSentencesToAdd(params["docfrom"], params["cit"], params["current_parameter"])
 
-        if params["separate_by_tag"] == "az":
+        if params.get("separate_by_tag") == "az":
             extracted_query = {"ilc_AZ_" + zone: "" for zone in AZ_ZONES_LIST}
-        elif params["separate_by_tag"] == "csc":
+        elif params.get("separate_by_tag") == "csc":
             extracted_query = {"ilc_CSC_" + zone: "" for zone in CORESC_LIST}
         else:
             extracted_query = {params["dict_key"]: ""}

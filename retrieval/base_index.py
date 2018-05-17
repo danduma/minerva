@@ -34,7 +34,7 @@ class BaseIndexer(object):
         """
         self.use_celery = use_celery
 
-    def buildIndexes(self, testfiles, methods):
+    def buildIndexes(self, testfiles, methods, options):
         """
             For every test file in [testfiles],
                 create index
@@ -72,12 +72,6 @@ class BaseIndexer(object):
             for ref_guid in outlinks:
                 addBOWsToIndex(ref_guid, indexNames, 9999, fwriters)
                 # TODO integrate this block below into addBOWsToIndex
-            ##                for indexName in indexNames:
-            ##                    # get the maximum year to create inlink_context descriptions from
-            ##                    if indexNames[indexName]["options"].get("max_year",False) == True:
-            ##                        max_year=cp.Corpus.getMetadataByGUID(test_guid)["year"]
-            ##                    else:
-            ##                        max_year=None
 
             for fwriter in fwriters:
                 fwriters[fwriter].close()
@@ -156,7 +150,11 @@ class BaseIndexer(object):
 
             result = jobs.apply_async(queue="add_to_index", exchange="add_to_index", route_name="add_to_index")
             print("Waiting for tasks to complete...")
-            result.join()
+            try:
+                result.join()
+            except KeyboardInterrupt:
+                print("KeyboardInterrupt: Skipping to next stage")
+                pass
 
     # -------------------------------------------------------------------------------
     #  Methods to be overriden in descendant classes
