@@ -7,19 +7,22 @@
 
 ##from __future__ import absolute_import
 
+from __future__ import absolute_import
 from celery import Celery
 from kombu import Queue, Exchange
 from celery.bin import Option
-from config import *
-##import minerva.multi.celeryconfig
+from .config import *
+
+##import multi.celeryconfig
 
 # celery worker --app=multi.celery_app:app
 
 
 app = Celery('multi',
-             broker=MINERVA_AMQP_SERVER_URL,
-             backend=MINERVA_AMQP_SERVER_URL,
-             include=['minerva.multi.tasks'])
+             broker=MINERVA_RPC_SERVER_URL,
+             backend=MINERVA_RPC_SERVER_URL,
+             # include=['minerva.multi.tasks'])
+             include=['multi.tasks'])
 
 ##app.config_from_object('celeryconfig')
 # Optional configuration, see the application user guide.
@@ -31,7 +34,7 @@ app.conf.update(
     CELERY_ENABLE_UTC=True,
     CELERY_TASK_RESULT_EXPIRES=3600,
 
-    CELERY_QUEUES = (
+    CELERY_QUEUES=(
         Queue('default', Exchange('default'), routing_key='default'),
         Queue('import_xml', Exchange('import_xml'), routing_key='import_xml'),
         Queue('update_references', Exchange('update_references'), routing_key='update_references'),
@@ -40,9 +43,10 @@ app.conf.update(
         Queue('precompute_formulas', Exchange('precompute_formulas'), routing_key='precompute_formulas'),
         Queue('compute_statistics', Exchange('compute_statistics'), routing_key='compute_statistics'),
         Queue('annotate_keywords', Exchange('annotate_keywords'), routing_key='annotate_keywords'),
+        Queue('annotate_keyphrases', Exchange('annotate_keyphrases'), routing_key='annotate_keyphrases'),
     ),
 
-    CELERY_ROUTES = {
+    CELERY_ROUTES={
         'importXMLTask': {'queue': 'import_xml', 'routing_key': 'import_xml'},
         'updateReferencesTask': {'queue': 'update_references', 'routing_key': 'update_references'},
         'prebuildBOWTask': {'queue': 'prebuild_bows', 'routing_key': 'prebuild_bows'},
@@ -50,6 +54,7 @@ app.conf.update(
         'precomputeFormulasTask': {'queue': 'precompute_formulas', 'routing_key': 'precompute_formulas'},
         'computeAnnotationStatisticsTask': {'queue': 'compute_statistics', 'routing_key': 'compute_statistics'},
         'annotateKeywordsTask': {'queue': 'annotate_keywords', 'routing_key': 'annotate_keywords'},
+        'annotateDocWithKPsTask': {'queue': 'annotate_keyphrases', 'routing_key': 'annotate_keyphrases'},
     }
 )
 

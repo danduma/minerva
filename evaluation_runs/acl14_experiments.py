@@ -6,14 +6,15 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
+from __future__ import absolute_import
 import os, json
 
-from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST
 
-import minerva.db.corpora as cp
+import db.corpora as cp
 
-from minerva.evaluation.experiment import Experiment
-from minerva.evaluation.query_generation import QueryGenerator
+from evaluation.experiment import Experiment
+from evaluation.query_generation import QueryGenerator
 
 # BOW files to prebuild for generating document representation.
 prebuild_bows={
@@ -197,7 +198,7 @@ experiment={
 options={
     "run_prebuild_bows":True,
     "overwrite_existing_bows":False,
-    "rebuild_indexes":True,
+    "build_indexes":True,
     "recompute_queries":False,
     "run_precompute_retrieval":False, # only applies if type == "train_weights"
     "override_folds":4,

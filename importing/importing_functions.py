@@ -7,13 +7,14 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import logging
 from copy import deepcopy
 
-from minerva.proc.general_utils import normalizeTitle, copyDictExceptKeys
+from proc.general_utils import normalizeTitle, copyDictExceptKeys
 
-import minerva.db.corpora as cp
-from minerva.scidoc.xmlformats.read_auto import AutoXMLReader
+import db.corpora as cp
+from scidoc.xmlformats.read_auto import AutoXMLReader
 
 
 def addSciDocToDB(doc, import_id, collection_id):
@@ -23,7 +24,7 @@ def addSciDocToDB(doc, import_id, collection_id):
     meta=deepcopy(doc["metadata"])
 
     if meta.get("corpus_id","")=="":
-        meta["corpus_id"]=meta["pm_id"] if meta.has_key("pm_id") else ""
+        meta["corpus_id"]=meta["pm_id"] if "pm_id" in meta else ""
 
     meta["norm_title"]=normalizeTitle(meta["title"])
     meta["numref"]=str(len(doc["references"]))

@@ -8,19 +8,21 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import re, json, sys
 
 from string import punctuation
 from copy import deepcopy
 
-from BeautifulSoup import BeautifulStoneSoup
-from minerva.proc.general_utils import loadFileText
-from minerva.scidoc.citation_utils import removeACLCitations, removeURLs
-from minerva.proc.nlp_functions import tokenizeText
-from minerva.scidoc.scidoc import SciDoc
-from minerva.scidoc.citation_utils import CITATION_FORM
-import minerva.db.corpora as cp
-from minerva.evaluation.query_generation import QueryGenerator
+from bs4 import BeautifulStoneSoup
+from proc.general_utils import loadFileText
+from scidoc.citation_utils import removeACLCitations, removeURLs
+from proc.nlp_functions import tokenizeText
+from scidoc.scidoc import SciDoc
+from scidoc.citation_utils import CITATION_FORM
+import db.corpora as cp
+from evaluation.query_generation import QueryGenerator
+import six
 
 # These are hand-crafted regexes. A better approach would be to generate them
 # automatically, but this is faster for 20 documents and a quick test
@@ -186,7 +188,7 @@ class AtharCorpusReader(object):
 
         if not match:
             # Error in the Athar corpus: source document ID missing
-            doc_from_id=u"temp"+unicode(index)
+            doc_from_id=u"temp"+six.text_type(index)
         else:
             doc_from_id=match.group(1).lower()
 
@@ -272,7 +274,7 @@ class AtharQueryGenerator(QueryGenerator):
                 from the paper with its metadata in the corpus
         """
         super(self.__class__,self).__init__()
-        self.docs=json.load(file(filename,"r"))
+        self.docs=json.load(open(filename,"r"))
         for doc_id in self.docs:
             assert doc_id != ""
             # convert the loaded dicts to a SciDoc instance
@@ -295,7 +297,7 @@ class AtharQueryGenerator(QueryGenerator):
 
         for cit in doc["citations"]:
             res.append({"cit":cit,
-                        "match_guid":doc.reference_by_id[cit["ref_id"]]["guid"],
+                        "match_guids":[doc.reference_by_id[cit["ref_id"]]["guid"]],
                         })
 
         for sent in sents_with_multicitations:
@@ -318,7 +320,7 @@ class AtharQueryGenerator(QueryGenerator):
         if not doc:
             raise ValueError("ERROR: Couldn't load SciDoc: %s" % guid)
 
-        doctext=doc.getFullDocumentText() #  store a plain text representation
+        doctext=doc.formatTextForExtraction(doc.getFullDocumentText()) #  store a plain text representation
 
         # load the citations in the document that are resolvable, or generate if necessary
         citations_data=self.getResolvableCitations(guid, doc)
@@ -384,18 +386,18 @@ def processAtharCorpus(infiles, outfile):
     for doc in all_docs:
         doc_dict[doc.metadata["guid"]]=doc.data
 
-    json.dump(doc_dict,file(outfile,"w"))
+    json.dump(doc_dict,open(outfile,"w"))
 
 def loadProcessedContexts(infile):
     """
     """
-    return json.load(file(infile,"r"))
+    return json.load(open(infile,"r"))
 
 def corpusStatistics(infile):
     """
         Prints out statistics about the annotated contexts
     """
-    data=json.load(file(infile,"r"))
+    data=json.load(open(infile,"r"))
     sources=[]
     targets=[]
 

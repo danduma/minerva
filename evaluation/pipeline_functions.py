@@ -5,6 +5,7 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
 from copy import deepcopy
 from collections import OrderedDict
 

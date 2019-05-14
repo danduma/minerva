@@ -6,15 +6,17 @@
 # For license information, see LICENSE.TXT
 
 
+from __future__ import absolute_import
+from __future__ import print_function
 import re
 import codecs
-from BeautifulSoup import BeautifulStoneSoup
+from bs4 import BeautifulStoneSoup
 import json
 import difflib
 import itertools
 
-all_azs=set([u'OTH', u'BKG', u'BAS', u'CTR', u'AIM', u'OWN', u'TXT']) # argumentative zones
-all_ais=set([u'OTH', u'BKG', u'OWN']) # intellectual attribution
+all_azs= {u'OTH', u'BKG', u'BAS', u'CTR', u'AIM', u'OWN', u'TXT'}  # argumentative zones
+all_ais= {u'OTH', u'BKG', u'OWN'}  # intellectual attribution
 
 rxauthors=re.compile(r"(<REFERENCE>.*?\n)(.*?)(<DATE>)", re.IGNORECASE | re.DOTALL)
 rxtitle=re.compile(r"(</DATE>.*?\n)(.*?)(\.|</REFERENCE>)", re.IGNORECASE | re.DOTALL)
@@ -52,7 +54,8 @@ def most_common(L):
 		from http://stackoverflow.com/questions/1518522/python-most-common-element-in-a-list
 	"""
 	groups = itertools.groupby(sorted(L))
-	def _auxfun((item, iterable)):
+	def _auxfun(xxx_todo_changeme):
+		(item, iterable) = xxx_todo_changeme
 		return len(list(iterable)), -L.index(item)
 	return max(groups, key=_auxfun)[0]
 
@@ -133,7 +136,7 @@ def matchInTextReference(intext,doc):
 def processPlainTextAuthor(author):
 	"""
 		Returns a dictionary with a processed author's name, as
-        {"family","given"(,"middlename")}
+		{"family","given"(,"middlename")}
 	"""
 
 ##	print author
@@ -249,7 +252,7 @@ def loadAZannot(filename):
 				match["IA"]=match.get("AZ",[])
 				match["IA"].append(s.get("az",""))
 			else:
-				print "NO MATCH for CITATION in REFERENCES:", ref["text"]
+				print("NO MATCH for CITATION in REFERENCES:", ref["text"])
 				pass
 
 ## "in press", "forthcoming", "submitted", "to appear"
@@ -339,12 +342,12 @@ def generateGraph(docs):
 		for r in doc["references"]:
 ##			print r["title"]
 			if r["authors"] == "":
-				print "  NO AUTHORS!",r
+				print("  NO AUTHORS!",r)
 			match=findMatchingReferenceByAuthors(r,docs)
 			if match:
 				if doc.get("graph_num",0)==0:
 					group+=1
- 					nodes.append({"name":generateFullInfo(doc),"fullinfo":generateFullInfo(doc),"group":1})
+					nodes.append({"name":generateFullInfo(doc),"fullinfo":generateFullInfo(doc),"group":1})
 					doc["graph_num"]=len(nodes)-1
 
 				#print "  MATCH! ", match["title"], match["metadata"]["fileno"]
@@ -352,15 +355,15 @@ def generateGraph(docs):
 ##				links.append({"source":doc["graph_num"],"target":len(nodes),"value":1})
 				if match.get("graph_num",0)==0:
 ## 					nodes.append({"name":match["title"],"group":2})
- 					nodes.append({"name":generateFullInfo(match),"group":2})
+					nodes.append({"name":generateFullInfo(match),"group":2})
 					match["graph_num"]=len(nodes)-1
 				links.append({"source":doc["graph_num"],"target":match["graph_num"],"type":most_common(r.get("AZ",["TXT"]))})
 			else:
 ##				print "NO MATCH for REFERENCE in CORPUS:", r
 				pass
 
-	print "AZs", set(azs)
-	print "AIs", set(ias)
+	print("AZs", set(azs))
+	print("AIs", set(ias))
 	return nodes, links
 
 
@@ -370,7 +373,7 @@ def inTextReference(refValues):
 	"""
 	authors=refValues.get('authors',[])
 	res=""
-	if authors == []:
+	if not authors:
 		res+="?"
 	elif len(authors) == 1:
 		res += '%s ' % authors[0]["family"]
@@ -395,9 +398,9 @@ def generateFullInfo(doc):
 ##	print res
 	return res
 
-def loadAZcorpus(dir):
+def loadAZcorpus(path):
 	import glob
-	annots=glob.glob(dir)
+	annots=glob.glob(path)
 
 	nodes=[]
 	links=[]
@@ -419,4 +422,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+	main()

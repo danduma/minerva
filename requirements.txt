@@ -1,4 +1,11 @@
-beautifulsoup
+kombu
+seaborn
+matplotlib
+plac
+numpy
+tqdm
+six
+beautifulsoup4
 celery
 citeproc-py
 elasticsearch

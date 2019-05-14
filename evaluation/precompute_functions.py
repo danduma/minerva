@@ -5,9 +5,10 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
 from copy import deepcopy
 
-import minerva.db.corpora as cp
+import db.corpora as cp
 
 def addPrecomputeExplainFormulas(precomputed_query,
                                  doc_method,

@@ -1,49 +1,47 @@
-# <purpose>
+# Config module: loads/keeps IP:port parameters for the elasticsearch server
 #
 # Copyright:   (c) Daniel Duma 2016
 # Author: Daniel Duma <danielduma@gmail.com>
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
 import os
-import ConfigParser
+import json
 
-config = ConfigParser.ConfigParser()
-config_file_path=os.path.abspath(os.path.join(os.path.dirname( __file__ ), "..","config.ini"))
-config.readfp(open(config_file_path,"r"))
+config_file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "config.json"))
 
-WORKSTATION_IP="129.215.197.73"
-SERVER_IP="129.215.197.75"
-##SERVER_IP="129.215.90.202"
-##SERVER_IP="localhost"
+WORKSTATION_IP = "129.215.197.73"
+SERVER_IP = "129.215.197.75"
 
-ES_USER=config.get("Elasticsearch","user")
-ES_PASS=config.get("Elasticsearch","password")
-##MINERVA_FILE_SERVER_URL="http://%s:5599" % WORKSTATION_IP
-MINERVA_FILE_SERVER_URL="http://%s:5599" % WORKSTATION_IP
-MINERVA_AMQP_SERVER_URL="amqp://minerva:minerva@%s:5672//" % SERVER_IP
-MINERVA_ELASTICSEARCH_SERVER_IP=SERVER_IP
-MINERVA_ELASTICSEARCH_SERVER_PORT=9200
-if ES_USER:
-    MINERVA_ELASTICSEARCH_ENDPOINT="http://%s:%s@%s:%d/" % (ES_USER,
-                                                            ES_PASS,
-                                                            MINERVA_ELASTICSEARCH_SERVER_IP,
-                                                            MINERVA_ELASTICSEARCH_SERVER_PORT)
-##    MINERVA_ELASTICSEARCH_ENDPOINT={"host":MINERVA_ELASTICSEARCH_SERVER_IP,
-##                                    "port":MINERVA_ELASTICSEARCH_SERVER_PORT,
-##                                    "url_prefix":"http://%s:%s" % (ES_USER,  ES_PASS)}
-else:
-    MINERVA_ELASTICSEARCH_ENDPOINT={"host":MINERVA_ELASTICSEARCH_SERVER_IP,
-                                    "port":MINERVA_ELASTICSEARCH_SERVER_PORT}
+SERVER_CONFIGS = json.load(open(config_file_path, "r"))
+MINERVA_ELASTICSEARCH_ENDPOINT = ""
+
+MINERVA_FILE_SERVER_URL = "http://%s:5599" % WORKSTATION_IP
+MINERVA_RPC_SERVER_URL = "amqp://minerva:minerva@%s:5672//" % SERVER_IP
 
 
-#MINERVA_RABBITMQ_ADMIN="http://%s:15672" % SERVER_IP
-#MINERVA_FLOWER_ADMIN="http://%s:5555" % SERVER_IP
+def set_config(es_config="koko"):
+    global MINERVA_ELASTICSEARCH_ENDPOINT
 
+    bits = (SERVER_CONFIGS[es_config]["user"],
+            SERVER_CONFIGS[es_config]["pass"],
+            SERVER_CONFIGS[es_config]["ip"],
+            SERVER_CONFIGS[es_config]["port"],
+            )
+
+    if SERVER_CONFIGS[es_config]["user"]:
+        MINERVA_ELASTICSEARCH_ENDPOINT = "http://%s:%s@%s:%d/" % bits
+    else:
+        MINERVA_ELASTICSEARCH_ENDPOINT = "http://%s:%d/" % bits[2:]
+    print("Using config [%s] (%s)" % (es_config, MINERVA_ELASTICSEARCH_ENDPOINT))
+
+    return MINERVA_ELASTICSEARCH_ENDPOINT
 
 
 def main():
     pass
+
 
 if __name__ == '__main__':
     main()

@@ -6,26 +6,18 @@
 # For license information, see LICENSE.TXT
 
 
-from minerva.scidoc import SciDoc
-from minerva.scidoc.xmlformats.azscixml import *
-
-import itertools
-import collections
-import random
-
-import nltk
-from nltk.collocations import BigramCollocationFinder
-from nltk.metrics import BigramAssocMeasures
-
-import nltk.classify.util, nltk.metrics
-from nltk.classify import NaiveBayesClassifier, MaxentClassifier
-
-import context_extract
-from az_features import *
+from __future__ import absolute_import
+from __future__ import print_function
 
 import glob
 import os
-import cPickle
+
+import nltk.classify.util
+import nltk.metrics
+import six.moves.cPickle
+
+from scidoc.xmlformats.azscixml import *
+from .az_features import *
 
 # For maxent training
 MIN_LL_DELTA=0.0005 # minimum increment per step
@@ -41,7 +33,7 @@ def testTypesContained(container):
         if isinstance(cont2,list):
             elements=cont2
         elif isinstance(element, dict):
-            elements=element.values()
+            elements=list(element.values())
         else:
             return
 
@@ -59,7 +51,7 @@ def convertAnnotToSciDoc(input_mask,output_dir):
     """
     output_dir=ensureTrailingBackslash(output_dir)
     for filename in glob.glob(input_mask)[2:]:
-        print "Converting",filename
+        print("Converting",filename)
         doc=loadAZSciXML(filename)
         fn=os.path.basename(filename)
         doc.saveToFile(output_dir+os.path.splitext(fn)[0]+".json")
@@ -78,7 +70,7 @@ def buildGlobalFeaturesetCFC(input_mask,output_file):
         featureset=buildCFCFeaturesetForDoc(doc)
         global_featureset.extend(featureset)
 
-    cPickle.dump(global_featureset,file(output_file,"w"))
+    six.moves.cPickle.dump(global_featureset,open(output_file,"w"))
     return global_featureset
 
 #===============================
@@ -90,38 +82,38 @@ input_mask=r"G:\NLP\PhD\cfc\converted_files\*.json"
 def runTestCFC(rebuild=False):
 
     if rebuild:
-        print "Rebuilding global featureset"
+        print("Rebuilding global featureset")
         global_featureset=buildGlobalFeaturesetCFC(input_mask,global_featureset_filename)
     else:
-        global_featureset=cPickle.load(file(global_featureset_filename))
+        global_featureset=six.moves.cPickle.load(open(global_featureset_filename))
 
     train_set=global_featureset[:len(global_featureset)/10]
     test_set=global_featureset[len(global_featureset)/10:]
 
-    print "Training classifier"
+    print("Training classifier")
     classifier = nltk.MaxentClassifier.train(train_set, min_lldelta=MIN_LL_DELTA,max_iter=MAX_ITER)
 ##    classifier = nltk.NaiveBayesClassifier.train(train_set)
-    print "Accuracy:",nltk.classify.accuracy(classifier, test_set)
+    print("Accuracy:",nltk.classify.accuracy(classifier, test_set))
 
     classified=[classifier.classify(x[0]) for x in test_set]
 
     cm = nltk.ConfusionMatrix([x[1] for x in test_set], classified)
-    print(cm.pp(sort_by_count=True, show_percents=True, truncate=9))
+    print((cm.pp(sort_by_count=True, show_percents=True, truncate=9)))
 
 def runKFoldCrossValidation(rebuild=False, folds=3):
-    from sklearn import cross_validation
+    from sklearn import model_selection
 
     if rebuild:
-        print "Rebuilding global featureset"
+        print("Rebuilding global featureset")
         global_featureset=buildGlobalFeaturesetCFC(input_mask,global_featureset_filename)
     else:
-        global_featureset=cPickle.load(file(global_featureset_filename))
+        global_featureset=six.moves.cPickle.load(open(global_featureset_filename))
 
-    cv = cross_validation.KFold(len(global_featureset), n_folds=folds, indices=True, shuffle=False, random_state=None, k=None)
-
+    cv = model_selection.KFold(n_splits=folds, shuffle=False, random_state=None)
+    cv = zip(cv.split(global_featureset))
     accuracies=[]
 
-    print "Beginning",folds,"-fold cross-validation"
+    print("Beginning",folds,"-fold cross-validation")
 
     for traincv, testcv in cv:
 ##        print "Training classifier"
@@ -136,13 +128,13 @@ def runKFoldCrossValidation(rebuild=False, folds=3):
         classifier = nltk.MaxentClassifier.train(global_featureset[traincv[0]:traincv[len(traincv)-1]], min_lldelta=MIN_LL_DELTA,max_iter=MAX_ITER)
 
         accuracy=nltk.classify.util.accuracy(classifier, test_set)
-        print 'accuracy:', accuracy
+        print('accuracy:', accuracy)
         accuracies.append(accuracy)
 
-    print "average accuracy:",sum(accuracies)/float(len(accuracies))
+    print("average accuracy:",sum(accuracies)/float(len(accuracies)))
     classified=[classifier.classify(x[0]) for x in test_set]
     cm = nltk.ConfusionMatrix([x[1] for x in test_set], classified)
-    print(cm.pp(sort_by_count=True, show_percents=True, truncate=9))
+    print((cm.pp(sort_by_count=True, show_percents=True, truncate=9)))
 
 
 def trainCFCfullCorpus(filename,rebuild=False):
@@ -150,13 +142,13 @@ def trainCFCfullCorpus(filename,rebuild=False):
         Trains and saves a CFC classifier for the full corpus, saves it in filename
     """
     if rebuild:
-        print "Rebuilding global featureset"
+        print("Rebuilding global featureset")
         global_featureset=buildGlobalFeaturesetCFC(input_mask,global_featureset_filename)
     else:
-        global_featureset=cPickle.load(file(global_featureset_filename))
+        global_featureset=six.moves.cPickle.load(open(global_featureset_filename))
 
     classifier = nltk.MaxentClassifier.train(global_featureset, min_lldelta=MIN_LL_DELTA,max_iter=MAX_ITER)
-    cPickle.dump(classifier,open(filename,"w"))
+    six.moves.cPickle.dump(classifier,open(filename,"w"))
 
 
 def main():

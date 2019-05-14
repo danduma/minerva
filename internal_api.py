@@ -5,7 +5,8 @@
 
 # For license information, see LICENSE.TXT
 
-from minerva.scidoc.xmlformats.read_auto import AutoXMLReader
+from __future__ import absolute_import
+from .scidoc.xmlformats.read_auto import AutoXMLReader
 
 
 def main():

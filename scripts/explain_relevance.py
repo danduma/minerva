@@ -6,8 +6,9 @@
 # For license information, see LICENSE.TXT
 
 
+from __future__ import absolute_import
 from pandas import *
-import minerva.db.corpora as cp
+import db.corpora as cp
 from general_utils import writeFileText
 from context_extract import tokenizeText
 

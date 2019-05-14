@@ -7,6 +7,7 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import re,json,sys
 from string import punctuation
 
@@ -24,13 +25,14 @@ from org.apache.lucene.util import Version as LuceneVersion
 from org.apache.lucene.index import IndexWriterConfig
 from org.apache.lucene.index import DirectoryReader
 from org.apache.lucene.search import IndexSearcher
-from org.apache.lucene.search import TopScoreDocCollector;
+from org.apache.lucene.search import TopScoreDocCollector
 from java.io import File
 
 from collections import namedtuple
 
-from base_retrieval import BaseRetrieval, SPECIAL_FIELDS_FOR_TESTS, MAX_RESULTS_RECALL
-from stored_formula import StoredFormula
+from .base_retrieval import BaseRetrieval, SPECIAL_FIELDS_FOR_TESTS, MAX_RESULTS_RECALL
+from .stored_formula import StoredFormula
+from six.moves import range
 
 class LuceneRetrieval(BaseRetrieval):
     """

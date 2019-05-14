@@ -6,11 +6,12 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
-from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+from __future__ import absolute_import
+from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST
 
-import minerva.db.corpora as cp
+import db.corpora as cp
 
-from minerva.evaluation.experiment import Experiment
+from evaluation.experiment import Experiment
 
 # BOW files to prebuild for generating document representation.
 prebuild_bows={
@@ -229,7 +230,7 @@ experiment={
 options={
     "run_prebuild_bows":0, # should the whole BOW building process run?
     "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
-    "rebuild_indexes":0,   # rebuild indices?
+    "build_indexes":0,   # rebuild indices?
     "overwrite_existing_queries":0,  # force rebuilding of queries too?
     "run_precompute_retrieval":0,  # only applies if type == "train_weights"
     "clear_existing_prr_results":0, # delete previous precomputed results? i.e. start from scratch
@@ -238,7 +239,7 @@ options={
 }
 
 def main():
-    from minerva.multi.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
+    from multi.celery_app import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     cp.Corpus.setCorpusFilter("AAC")
@@ -249,7 +250,7 @@ def main():
 
 if __name__ == '__main__':
     main()
-##    from minerva.proc.doc_representation import getDictOfLuceneIndeces
-##    from minerva.evaluation.base_pipeline import getDictOfTestingMethods
+##    from proc.doc_representation import getDictOfLuceneIndeces
+##    from evaluation.base_pipeline import getDictOfTestingMethods
 ##    print(getDictOfLuceneIndeces(prebuild_general_indexes))
 ##    print(getDictOfTestingMethods(doc_methods))

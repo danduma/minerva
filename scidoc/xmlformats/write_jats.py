@@ -17,8 +17,10 @@
 """
 
 
+from __future__ import absolute_import
 from scidoc import *
 import re
+import six
 
 def saveJATS_XML(doc,filename):
     """
@@ -31,7 +33,7 @@ def saveJATS_XML(doc,filename):
         """
         lines=[]
         lines.append("<METADATA>")
-        if doc["metadata"].has_key("fileno"):
+        if "fileno" in doc["metadata"]:
             lines.append("<FILENO>"+doc["metadata"]["fileno"]+"</FILENO>\n")
 
         lines.append("<FILENAME>"+doc["filename"]+"</FILENAME>\n")
@@ -40,7 +42,7 @@ def saveJATS_XML(doc,filename):
         lines.append("<APPEARED>")
         if "conference" in doc.metadata:
             lines.append("<CONFERENCE>"+doc["metadata"]["conference"]+"</CONFERENCE>\n")
-        if doc["metadata"].has_key("journal"):
+        if "journal" in doc["metadata"]:
             lines.append("<JOURNAL>"+doc["metadata"]["journal"]+"</JOURNAL>\n")
 
         lines.append("<AUTHORS>")
@@ -61,7 +63,7 @@ def saveJATS_XML(doc,filename):
         lines.append("<YEAR>"+doc["year"]+"</YEAR>")
         lines.append("</APPEARED>")
 
-        if doc.metadata.has_key("revisionhistory"):
+        if "revisionhistory" in doc.metadata:
             lines.append("<REVISIONHISTORY>"+doc["metadata"]["revisionhistory"]+"</REVISIONHISTORY>\n")
 
         return lines
@@ -165,7 +167,7 @@ def saveJATS_XML(doc,filename):
         """
         lines=[]
         lines.append("<AUTHOR>")
-        if isinstance(author,basestring):
+        if isinstance(author,six.string_types):
             lines.append(author)
         elif isinstance(author,dict):
             lines.append(author["given"])
@@ -251,7 +253,7 @@ def saveJATS_XML(doc, filename):
 
 
 def main():
-    from azscixml import loadAZSciXML
+    from .azscixml import loadAZSciXML
     from scidoc import SciDoc
     doc=SciDoc(r"C:\NLP\PhD\bob\fileDB\jsonDocs\a00-1001.json")
 ##    doc=loadAZSciXML(r"C:\NLP\PhD\bob\fileDB\jsonDocs\a00-1001.json")

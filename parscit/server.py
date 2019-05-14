@@ -7,6 +7,7 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 from flask import Flask, jsonify, Blueprint, request, Response, url_for
 import logging, subprocess, os, tempfile, json, sys, codecs
 
@@ -14,8 +15,17 @@ import unicodedata
 
 parscit_bp = Blueprint("parscit", __name__, url_prefix="/parscit")
 
-PATH_TO_PARSCIT_BIN=r"G:\NLP\ParsCit-win\bin"
-PATH_TO_PARSCIT=PATH_TO_PARSCIT_BIN+os.sep+"citeExtract.pl"
+PATH_TO_PARSCIT_BIN = None
+
+dir_options = [r"G:\NLP\ParsCit-win\bin", r"/home/ubuntu/ParsCit/bin"]
+for option in dir_options:
+    if os.path.isdir(option):
+        PATH_TO_PARSCIT_BIN = option
+
+if not PATH_TO_PARSCIT_BIN:
+    print("ParsCit not found")
+else:
+    PATH_TO_PARSCIT = os.path.join(PATH_TO_PARSCIT_BIN, "citeExtract.pl")
 
 def extract_core(text, mode, format="raw"):
     """
@@ -34,32 +44,32 @@ def extract_core(text, mode, format="raw"):
     tmp_file = tempfile.NamedTemporaryFile(suffix=".tmp", delete=False)
     tmp_file.close()
 
-    tmp_file=codecs.open(tmp_file.name,"w",encoding="utf-8",errors="ignore")
+    tmp_file = codecs.open(tmp_file.name, "w", encoding="utf-8", errors="ignore")
     tmp_file.write(text)
     tmp_file.close()
 
-    file_name=tmp_file.name
+    file_name = tmp_file.name
     print(file_name)
     pipe = subprocess.Popen(
-        ["perl",    # so it runs on Windows
-        PATH_TO_PARSCIT,
-        "-q",   # quiet mode, output just xml
-        "-m",  mode,
-        "-i" , format,
-        file_name
-        ],
+        ["perl",  # so it runs on Windows
+         PATH_TO_PARSCIT,
+         "-q",  # quiet mode, output just xml
+         "-m", mode,
+         "-i", format,
+         file_name
+         ],
 
-    stdout=subprocess.PIPE
+        stdout=subprocess.PIPE
     )
 
-    stdout,stderr=pipe.communicate()
+    stdout, stderr = pipe.communicate()
     result = stdout
     tmp_file.close()
     try:
         filename, file_extension = os.path.splitext(tmp_file.name)
         os.remove(tmp_file.name)
-        os.remove(filename+".cite")
-        os.remove(filename+".body")
+        os.remove(filename + ".cite")
+        os.remove(filename + ".body")
     except:
         print("Warning: couldn't remove some temp files")
 
@@ -75,44 +85,45 @@ def api_entrypoint(mode):
             mode: see below
     """
     if mode not in ["extract_citations", "extract_header", "extract_section", "extract_meta", "extract_all"]:
-        resp=jsonify({})
-        resp.status_code=405 # method not allowed
+        resp = jsonify({})
+        resp.status_code = 405  # method not allowed
         return resp
 
     print(request)
 
     try:
-        data=json.loads(request.data)
+        data = json.loads(request.data)
     except:
-        resp=jsonify(error="Wrong JSON format")
-        resp.status_code=400 # bad request
+        resp = jsonify(error="Wrong JSON format")
+        resp.status_code = 400  # bad request
         return resp
 
-    format=data.get('format', 'raw')
+    format = data.get('format', 'raw')
     text = data.get('text', u'')
 
     text = unicodedata.normalize('NFKD', text)
 
-    parsed=extract_core(text,mode,format)
+    parsed = extract_core(text, mode, format)
 
-    resp=jsonify(parsed_xml=parsed)
-    resp.status_code=200 # all good
+    resp = jsonify(parsed_xml=parsed)
+    resp.status_code = 200  # all good
     return resp
 
-def startStandaloneServer(host="localhost", port=5000):
+
+def startStandaloneServer(host="localhost", port=5123):
     """
         Starts a basic server with the blueprint
     """
     app = Flask(__name__)
     app.register_blueprint(parscit_bp, url_prefix="/parscit")
 
-    print("Running ParsCit API on %s:%d" % (host,port))
+    print("Running ParsCit API on %s:%d" % (host, port))
     app.logger.addHandler(logging.StreamHandler(sys.stdout))
-##    app.logger.setLevel(logging.)
+    ##    app.logger.setLevel(logging.)
     app.run(host=host, port=port, debug=False, threaded=True)
 
 
-test_data=u"""References
+test_data = u"""References
 
 Allen, J. & Perrault, C. (1980). Analyzing intention in utterances. Artificial Intelligence,15, 143-178.
 
@@ -132,13 +143,16 @@ Grosz, B. & Sidner, C. (1986). Attention, intentions and the structure of discou
 
 Hinkleman, E. & Allen, J. (1988). How to do things with words, computationally speaking."""
 
+
 def simpleTest():
     # Testing
-    print(extract_core(test_data2,"extract_citations"))
+    print(extract_core(test_data2, "extract_citations"))
+
 
 def main():
     startStandaloneServer()
     pass
+
 
 if __name__ == '__main__':
     main()

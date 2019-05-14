@@ -5,14 +5,15 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
 import random
 from copy import deepcopy
 from multiprocessing import Pool, cpu_count
 
-from sklearn import cross_validation
+from sklearn import model_selection
 
-from pipeline_functions import getDictOfTestingMethods
-from minerva.retrieval.stored_formula import StoredFormula
+from .pipeline_functions import getDictOfTestingMethods
+from retrieval.stored_formula import StoredFormula
 
 ##def runSingleFormula(result_tuple):
 ##    """

@@ -7,13 +7,15 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import re
 
 from nltk import pos_tag
 from nltk.tokenize import word_tokenize
-from write_scixml import SciXMLWriter, escapeText
+from .write_scixml import SciXMLWriter, escapeText
 
-from minerva.proc.general_utils import cleanxml
+from proc.nlp_functions import cleanXML
+
 
 class AZPrimeWriter(SciXMLWriter):
     def __init__(self):
@@ -30,7 +32,7 @@ class AZPrimeWriter(SciXMLWriter):
             return s["pos_tagged"]
 
         text=re.sub(r"<cit\sid=\"?(.+?)\"?\s*?/>",r"_CIT_\1_",s["text"], flags=re.DOTALL|re.IGNORECASE)
-        text=escapeText(cleanxml(text))
+        text=escapeText(cleanXML(text))
         tokens=word_tokenize(text)
         tags=pos_tag(tokens)
         items=[]

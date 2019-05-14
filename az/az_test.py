@@ -5,7 +5,7 @@
 
 # For license information, see LICENSE.TXT
 
-def
+
 
 def main():
     pass

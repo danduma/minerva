@@ -5,5 +5,6 @@
 
 # For license information, see LICENSE.TXT
 
-from scidoc import SciDoc
+from __future__ import absolute_import
+from .scidoc import SciDoc
 ##from render_content import SciDocRenderer

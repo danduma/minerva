@@ -7,12 +7,13 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import os, json, re
 
-import corpus_import
-from corpus_import import CorpusImporter
-import minerva.db.corpora as cp
-from minerva.scidoc.xmlformats.read_sapienta_jatsxml import SapientaJATSXMLReader
+from . import corpus_import
+from .corpus_import import CorpusImporter
+import db.corpora as cp
+from scidoc.xmlformats.read_sapienta_jatsxml import SapientaJATSXMLReader
 
 def getPMC_CSC_corpus_id(filename):
     """
@@ -29,7 +30,7 @@ def import_sapienta_pmc_corpus():
     """
         Do the importing of the Sapienta-annotated PMC corpus
     """
-    from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    from multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
     importer=CorpusImporter(reader=SapientaJATSXMLReader())
     importer.collection_id="PMC_CSC"
     importer.import_id="initial"
@@ -64,7 +65,7 @@ def fix_authors_full_corpus():
         Fixes authors in each metadata entry having a "papers" key which they
         shouldn't
     """
-    from minerva.proc.results_logging import ProgressIndicator
+    from proc.results_logging import ProgressIndicator
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc")
     guids=cp.Corpus.listPapers()
@@ -83,7 +84,7 @@ def fix_broken_scidocs():
         their scidoc. If KeyError occurs, it loads the XML again
     """
     cp.useElasticCorpus()
-    from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    from multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
 
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     importer=CorpusImporter("PMC_CSC","initial", use_celery=True)
@@ -110,14 +111,14 @@ def test_read_doc(filename):
     """
         Loads one Sapienta-annotated JATS file, prints out the resulting doc
     """
-    from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    from multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     reader=SapientaJATSXMLReader()
-    with file(filename,"r") as f:
+    with open(filename,"r") as f:
         xml=f.read()
     doc=reader.read(xml, filename)
-    cp.Corpus.selectDocResolvableCitations(doc,year="2000b")
+    cp.Corpus.selectDocResolvableCitations(doc, max_year="2000b")
     print (doc)
 
 

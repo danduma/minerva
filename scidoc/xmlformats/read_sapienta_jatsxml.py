@@ -5,12 +5,14 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import re
 
-from read_jatsxml import JATSXMLReader
-from BeautifulSoup import BeautifulStoneSoup
+from .read_jatsxml import JATSXMLReader
+from bs4 import BeautifulStoneSoup
 
-from minerva.scidoc.citation_utils import (annotateCitationsInSentence,
+from scidoc.citation_utils import (annotateCitationsInSentence,
 CITATION_FORM, matchCitationWithReference)
 
 class SapientaJATSXMLReader(JATSXMLReader):
@@ -49,7 +51,7 @@ class SapientaJATSXMLReader(JATSXMLReader):
                         except:
                             header_text=""
             else:
-                print("Weird, title tag is there but no text is to be found: %s" % (title))
+                print(("Weird, title tag is there but no text is to be found: %s" % (title)))
 
         return header_text, header_id
 
@@ -174,7 +176,7 @@ class SapientaJATSXMLReader(JATSXMLReader):
         for r in refs:
             citations_found.extend(self.loadJATSCitation(r, newSent["id"], newDocument, section=section_id))
 
-        non_refs=s_soup.findAll(lambda tag:tag.name.lower()=="xref" and tag.has_key("ref-type") and tag["ref-type"].lower() != "bibr")
+        non_refs=s_soup.findAll(lambda tag:tag.name.lower()=="xref" and "ref-type" in tag and tag["ref-type"].lower() != "bibr")
         for nr in non_refs:
             nr.name="inref"
 
@@ -209,13 +211,13 @@ class SapientaJATSXMLReader(JATSXMLReader):
 
 
 def main():
-    import minerva.db.corpora as cp
+    import db.corpora as cp
 
     drive="g"
     cp.useLocalCorpus()
     cp.Corpus.connectCorpus(drive+":\\nlp\\phd\\pmc_coresc\\")
 
-    import read_jatsxml
+    from . import read_jatsxml
 
     debugging_files=[
     r"data\scratch\mpx245\epmc\output\Out_PMC3184115_PMC3205799.xml.gz.gz\3187739_annotated.xml",

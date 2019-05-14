@@ -6,11 +6,12 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
-from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+from __future__ import absolute_import
+from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST
 
-import minerva.db.corpora as cp
+import db.corpora as cp
 
-from minerva.evaluation.experiment import Experiment
+from evaluation.experiment import Experiment
 
 # BOW files to prebuild for generating document representation.
 prebuild_bows={
@@ -213,7 +214,9 @@ experiment={
     # list of files in the test set
     "test_files":[],
     # SQL condition to automatically generate the list above
-    "test_files_condition":"metadata.num_in_collection_references:>0 AND metadata.year:>2010",
+    # "test_files_condition":"metadata.num_in_collection_references:>0 AND metadata.year:>2010",
+    "test_files_condition": [{"range": {"metadata.num_in_collection_references": {"gt": 0}}},
+                             {"range": {"metadata.year": {"gt": 2010}}}],
     # This lets us pick just the first N files
     "max_test_files":1000,
     # Use Lucene DefaultSimilarity? As opposed to FieldAgnosticSimilarity
@@ -250,8 +253,6 @@ experiment={
     "add_random_control_result": False,
     "precomputed_queries_filename":"precomputed_queries.json",
     "files_dict_filename":"files_dict.json",
-    # maximum number of queries of the same AZ/CSC type to process
-    "max_per_class_results":1000,
     # Type of experiment. "compute_once","train_weights" or "" to do nothing
     "type":"train_weights",
 }
@@ -260,8 +261,8 @@ experiment={
 options={
     "run_prebuild_bows":0, # should the whole BOW building process run?
     "overwrite_existing_bows":0,   # if a BOW exists already, should we overwrite it?
-    "rebuild_indexes":0,   # rebuild indices?
-    "compute_queries":0,  # should we compute the queries?
+    "build_indexes":0,   # rebuild indices?
+    "generate_queries":0,  # should we compute the queries?
     "overwrite_existing_queries":0,  # force rebuilding of queries too?
     "run_precompute_retrieval":0,  # only applies if type == "train_weights"
     "clear_existing_prr_results":0, # delete previous precomputed results? i.e. start from scratch
@@ -274,7 +275,7 @@ options={
 # usage: wosp16_experiments.py --w Mod
 
 def main():
-    from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    from multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
     cp.Corpus.setCorpusFilter("AAC")

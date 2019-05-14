@@ -8,8 +8,11 @@
 # TODO use CSLRenderer
 # TODO future: move all rendering to templates (jinja2)
 
-from reference_formatting import CSLRenderer, formatReference, formatCitation, formatAPACitationAuthors, formatAuthorNamePlain
+from __future__ import absolute_import
+from .reference_formatting import CSLRenderer, formatReference, formatCitation, formatAPACitationAuthors, formatAuthorNamePlain
 import re
+import six
+from six.moves import range
 
 metadata_labels={
     "journal_nlm-ta":"Journal NLM TA",
@@ -64,7 +67,7 @@ class SciDocRenderer(object):
         for count in range(2):
             text=re.sub(r"(<cit.*?/>)\s*?(<cit.*?/>)",r"\1, \2",text,0,re.IGNORECASE|re.DOTALL)
 
-        text=re.sub(r"<cit\sid=\"?(.+?)\"?\s*?/>",r"__cit__\1",text, flags=re.DOTALL|re.IGNORECASE)
+        text=re.sub(r"<cit\sid=\"?(.+?)\"?\s*?/>",r"__cit\1",text, flags=re.DOTALL|re.IGNORECASE)
         text=text_formatting_function(text, glob)
 
         for cit_id in s.get("citations",[]):
@@ -77,7 +80,7 @@ class SciDocRenderer(object):
             else:
                 sub="[MISSING REFERENCE "+cit_id+")] "
 
-            text=re.sub(r"__cit__"+str(cit_id),sub,text, flags=re.DOTALL|re.IGNORECASE)
+            text=re.sub(r"__cit"+str(cit_id),sub,text, flags=re.DOTALL|re.IGNORECASE)
 
         text=text.strip()
         if len(text) > 0 and text[-1] not in [".",",","!","?",":",";"]:
@@ -155,7 +158,7 @@ class SciDocRenderer(object):
             LIST_TYPE="ptype"
             if glob["formatspans"]:
                 glob["p"]+=1
-                res_fmt=u"<p id=\""+unicode(p["id"])+u'">%s</p>'
+                res_fmt=u"<p id=\""+six.text_type(p["id"])+u'">%s</p>'
             else:
                 res_fmt=u"<p>%s</p"
 
@@ -163,7 +166,7 @@ class SciDocRenderer(object):
             open_tags=glob.get("open_tags",[])
             list_type=p.get(LIST_TYPE,"")
             if list_type in ["ul","ol"]:
-                res_fmt=u'<li id="'+unicode(p["id"])+u'">%s</li>'
+                res_fmt=u'<li id="'+six.text_type(p["id"])+u'">%s</li>'
                 if len(open_tags) > 0:
                     if open_tags[-1] != list_type:
                         res_fmt+="<"+list_type+">"+res_fmt
@@ -214,8 +217,8 @@ class SciDocRenderer(object):
             embedding_level+=1
             res=""
 
-            if isinstance(biblos,dict) and biblos.has_key("references"):
-                if biblos.has_key("header"):
+            if isinstance(biblos,dict) and "references" in biblos:
+                if "header" in biblos:
                     res += addHeader (biblos, embedding_level, glob)
                 thelist=biblos["references"]
             elif isinstance(biblos,list):

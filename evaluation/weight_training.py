@@ -7,18 +7,19 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import  gc, random, os
-from copy import deepcopy
 from collections import defaultdict
-from sklearn import cross_validation
+from sklearn import model_selection
 import pandas as pd
 
-import minerva.db.corpora as cp
-from minerva.proc.results_logging import ResultsLogger
-##from minerva.proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
-from base_pipeline import getDictOfTestingMethods
-from weight_functions import runPrecomputedQuery, addExtraWeights
-from minerva.db.result_store import ElasticResultStorer, ResultIncrementalReader, ResultDiskReader
+import db.corpora as cp
+from proc.results_logging import ResultsLogger
+##from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7, RANDOM_ZONES_11
+from .base_pipeline import getDictOfTestingMethods
+from .weight_functions import runPrecomputedQuery, addExtraWeights
+from db.result_store import ElasticResultStorer, ResultIncrementalReader, ResultDiskReader
+from six.moves import range
 
 GLOBAL_FILE_COUNTER=0
 
@@ -66,8 +67,8 @@ class WeightTrainer(object):
                 print("Number of results is smaller than number of folds for zone type ", query_type)
                 continue
 
-            cv = cross_validation.KFold(len(retrieval_results), n_folds=numfolds, shuffle=False, random_state=None) # indices=True, k=None
-            cv=[k for k in cv]
+            cv = model_selection.KFold(n_splits=numfolds, shuffle=False, random_state=None)
+            cv = zip(cv.split(retrieval_results))
 
             traincv, testcv=cv[split_fold]
             if isinstance(retrieval_results, ResultIncrementalReader):
@@ -117,7 +118,7 @@ class WeightTrainer(object):
                             print("Direction: ", direction)
                             for index in range(len(weights)):
 ##                                print("Weight: ", index)
-                                weight_name=weights.keys()[index]
+                                weight_name=list(weights.keys())[index]
                                 prev_weight=weights[weight_name]
                                 # hard lower limit of 0 for weights
                                 weights[weight_name]=max(MIN_WEIGHT,weights[weight_name]+direction)
@@ -153,7 +154,7 @@ class WeightTrainer(object):
                     improvement=100*((this_score-first_baseline)/float(first_baseline)) if first_baseline > 0 else 0
                     print ("   Weights found, with score: {:.5f}".format(this_score)," Improvement: {:.2f}%".format(improvement))
                     best_weights[query_type][method]=addExtraWeights(weights, self.exp)
-                    print ("   ",weights.values())
+                    print ("   ",list(weights.values()))
 
                     if self.exp.get("smooth_weights",None):
                         # this is to smooth a bit the weights in case they're too crazy
@@ -235,7 +236,7 @@ class WeightTrainer(object):
                     print("Number of results is smaller than number of folds for zone type ", query_type)
                     continue
 
-                cv = cross_validation.KFold(len(retrieval_results), n_folds=numfolds, shuffle=False, random_state=None)
+                cv = model_selection.KFold( n_splits=numfolds, shuffle=False, random_state=None)
                 cv=[k for k in cv] # run the generator
                 traincv, testcv=cv[split_fold]
                 if isinstance(retrieval_results, ResultIncrementalReader):
@@ -343,7 +344,7 @@ class WeightTrainer(object):
                          "doc_method":method,
                          "az":result["az"],
                          "cfc":result["cfc"],
-                         "match_guid":result["match_guid"]}
+                         "match_guids":result["match_guids"]}
 
             if not retrieved or len(retrieved)==0:    # the query was empty or something
 ##                print "Error: ", doc_method , qmethod,retrieval_models[method].indexDir

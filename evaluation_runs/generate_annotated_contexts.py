@@ -6,17 +6,18 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
+from __future__ import absolute_import
 import os, json
 
-##import minerva.proc.context_extract as context_extract
-from minerva.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST
+##import proc.context_extract as context_extract
+from proc.nlp_functions import AZ_ZONES_LIST, CORESC_LIST
 
-import minerva.db.corpora as cp
-from minerva.evaluation.athar_corpus import AtharQueryGenerator
+import db.corpora as cp
+from evaluation.athar_corpus import AtharQueryGenerator
 
-##from minerva.evaluation.experiment import Experiment
-from minerva.evaluation.context_generation_pipeline import ContextGenerationPipeline
-from minerva.evaluation.query_generation import QueryGenerator
+##from evaluation.experiment import Experiment
+from evaluation.context_generation_pipeline import ContextGenerationPipeline
+from evaluation.query_generation import QueryGenerator
 
 # BOW files to prebuild for generating document representation.
 prebuild_bows={
@@ -211,7 +212,7 @@ experiment={
 options={
     "run_prebuild_bows":False,
     "overwrite_existing_bows":False,
-    "rebuild_indexes":False,
+    "build_indexes":False,
     "recompute_queries":False,
     "run_precompute_retrieval":False, # only applies if type == "train_weights"
     "override_folds":4,
@@ -227,7 +228,7 @@ def main():
 
     cp.Corpus.connectCorpus(drive+":\\nlp\\phd\\aac")
     generator=AtharQueryGenerator(drive+r":\NLP\PhD\citation_context\doc_dict.json", reassign_guids=True)
-    experiment["test_files"]=generator.docs.keys()
+    experiment["test_files"]=list(generator.docs.keys())
 
 ##    exp=Experiment(experiment, options)
     exp=ContextGenerationPipeline(experiment,options)

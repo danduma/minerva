@@ -9,6 +9,8 @@
 # Licence:	 <your licence>
 #-------------------------------------------------------------------------------
 
+from __future__ import absolute_import
+from __future__ import print_function
 import codecs
 import re
 import os, glob
@@ -36,12 +38,12 @@ def exploreBobCorpus(filename):
 
 		if match:
 			fileno=match.group(2).replace("\n","")
-			print fileno
+			print(fileno)
 			count+=1
 
 
 	f.close()
-	print "Total files:", count
+	print("Total files:", count)
 
 
 def listvalues(filename,regex):
@@ -55,7 +57,7 @@ def listvalues(filename,regex):
 
 		if match:
 			fileno=match.group(2).replace("\n","")
-			print fileno
+			print(fileno)
 
 
 	f.close()
@@ -76,7 +78,7 @@ def listuniquevalues(filename,regex):
 	f.close()
 
 	for u in uniques:
-		print u,uniques[u]
+		print(u,uniques[u])
 
 def splitMassiveBobIntoFiles(filename, subdir):
 	"""
@@ -108,7 +110,7 @@ def splitMassiveBobIntoFiles(filename, subdir):
 			else:
 				fileno="NO_MATCH_"+str(count)
 
-			print "Saving file #",count, " - ", fileno
+			print("Saving file #",count, " - ", fileno)
 			try:
 				f2=codecs.open(dir+"\\"+fileno+".xml","wb","utf-8", errors="ignore")
 				f2.write(newdoc)
@@ -120,7 +122,7 @@ def splitMassiveBobIntoFiles(filename, subdir):
 				f2.close()
 
 			newdoc=""
- 			count+=1
+			count+=1
 
 		else:
 			newdoc+=line
@@ -176,11 +178,11 @@ def fixBobXML(infile,outfile):
 			match2=re.search(r"\.",header[start+1:])
 			if match2:
 				actual_header=cleanxml(header[start:match2.end()+1])
-				print "actual header", actual_header
+				print("actual header", actual_header)
 				para_text=header[match2.end()+1:]
 				glob_s_id+=1
 				para_text="<p><s id='s-ins-"+str(glob_s_id)+"'>"+para_text+"</s></p>"
-				print "para text",para_text
+				print("para text",para_text)
 				fulltext=fulltext[:header_match.end()]+actual_header+"</header>"+para_text+fulltext[header_match.end(0):]
 		elif re.match(r"\d\.?\s*.*",header):
 			# 'tis a footnote, dammit! Fix it!
@@ -195,13 +197,13 @@ def fixBobXML(infile,outfile):
 def fixFullBobCorpusXml(file_mask):
 	"""
 	"""
-	print "Fixing bob corpus..."
+	print("Fixing bob corpus...")
 	working_dir=os.path.dirname(file_mask)+"\\"
 
 	ALL_DOCS=[os.path.basename(a).lower() for a in glob.glob(file_mask)]
 
 	for fn in ALL_DOCS:
-		print "Fixing ", fn
+		print("Fixing ", fn)
 		fixBobXML(working_dir+fn,working_dir+fn.replace(".bak",".xml"))
 
 

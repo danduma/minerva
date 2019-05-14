@@ -9,13 +9,15 @@
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from minerva.scidoc.xmlformats.export_scixml import saveSciXML
-from minerva.scidoc.xmlformats.export_sapientaxml import saveSapientaXML
-from minerva.scidoc.xmlformats.export_jats import saveJATS_XML
+from __future__ import absolute_import
+from __future__ import print_function
+from scidoc.xmlformats.export_scixml import saveSciXML
+from scidoc.xmlformats.export_sapientaxml import saveSapientaXML
+from scidoc.xmlformats.export_jats import saveJATS_XML
 
-from minerva.scidoc import SciDoc
+from scidoc import SciDoc
 
-from minerva.proc.general_utils import *
+from proc.general_utils import *
 import glob, os
 
 def batchConvertSciDocsDirToXML(path,output_dir,output_format="SciXML"):
@@ -41,7 +43,7 @@ def batchConvertSciDocsToXML(file_list,output_dir,output_format="SciXML"):
 
     output_dir=ensureTrailingBackslash(output_dir)
     for filename in file_list:
-        print "Converting",filename
+        print("Converting",filename)
         doc=SciDoc(filename)
         fn=os.path.basename(filename)
         save_function(doc,output_dir+os.path.splitext(fn)[0]+".xml")

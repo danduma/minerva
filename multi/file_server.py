@@ -7,6 +7,7 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 from flask import Flask, request, send_from_directory, send_file
 from flask.ext.compress import Compress
 import logging, os

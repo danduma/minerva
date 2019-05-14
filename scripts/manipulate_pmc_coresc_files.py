@@ -5,6 +5,7 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
 import glob, os
 
 def rename(dir, pattern, titlePattern):

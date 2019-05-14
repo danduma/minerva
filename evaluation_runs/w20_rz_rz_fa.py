@@ -10,6 +10,7 @@
 #-------------------------------------------------------------------------------
 # including AZ
 
+from __future__ import absolute_import
 import context_extract
 from code.az.az_cfc_classification import AZ_ZONES_LIST, CORESC_LIST, RANDOM_ZONES_7,RANDOM_ZONES_11
 

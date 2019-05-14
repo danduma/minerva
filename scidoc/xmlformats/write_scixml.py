@@ -5,10 +5,13 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import re, codecs
 
-from minerva.proc.general_utils import safe_unicode
-from base_classes import BaseSciDocXMLReader,BaseSciDocXMLWriter
+from proc.general_utils import safe_unicode
+from .base_classes import BaseSciDocXMLReader,BaseSciDocXMLWriter
+import six
 
 def escapeText(text):
     """
@@ -34,7 +37,7 @@ class SciXMLWriter(BaseSciDocXMLWriter):
         """
         lines=[]
         lines.append("<METADATA>")
-        if doc["metadata"].has_key("fileno"):
+        if "fileno" in doc["metadata"]:
             lines.append("<FILENO>"+escapeText(doc.metadata["fileno"])+"</FILENO>\n")
 
         lines.append("<TITLE>"+escapeText(doc.metadata["title"])+"</TITLE>\n")
@@ -68,7 +71,7 @@ class SciXMLWriter(BaseSciDocXMLWriter):
         lines.append(u"<YEAR>"+doc.metadata["year"]+"</YEAR>")
         lines.append(u"</APPEARED>")
 
-        if doc["metadata"].has_key("revisionhistory"):
+        if "revisionhistory" in doc["metadata"]:
             lines.append(u"<REVISIONHISTORY>"+escapeText(doc.metadata["revisionhistory"])+u"</REVISIONHISTORY>\n")
         lines.append(u"</METADATA>")
         return lines
@@ -182,7 +185,7 @@ class SciXMLWriter(BaseSciDocXMLWriter):
         """
         lines=[]
         lines.append(u"<AUTHOR>")
-        if isinstance(author,basestring):
+        if isinstance(author,six.string_types):
             lines.append(escapeText(author))
         elif isinstance(author,dict):
             lines.append(escapeText(author.get("given","")))
@@ -268,16 +271,16 @@ def basicTest():
     """
     """
 ##    from azscixml import loadAZSciXML
-    from minerva.scidoc import SciDoc
+    from scidoc import SciDoc
 
 ##    doc=loadAZSciXML(r"C:\NLP\PhD\bob\fileDB\jsonDocs\a00-1001.json")
     saveSciXML(doc,r"C:\NLP\PhD\bob\output\\"+doc["metadata"]["filename"]+".xml")
     pass
 
 def main():
-##    import minerva.db.corpora as cp
+##    import db.corpora as cp
 ##    cp.useElasticCorpus()
-    print escapeText("balsdfbla & < >")
+    print(escapeText("balsdfbla & < >"))
     pass
 
 

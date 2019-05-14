@@ -5,9 +5,11 @@
 
 # For license information, see LICENSE.TXT
 
-import minerva.db.corpora as cp
-from minerva.scidoc.scidoc import SciDoc
-from minerva.ml.document_features import DocumentFeaturesAnnotator, en_nlp
+from __future__ import absolute_import
+from __future__ import print_function
+import db.corpora as cp
+from scidoc.scidoc import SciDoc
+from ml.document_features import DocumentFeaturesAnnotator, en_nlp
 
 import spacy
 import json
@@ -35,7 +37,7 @@ def annotate_one(guid):
     def cache_save(cached_filename, doc):
         """
         """
-        json.dump(doc.data,file(cached_filename, "w"))
+        json.dump(doc.data,open(cached_filename, "w"))
 
     annotator=DocumentFeaturesAnnotator()
 ##    doc=cp.Corpus.loadSciDoc(guid)
@@ -44,24 +46,18 @@ def annotate_one(guid):
         try:
             doc=SciDoc(cached_filename)
         except:
-            print("Corrupt file: %s" % cached_filename)
+            print(("Corrupt file: %s" % cached_filename))
             doc=cp.Corpus.loadSciDoc(guid)
             cache_save(cached_filename, doc)
     else:
         doc=cp.Corpus.loadSciDoc(guid)
         cache_save(cached_filename, doc)
 
-    annotator.annotate(doc)
+    annotator.annotate_scidoc(doc)
 
 ##    parse=en_nlp(u"")
 ##    parse.from_bytes(base64.decodestring(doc.allsentences[0]["parse"]))
-    print "done"
-
-
-def annotateSciDocs(doc_list):
-    """
-    """
-    annotator=DocumentFeaturesAnnotator()
+    print("done")
 
 
 def main():

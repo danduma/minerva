@@ -7,20 +7,22 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import sys, os, datetime, fnmatch, random
 import logging
 
-from minerva.proc.general_utils import (ensureTrailingBackslash, loadFileList,
+from proc.general_utils import (ensureTrailingBackslash, loadFileList,
     saveFileList, ensureDirExists)
-from minerva.proc.results_logging import ProgressIndicator
+from proc.results_logging import ProgressIndicator
 
-import minerva.db.corpora as cp
+import db.corpora as cp
 
-from importing_functions import (convertXMLAndAddToCorpus, updatePaperInCollectionReferences)
-from minerva.multi.tasks import (importXMLTask, updateReferencesTask)
+from .importing_functions import (convertXMLAndAddToCorpus, updatePaperInCollectionReferences)
+from multi.tasks import (importXMLTask, updateReferencesTask)
+from six.moves import range
 
 FILES_TO_PROCESS_FROM=0
-FILES_TO_PROCESS_TO=sys.maxint
+FILES_TO_PROCESS_TO=sys.maxsize
 
 
 class CorpusImporter(object):
@@ -146,7 +148,7 @@ class CorpusImporter(object):
         """
         ALL_FILES=[]
 
-        from minerva.proc.results_logging import ProgressIndicator
+        from proc.results_logging import ProgressIndicator
         progress=ProgressIndicator(True, 25000, False)
 
         for dirpath, dirnames, filenames in os.walk(start_dir):
@@ -185,7 +187,7 @@ class CorpusImporter(object):
 
         """
         try:
-            all_files_file=file(os.path.join(cp.Corpus.paths.fileDB,"ALL_INPUT_FILES.txt"), "r")
+            all_files_file=open(os.path.join(cp.Corpus.paths.fileDB,"ALL_INPUT_FILES.txt"), "r")
             all_files=all_files_file.readlines()
         except:
             cp.Corpus.createDefaultDirs()
@@ -206,7 +208,8 @@ class CorpusImporter(object):
             the import.
         """
         if import_options.get("convert_and_import_docs",True) and FILES_TO_PROCESS_FROM == 0:
-            imported_guids=cp.Corpus.listPapers("metadata.collection_id:\"%s\"" % self.collection_id)
+
+            imported_guids=cp.Corpus.listPapers([{"match": {"metadata.collection_id": self.collection_id}}])
             resolvable_bags=["resolvable_"+id for id in imported_guids]
 ##            print("Imported papers:",imported_guids)
             cp.Corpus.bulkDelete(imported_guids, "scidocs")
@@ -242,7 +245,7 @@ class CorpusImporter(object):
 ##            ALL_GUIDS=cp.Corpus.SQLQuery("SELECT guid FROM papers where metadata.original_citation_style = \"AFI\" or metadata.original_citation_style = null or metadata.pmc_id <> null limit 20000000")
 ##            ALL_GUIDS=cp.Corpus.SQLQuery("SELECT guid FROM papers where metadata.original_citation_style = \"AFI\" or metadata.original_citation_style = null or metadata.pmc_id <> null limit 200")
 
-            ALL_GUIDS=cp.Corpus.listPapers("metadata.collection_id:\"%s\"" % self.collection_id)
+            ALL_GUIDS=cp.Corpus.listPapers({"match": {"metadata.collection_id": self.collection_id}})
 ##            assert False
             self.updateInCollectionReferences(ALL_GUIDS, import_options)
 

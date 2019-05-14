@@ -9,14 +9,15 @@
 ##from base_corpus import BaseCorpus
 
 ##global Corpus
-from elastic_corpus import ElasticCorpus
+from __future__ import absolute_import
+from db.elastic_corpus import ElasticCorpus
 Corpus=ElasticCorpus()
 
 def useLocalCorpus():
     """
     """
     global Corpus
-    from local_corpus import LocalCorpus
+    from .local_corpus import LocalCorpus
     Corpus=LocalCorpus()
 
 def useElasticCorpus():

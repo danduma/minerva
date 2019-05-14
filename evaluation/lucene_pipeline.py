@@ -7,15 +7,16 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import glob, math, os, re, sys, gc, random, json
 from copy import deepcopy
 from collections import defaultdict, namedtuple, OrderedDict
 
 import lucene
-from minerva.evaluation.lucene_retrieval import (LuceneRetrieval,
+from evaluation.lucene_retrieval import (LuceneRetrieval,
 LuceneRetrievalBoost,precomputedExplainRetrieval, MAX_RESULTS_RECALL)
 
-from base_pipeline import BaseTestingPipeline
+from .base_pipeline import BaseTestingPipeline
 
 class LuceneTestingPipeline(BaseTestingPipeline):
     """

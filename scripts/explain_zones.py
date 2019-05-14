@@ -4,13 +4,15 @@
 # Author: Daniel Duma <danielduma@gmail.com>
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import os, re
 
-import minerva.db.corpora as cp
-from minerva.proc.general_utils import writeFileText
-from minerva.proc.nlp_functions import tokenizeText
-from minerva.scidoc.render_content import SciDocRenderer
-from minerva.scidoc.reference_formatting import formatCitation
+import db.corpora as cp
+from proc.general_utils import writeFileText
+from proc.nlp_functions import tokenizeText
+from scidoc.render_content import SciDocRenderer
+from scidoc.reference_formatting import formatCitation
 
 from collections import defaultdict
 
@@ -196,7 +198,7 @@ def explainAnchorTextZoning(guid, max_inlinks=10, use_full_text=False):
     for index, link in enumerate(meta["inlinks"]):
         if index == max_inlinks:
             break
-        print("Processing anchor text from %s" % link)
+        print(("Processing anchor text from %s" % link))
         doc=cp.Corpus.loadSciDoc(link)
 
         if not use_full_text:
@@ -219,7 +221,7 @@ def connectToCorpus():
     """
     """
     cp.useElasticCorpus()
-    from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    from multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.Corpus.connectCorpus(r"g:\nlp\phd\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 
 def main():

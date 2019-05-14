@@ -5,6 +5,8 @@
 
 # For license information, see LICENSE.TXT
 
+from __future__ import absolute_import
+from __future__ import print_function
 import os, glob, shutil
 
 def loadRenameList(filename):
@@ -32,13 +34,13 @@ def renameAZFilesToACL(dir):
 	for az in AZdocs:
 		num=os.path.basename(az).lower().replace(".annot","")
 		newnum=renamelist[num]
-		print "copy ",az,dir+newnum+".xml"
-		print "copy ",az.replace(".annot",".txt"),dir+newnum+".txt"
-		shutil.copyfile()
+		print("copy ",az,dir+newnum+".xml")
+		print("copy ",az.replace(".annot",".txt"),dir+newnum+".txt")
+		# shutil.copyfile()
 
 def main():
 	renameAZFilesToACL("C:\NLP\PhD\RAZ-master\input\\")
 	pass
 
 if __name__ == '__main__':
-    main()
+	main()

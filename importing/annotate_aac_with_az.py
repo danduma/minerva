@@ -7,27 +7,29 @@
 # For license information, see LICENSE.TXT
 from __future__ import print_function
 
+from __future__ import absolute_import
 import json, os, sys
 
-import minerva.db.corpora as cp
-##from minerva.scidoc.xmlformats.read_paperxml import PaperXMLReader
-from minerva.scidoc.xmlformats.write_azprime_scixml import AZPrimeWriter
-##from minerva.scidoc.xmlformats.read_scixml import SciXMLReader
+import db.corpora as cp
+##from scidoc.xmlformats.read_paperxml import PaperXMLReader
+from scidoc.xmlformats.write_azprime_scixml import AZPrimeWriter
+##from scidoc.xmlformats.read_scixml import SciXMLReader
 
-from corpus_import import CorpusImporter
-import corpus_import
+from .corpus_import import CorpusImporter
+from . import corpus_import
 
-from aac_import import AANReferenceMatcher, getACL_corpus_id, import_aac_corpus
-from minerva.proc.general_utils import writeFileText
-from minerva.scidoc.render_content import SciDocRenderer
+from .aac_import import AANReferenceMatcher, getACL_corpus_id, import_aac_corpus
+from proc.general_utils import writeFileText
+from scidoc.render_content import SciDocRenderer
 
-from minerva.proc.results_logging import ProgressIndicator
+from proc.results_logging import ProgressIndicator
+from six.moves import range
 
 
 def connectToCorpus():
     """
     """
-    from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    from multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
 ##    cp.useLocalCorpus()
     cp.useElasticCorpus()
     cp.Corpus.connectCorpus("g:\\nlp\\phd\\aac", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
@@ -37,7 +39,7 @@ def exportSciXML():
     """
         Exports all scidocs with the selected collection_id to AZPrime XML in the output dir of the corpus
     """
-    papers=cp.Corpus.listPapers(max_results=sys.maxint)
+    papers=cp.Corpus.listPapers(max_results=sys.maxsize)
 
     writer=AZPrimeWriter()
     writer.save_pos_tags=True
@@ -57,11 +59,11 @@ def ownAZannot(export_annots=False):
     """
         Annotates each sentence using own classifier
     """
-    from minerva.az.az_cfc_classification import AZannotator
+    from az.az_cfc_classification import AZannotator
 
     annot=AZannotator("trained_az_classifier.pickle")
 
-    papers=cp.Corpus.listPapers(max_results=sys.maxint)
+    papers=cp.Corpus.listPapers(max_results=sys.maxsize)
 
     writer=AZPrimeWriter()
     writer.save_pos_tags=True
@@ -101,7 +103,7 @@ def loadAZLabels(annot_dir=""):
         if os.path.exists(filename):
 
             doc=cp.Corpus.loadSciDoc(guid)
-            f=file(filename, "r")
+            f=open(filename, "r")
             lines=f.readlines()
             allsentences=[s for s in doc.allsentences if s.get("type","") == "s"]
 

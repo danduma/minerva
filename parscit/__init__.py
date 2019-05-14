@@ -5,6 +5,7 @@
 
 # For license information, see LICENSE.TXT
 
-from server import startStandaloneServer
-from client import ParsCitClient
-from read_parscit import ParsCitReader
+from __future__ import absolute_import
+from .server import startStandaloneServer
+from .client import ParsCitClient
+from .read_parscit import ParsCitReader

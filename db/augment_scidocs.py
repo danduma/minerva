@@ -6,46 +6,51 @@
 # For license information, see LICENSE.TXT
 
 
-from general_utils import *
-from scidoc import SciDoc
+from __future__ import absolute_import
+from __future__ import print_function
 
-import corpora as cp
+import db.corpora as cp
+from proc.general_utils import *
 
 
 def augmentSciDocWithAZ(guid):
     """
         Annotates a single file in the corpus with AZ and CFC
     """
-    if len(cp.Corpus.annotators)==0:
+    if len(cp.Corpus.annotators) == 0:
         cp.Corpus.loadAnnotators()
-    doc=cp.Corpus.loadSciDoc(guid)
+    doc = cp.Corpus.loadSciDoc(guid)
     cp.Corpus.annotateDoc(doc)
     cp.Corpus.saveSciDoc(doc)
+
 
 def augmentAllSciDocsWithAZ():
     """
         Goes through the files in the cp.Corpus, annotating all of them with AZ and CFC
     """
-    guids=cp.Corpus.listPapers()
+    guids = cp.Corpus.listPapers()
     for guid in guids:
-        print guid
+        print(guid)
         augmentSciDocWithAZ(guid)
 
-def augmentSciDocWithSapienta(doc,sapienta_filename):
+
+def augmentSciDocWithSapienta(doc, sapienta_filename):
     """
         Read Sapienta XML output file, augment a SciDoc with the CoreSC data
         just by matching the XML strings
     """
-    rxcmp=re.compile(r'<s\ssid="(\d+)"><CoreSc1\sadvantage="(.*?)"\sconceptID="(.*?)"\snovelty="(.*?)"\stype="(.*?)"',re.IGNORECASE)
-    f=codecs.open(sapienta_filename,"r",errors="ignore")
-    text=f.read()
+    rxcmp = re.compile(r'<s\ssid="(\d+)"><CoreSc1\sadvantage="(.*?)"\sconceptID="(.*?)"\snovelty="(.*?)"\stype="(.*?)"',
+                       re.IGNORECASE)
+    f = codecs.open(sapienta_filename, "r", errors="ignore")
+    text = f.read()
     for match in rxcmp.finditer(text):
-        s_id="s"+str(match.group(1))
+        s_id = "s" + str(match.group(1))
         if s_id in doc.element_by_id:
-            s=doc.element_by_id[s_id]
-            s["csc_type"]=match.group(5)
-            s["csc_adv"]="" if match.group(2)=="None" else match.group(2)
-            s["csc_nov"]="" if match.group(4)=="None" else match.group(4)
+            s = doc.element_by_id[s_id]
+            s["csc_type"] = match.group(5)
+            s["csc_adv"] = "" if match.group(2) == "None" else match.group(2)
+            s["csc_nov"] = "" if match.group(4) == "None" else match.group(4)
+
 
 def augmentAllSciDocsWithSapienta(sapienta_output_dir):
     """
@@ -53,24 +58,25 @@ def augmentAllSciDocsWithSapienta(sapienta_output_dir):
         with GUID+"_annotated.xml" in the sapienta_output_dir then it calls
         augmentSciDocWithSapienta()
     """
-    sapienta_output_dir=ensureTrailingBackslash(sapienta_output_dir)
-    guids=cp.Corpus.listPapers()
+    sapienta_output_dir = ensureTrailingBackslash(sapienta_output_dir)
+    guids = cp.Corpus.listPapers()
     for guid in guids:
-        print guid
-        doc=cp.Corpus.loadSciDoc(guid)
-        filename=doc.metadata["filename"]
-        sapienta_output_dir=ensureTrailingBackslash(sapienta_output_dir)
-        sapienta_filename=sapienta_output_dir+getFileName(filename)+"_annotated.xml"
+        print(guid)
+        doc = cp.Corpus.loadSciDoc(guid)
+        filename = doc.metadata["filename"]
+        sapienta_output_dir = ensureTrailingBackslash(sapienta_output_dir)
+        sapienta_filename = sapienta_output_dir + getFileName(filename) + "_annotated.xml"
 
         if exists(sapienta_filename):
-            augmentSciDocWithSapienta(doc,sapienta_filename)
+            augmentSciDocWithSapienta(doc, sapienta_filename)
             cp.Corpus.saveSciDoc(doc)
     pass
 
+
 def main():
-##    augmentAllSciDocsWithSapienta(r"C:\NLP\PhD\bob\daniel_converted_out")
-##    augmentAllSciDocsWithAZ()
-##    augmentSciDocWithAZ("P95-1026")
+    ##    augmentAllSciDocsWithSapienta(r"C:\NLP\PhD\bob\daniel_converted_out")
+    ##    augmentAllSciDocsWithAZ()
+    ##    augmentSciDocWithAZ("P95-1026")
 
     pass
 

@@ -1,4 +1,4 @@
-# Automate the tagging of each sentence in each document with its AZ/CoreSC
+# Fix broken references in PMC papers
 #
 # Copyright (C) 2015 Daniel Duma
 # Author: Daniel Duma <danielduma@gmail.com>
@@ -6,9 +6,11 @@
 # For license information, see LICENSE.TXT
 
 
-from minerva.proc.general_utils import loadFileText, writeFileText
+from __future__ import absolute_import
+from __future__ import print_function
+from proc.general_utils import loadFileText, writeFileText
 import re, os, fnmatch, json
-import minerva.db.corpora as cp
+import db.corpora as cp
 
 
 def selectRefListSection(original_text, pmc_file, pmc_id):
@@ -17,12 +19,12 @@ def selectRefListSection(original_text, pmc_file, pmc_id):
     """
     refs_start=re.search(r"<ref-list.*?>", original_text, flags=re.IGNORECASE)
     if not refs_start:
-        print("File %s (pmcid: %s) has no <ref-list> section" % (pmc_file, pmc_id))
+        print(("File %s (pmcid: %s) has no <ref-list> section" % (pmc_file, pmc_id)))
         raise ValueError
 
     refs_end=re.search("</ref-list>", original_text[refs_start.end():], re.IGNORECASE)
     if not refs_end:
-        print("File %s (pmcid: %s) no </ref-list> tag" % (pmc_file, pmc_id))
+        print(("File %s (pmcid: %s) no </ref-list> tag" % (pmc_file, pmc_id)))
         raise ValueError
 
     return refs_start.end(), refs_start.end()+refs_end.start()
@@ -60,7 +62,7 @@ def getPaperPMCID(filename):
     original_text=loadFileText(filename)
     pmcid=re.search(r"<article-id pub-id-type=\"(?:pmcid|pmc)\">(.*?)</article-id>", original_text, re.IGNORECASE)
     if not pmcid:
-        print("File %s has no original pmcid " % filename)
+        print(("File %s has no original pmcid " % filename))
         return None, None
     return pmcid.group(1), original_text
 
@@ -89,10 +91,10 @@ def listAllFilesWithID(annotated_path_mask):
                     fn=os.path.join(dirpath,filename)
                     id=getFilePMCID(filename)
                     if not id:
-                        print("Can't get pmcid from file name: %s" % filename)
+                        print(("Can't get pmcid from file name: %s" % filename))
                     annotated_files[id]=fn
 
-    print "Total files:",len(annotated_files)
+    print("Total files:",len(annotated_files))
     return annotated_files
 
 
@@ -105,9 +107,9 @@ def fixAllPapers(annotated_path_mask, pmc_path_mask):
     ids_file=os.path.join(annotated_path_dir,"all_files.json")
     if not os.path.exists(ids_file):
         annotated_files=listAllFilesWithID(annotated_path_mask)
-        json.dump(annotated_files,file(ids_file, "w"))
+        json.dump(annotated_files,open(ids_file, "w"))
     else:
-        annotated_files=json.load(file(ids_file, "r"))
+        annotated_files=json.load(open(ids_file, "r"))
 
 
 
@@ -129,7 +131,7 @@ def fixAllPapers(annotated_path_mask, pmc_path_mask):
                 pmc_id, original_text=getPaperPMCID(fn)
                 if pmc_id:
                     if pmc_id in annotated_files:
-                        print fn
+                        print(fn)
                         fixPaperReferences(annotated_files[pmc_id], fn, pmc_id, original_text)
 ##                        return
 

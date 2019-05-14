@@ -5,8 +5,10 @@
 
 # For license information, see LICENSE.TXT
 
-from BeautifulSoup import BeautifulStoneSoup
-from minerva.scidoc.citation_utils import guessNamesOfPlainTextAuthor
+from __future__ import absolute_import
+from __future__ import print_function
+from bs4 import BeautifulSoup
+from scidoc.citation_utils import guessNamesOfPlainTextAuthor
 import re
 
 class ParsCitReader:
@@ -107,7 +109,7 @@ class ParsCitReader:
             This is meant to load the full output from ParsCit, whichever it may be.
             Currently only reads references.
         """
-        soup = BeautifulStoneSoup(xml_string, convertEntities=BeautifulStoneSoup.HTML_ENTITIES)
+        soup = BeautifulSoup(xml_string, "xml")
 ##        print(xml_string)
         references=self.readReferences(soup)
         # TODO implement reading the rest of the ParsCit/ParsHed tagging
@@ -120,7 +122,7 @@ def main():
     reader=ParsCitReader()
     loaded=reader.parseParsCitXML(loadFileText(r"G:\NLP\ParsCit-win\example.xml"))
     for ref in loaded:
-        print formatReference(ref)
+        print(formatReference(ref))
     pass
 
 if __name__ == '__main__':

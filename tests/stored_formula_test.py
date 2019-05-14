@@ -5,21 +5,23 @@
 
 # For license information, see LICENSE.TXT
 
-import minerva.db.corpora as cp
+from __future__ import absolute_import
+from __future__ import print_function
+import db.corpora as cp
 
 def connectToElastic():
     """
         Does the basics of connecting to the ES endpoint
     """
     cp.useElasticCorpus()
-    from minerva.multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
+    from multi.config import MINERVA_ELASTICSEARCH_ENDPOINT
     cp.Corpus.connectCorpus(r"g:\nlp\phd\pmc_coresc", endpoint=MINERVA_ELASTICSEARCH_ENDPOINT)
 
 def testExplanation():
     """
     """
-    from minerva.proc.query_extraction import WindowQueryExtractor
-    from minerva.retrieval.elastic_retrieval import ElasticRetrieval
+    from proc.query_extraction import WindowQueryExtractor
+    from retrieval.elastic_retrieval import ElasticRetrieval
 
     ext=WindowQueryExtractor()
     er=ElasticRetrieval("idx_az_annotated_pmc_2013_1","",None)
@@ -79,12 +81,12 @@ def testExplanation():
 ##    ES_TYPE_DOC="paper"
 
     formula=er.formulaFromExplanation(q, doc_ids[0])
-    print(formula.formula)
+    print((formula.formula))
 ##    print(formula.computeScore(None, None, None))
-    print(formula.computeScore(None, None, {"susceptibility":20}))
+    print((formula.computeScore(None, None, {"susceptibility":20})))
 
-    from minerva.evaluation.best_keyword_selection import getFormulaTermWeights
-    print(get({"match_guid":doc_ids[0],"formulas":[{"guid":doc_ids[0],"formula":formula.formula}]}))
+    # from evaluation.best_keyword_selection import getFormulaTermWeights
+    # print((get({"match_guids":doc_ids[0],"formulas":[{"guid":doc_ids[0],"formula":formula.formula}]})))
 
 
 def main():

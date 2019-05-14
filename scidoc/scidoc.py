@@ -8,13 +8,20 @@
 
 from __future__ import print_function
 
+from __future__ import absolute_import
 import json, sys, re
 from copy import deepcopy
-from citation_utils import CITATION_FORM
 
-SENTENCE_TYPES=["s","fig-caption","s-li"]
-PARAGRAPH_TYPES=["p","footnote","p-li"]
-SECTION_TYPES=["section"]
+from proc.nlp_functions import rx_word_boundaries, replaceXMLCitationsWithUnderscoreCitations, AUTHOR_MARKER, \
+    CIT_MARKER, cleanXML
+from scidoc.citation_utils import CITATION_FORM
+from scidoc.reference_formatting import formatAPACitationAuthors, formatReference
+import six
+
+SENTENCE_TYPES = ["s", "fig-caption", "s-li"]
+PARAGRAPH_TYPES = ["p", "footnote", "p-li"]
+SECTION_TYPES = ["section"]
+
 
 class SciDoc(object):
     """
@@ -40,6 +47,7 @@ class SciDoc(object):
                 - bullet point lists & ordered lists: sentences, paragraphs?
 
     """
+
     def __init__(self, data=None, ignore_errors=None):
         """
             :param data: either a string (file name) or a dict from which to load the
@@ -48,29 +56,30 @@ class SciDoc(object):
 
         """
         # the actual contents, as serialized to JSON
-        self.data={
-            "content":[], # all inline elements
-            "references":[], # papers cited by this paper: references at the end of the document
-            "citations":[], # citations to these references inside the paper
-            "inline_elements":[],
-            "metadata":{"filename":"",
-                        "guid":"",
-                        "corpus_id":"",
-                        "doi":"",
-                        "authors":[],
-                        "surnames":[],
-                        "year":"",
-                        "title":""}}
+        self.data = {
+            "content": [],  # all inline elements
+            "references": [],  # papers cited by this paper: references at the end of the document
+            "citations": [],  # citations to these references inside the paper
+            "inline_elements": [],
+            "metadata": {"filename": "",
+                         "guid": "",
+                         "corpus_id": "",
+                         "doi": "",
+                         "authors": [],
+                         "surnames": [],
+                         "year": "",
+                         "title": ""}}
 
         # global variables to keep track of importing/exporting
-        self.glob={}
-        self.ignore_errors=ignore_errors if ignore_errors else []
+        self.glob = {}
+        self.ignore_errors = ignore_errors if ignore_errors else []
+        self.known_author_strings = None
 
         if data:
-            if isinstance(data,basestring):
+            if isinstance(data, six.string_types):
                 self.loadFromFile(data)
-            elif isinstance(data,dict) and "content" in data and "references" in data and "metadata" in data:
-                self.data=data
+            elif isinstance(data, dict) and "content" in data and "references" in data and "metadata" in data:
+                self.data = data
 
         self.updateContentLists()
 
@@ -86,7 +95,7 @@ class SciDoc(object):
     def loadExistingMetadata(self, metadata):
         """
         """
-        self.data["metadata"]=metadata
+        self.data["metadata"] = metadata
         self.updateContentLists()
 
     def processSingleElement(self, element):
@@ -100,7 +109,7 @@ class SciDoc(object):
             self.allparagraphs.append(element)
         if self.isSection(element):
             self.allsections.append(element)
-        self.element_by_id[element["id"]]=element
+        self.element_by_id[element["id"]] = element
 
     def updateContentLists(self):
         """
@@ -108,26 +117,26 @@ class SciDoc(object):
         """
         # lists of all sentences, etlc. for fast access to contents by
         # index or for iteration
-        self.allsentences=[]
-        self.allparagraphs=[]
-        self.allsections=[]
-        self.element_by_id={}
-        self.abstract={}
-        self.citation_by_id={}
-        self.reference_by_id={}
-        self.ignore_errors=["error_match_citation_with_reference"]
+        self.allsentences = []
+        self.allparagraphs = []
+        self.allsections = []
+        self.element_by_id = {}
+        self.abstract = {}
+        self.citation_by_id = {}
+        self.reference_by_id = {}
+        self.ignore_errors = ["error_match_citation_with_reference"]
 
         for element in self.data["content"]:
             self.processSingleElement(element)
 
         # try to find abstract section
         for section in self.allsections:
-            if section["header"].lower()=="abstract":
-                self.abstract=section
+            if section["header"].lower() == "abstract":
+                self.abstract = section
 
         # if unsuccessful, set the first section to be the abstract
         if len(self.allsections) > 0:
-            self.abstract=self.allsections[0]
+            self.abstract = self.allsections[0]
 
         self.updateReferences()
 
@@ -152,28 +161,27 @@ class SciDoc(object):
             Updates the dictionary of quick access to references with the data
             and updates the ["citations"] links for each reference
         """
-        self.reference_by_id={}
-        self.citation_by_id={}
+        self.reference_by_id = {}
+        self.citation_by_id = {}
 
         for ref in self.data["references"]:
             if self.isReference(ref):
-                self.reference_by_id[ref["id"]]=ref
+                self.reference_by_id[ref["id"]] = ref
 
         for cit in self.data["citations"]:
-            self.citation_by_id[cit["id"]]=cit
+            self.citation_by_id[cit["id"]] = cit
             # update citations link for the reference
             if cit["ref_id"]:
                 try:
-                    ref_citations=self.reference_by_id[cit["ref_id"]]["citations"]
+                    ref_citations = self.reference_by_id[cit["ref_id"]]["citations"]
                     if cit["id"] not in ref_citations:
                         ref_citations.append(cit["id"])
                 except KeyError as e:
                     if "error_match_citation_with_reference" in self.ignore_errors:
-                        print("Cannot match citation %s with reference %s, ignoring." % (cit["id"], cit["ref_id"]))
+                        # print("Cannot match citation %s with reference %s, ignoring." % (cit["id"], cit["ref_id"]))
                         continue
                     else:
                         raise KeyError("Cannot match citation with reference")
-
 
     def isSentence(self, element):
         """
@@ -202,7 +210,6 @@ class SciDoc(object):
         """
         return element["type"] == "cit"
 
-
     def getElementIndex(self, element):
         """
         """
@@ -215,16 +222,16 @@ class SciDoc(object):
         else:
             return None
 
-    def addElement(self,element):
+    def addElement(self, element):
         """
             Handy for adding an element without worrying about IDs and updating dicts
         """
         if self.isSentence(element):
-            element["id"]="s"+str(len(self.allsentences))
+            element["id"] = "s" + str(len(self.allsentences))
         if self.isParagraph(element):
-            element["id"]="p"+str(len(self.allparagraphs))
+            element["id"] = "p" + str(len(self.allparagraphs))
         if self.isSection(element):
-            element["id"]="sect"+str(len(self.allsections))
+            element["id"] = "sect" + str(len(self.allsections))
 
         self.data["content"].append(element)
         # add element to parent's list of content
@@ -242,26 +249,26 @@ class SciDoc(object):
             :param header: heading text of section
         """
         if parent is None:
-            parent="root"
-        newElement={"type":"section", "header":header, "content":[], "parent":parent}
+            parent = "root"
+        newElement = {"type": "section", "header": header, "content": [], "parent": parent}
         if header_id:
-            newElement["header_id"]=header_id
+            newElement["header_id"] = header_id
         return self.addElement(newElement)
 
-    def addParagraph(self,parent):
+    def addParagraph(self, parent):
         """
             Create a new paragraph element, add to SciDoc
 
             :param parent: id of element (section) it hangs from
         """
-        newElement={"type":"p", "content":[], "parent":parent}
+        newElement = {"type": "p", "content": [], "parent": parent}
         return self.addElement(newElement)
 
     def addSentence(self, parent, text=""):
         """
             Create a new sentence element, add to SciDoc
         """
-        newElement={"type":"s", "text":text, "parent":parent}
+        newElement = {"type": "s", "text": text, "parent": parent}
         return self.addElement(newElement)
 
     def addCitation(self, sent_id=None, ref_id=None):
@@ -269,13 +276,13 @@ class SciDoc(object):
             Create a new citation element, automatically set id, return it
             for further filling of fields
         """
-        newCitation={
-            "id":"cit"+str(len(self.data["citations"])),
-            "parent_s":sent_id,
-            "ref_id":ref_id,
+        newCitation = {
+            "id": "cit" + str(len(self.data["citations"])),
+            "parent_s": sent_id,
+            "ref_id": ref_id,
         }
         self.data["citations"].append(newCitation)
-        self.citation_by_id[newCitation["id"]]=newCitation
+        self.citation_by_id[newCitation["id"]] = newCitation
         return newCitation
 
     def addReference(self):
@@ -283,14 +290,14 @@ class SciDoc(object):
             Create a new reference element, automatically set id, return it
             for further filling of fields
         """
-        newReference={
-            "type":"reference",
-            "id":"ref"+str(len(self.data["references"])),
-            "authors":[],
-            "surnames":[],
-            "citations":[]}
+        newReference = {
+            "type": "reference",
+            "id": "ref" + str(len(self.data["references"])),
+            "authors": [],
+            "surnames": [],
+            "citations": []}
         self.data["references"].append(newReference)
-        self.reference_by_id[newReference["id"]]=newReference
+        self.reference_by_id[newReference["id"]] = newReference
         return newReference
 
     def addExistingReference(self, existing_reference):
@@ -300,28 +307,28 @@ class SciDoc(object):
             with output from an external citation parsing service like ParsCit
             or FreeCite.
         """
-        newReference=deepcopy(existing_reference)
-        newReference["id"]="ref"+str(len(self.data["references"]))
-        newReference["type"]="reference"
-        newReference["citations"]=[]
+        newReference = deepcopy(existing_reference)
+        newReference["id"] = "ref" + str(len(self.data["references"]))
+        newReference["type"] = "reference"
+        newReference["citations"] = []
         self.data["references"].append(newReference)
-        self.reference_by_id[newReference["id"]]=newReference
+        self.reference_by_id[newReference["id"]] = newReference
         return newReference
 
-    def matchReferenceById(self,ref_id):
+    def matchReferenceById(self, ref_id):
         """
             Matches and returns a reference by its unique id
         """
         for ref in self.data["references"]:
-            if ref["id"]==ref_id:
+            if ref["id"] == ref_id:
                 return ref
         return None
 
-    def matchReferenceByCitationId(self,cit_id):
+    def matchReferenceByCitationId(self, cit_id):
         """
             Matches and returns the reference that a citation id refers to
         """
-        match=self.citation_by_id.get(cit_id,None)
+        match = self.citation_by_id.get(cit_id, None)
         if match:
             return self.matchReferenceById(match["ref_id"])
         return None
@@ -331,28 +338,28 @@ class SciDoc(object):
             Returns a reference from the bibliography by its original_id if found, None otherwise
         """
         for ref in self["references"]:
-            if ref.get("original_id",None) == str(id):
+            if ref.get("original_id", None) == str(id):
                 return ref
         return None
 
-    def loadFromData(self,data):
+    def loadFromData(self, data):
         """
             Runs the functions to update the *_by_id dicts and other shortcuts
         """
-        self.data=data
+        self.data = data
         self.updateContentLists()
         self.updateReferences()
 
-    def loadFromFile(self,filename):
+    def loadFromFile(self, filename):
         """
             Loads the json into [data] and calls loadFromData
         """
         try:
-            f=open(filename, "rb")
-            res=json.load(f)
+            f = open(filename, "rb")
+            res = json.load(f)
             f.close()
         except:
-            print ("Exception in SciDoc.loadFromFile():", sys.exc_info()[:2])
+            print("Exception in SciDoc.loadFromFile():", sys.exc_info()[:2])
             return None
 
         self.loadFromData(res)
@@ -369,52 +376,57 @@ class SciDoc(object):
             potential exception
         """
         try:
-            f=open(filename, "wb")
+            f = open(filename, "wb")
             json.dump(self.data, f, indent=indent)
             f.close()
         except:
-            print ("Exception in SciDoc.saveToFile(): %s" % sys.exc_info()[:2])
+            print("Exception in SciDoc.saveToFile(): %s" % sys.exc_info()[:2])
 
     def addWordCountToSentences(self):
         """
             Iterate over sentences, add word count to each sentence dict
         """
+
         def num_words_in_line(line):
-            return len(_re_word_boundaries.findall(line)) >> 1
+            return len(rx_word_boundaries.findall(line)) >> 1
 
         for s in self.allsentences:
-            s["wordlen"]=num_words_in_line(s["text"])
+            s["wordlen"] = num_words_in_line(s["text"])
 
-    def getParagraphText(self,p):
+    def getParagraphText(self, p):
         """
             Returns the plain text representation of a paragraph
         """
-        res=""
+        res = ""
         for s in p["content"]:
-            sent=self.element_by_id[s]
-            if isinstance(sent, dict) and sent.has_key("text"):
-                res+=sent["text"]+" "
+            sent = self.element_by_id[s]
+            if isinstance(sent, dict) and "text" in sent:
+                res += sent["text"] + " "
         return res
 
     def getSectionText(self, section, headers=False):
         """
             Returns the text contained in a section, headers optional
         """
-        text=""
+        text = ""
         if headers:
-            text+=[section["header"]]
+            text += section.get("header", "") + "\n"
 
-        for element_id in section["content"]:
-            element=self.element_by_id[element_id]
+        for element_id in section.get("content", []):
+            element = self.element_by_id[element_id]
             if self.isSection(element):
-                text+=self.getSectionText(element, headers)
+                text += self.getSectionText(element, headers)
             elif self.isParagraph(element):
-                text+=self.getParagraphText(element)+"\n"
+                text += self.getParagraphText(element) + "\n"
 
         return text
 
+    def getAbstract(self):
+        text = self.getSectionText(self.abstract)
+        text = cleanXML(text)
+        return text
 
-    def getFullDocumentText(self, headers=False, include_bibliography=False, cit_style="APA"):
+    def getFullDocumentText(self, headers=False, include_bibliography=False, cit_style="APA", exclude_abstract=False):
         """
             Returns the whole document in plain text. Basic function for
             indexing purposes. For fancier rendering, see render_content.py
@@ -428,102 +440,148 @@ class SciDoc(object):
         """
 
         def recurseSectionsBibliography(biblos):
-            res=""
+            res = ""
 
-            if isinstance(biblos,dict) and biblos.has_key("references"):
+            if isinstance(biblos, dict) and "references" in biblos:
                 # here we should be adding the different bibliography sections, but in a plain TXT file it makes little sense
-    ##            if biblos.has_key("header"):
-    ##                  res += biblos ["header"]
+                ##            if biblos.has_key("header"):
+                ##                  res += biblos ["header"]
                 for ref in biblos["references"]:
-                    if ref["type"]=="subsection":
-                        res+=recurseSectionsBibliography(ref)
-                    elif ref["type"]=="ref":
-                        if ref.get("text","") != "": # if the reference is in raw text, not processed
-                            reftext=ref["text"]
+                    if ref["type"] == "subsection":
+                        res += recurseSectionsBibliography(ref)
+                    elif ref["type"] == "ref":
+                        if ref.get("text", "") != "":  # if the reference is in raw text, not processed
+                            reftext = ref["text"]
                         else:
-                            reftext=formatReference(ref)
-                        res+=reftext+"\n\n"
+                            reftext = formatReference(ref)
+                        res += reftext + "\n\n"
             return res
 
         def processElement(element):
-            result=""
+            result = ""
             if self.isSection(element):
                 if headers:
-                    result+=element["header"]+" \n"
+                    result += element["header"] + " \n"
             if self.isSentence(element):
-                result+=element["text"]+" "
+                result += element["text"] + " "
             return result
 
-        text=self.data["metadata"]["title"] if self.data["metadata"]["title"] is not None else ""
-        text+="\n\n"
-        for element in self.data["content"]:
-            text+=processElement(element)
+        text = self.data["metadata"]["title"] if self.data["metadata"]["title"] is not None else ""
+        text += "\n\n"
 
-        biblio_add=""
-        if include_bibliography and self.data.has_key("references"):
-            biblio_add+=recurseSectionsBibliography(self.data["references"])
+        to_ignore = []
+        if exclude_abstract and self.abstract:
+            to_ignore.append(self.abstract["id"])
+            for element_id in self.abstract["content"]:
+                to_ignore.append(element_id)
+                element = self.element_by_id[element_id]
+                if element["type"] == "p":
+                    for s_id in element["content"]:
+                        to_ignore.append(s_id)
+
+        to_ignore = set(to_ignore)
+
+        for element in self.data["content"]:
+            if exclude_abstract and element["id"] in to_ignore:
+                continue
+            text += processElement(element)
+
+        biblio_add = ""
+        if include_bibliography and "references" in self.data:
+            biblio_add += recurseSectionsBibliography(self.data["references"])
 
             if len(biblio_add) > 0:
-                text+="\n\nBibliography\n\n"
-                text+=biblio_add
+                text += "\n\nBibliography\n\n"
+                text += biblio_add
 
         return text
 
-#TODO: Figure out why function is different from the one originally in this module.
-##    def countMultiCitations(newSent, newDocument):
-##        """
-##            <Function comes from read_jatsxml.py>
-##            Locate and cluster together multiple citations in a single sentence,
-##            i.e. (Johns & Smith (2005), Bla and Bla (2007))
-##        """
-##        cits=[]
-##        ed=newSent["text"]
-##
-##        match=1
-##
-##        while match:
-##            match=re.search(r"(<cit\sid=(.{1,6})\s?/>).{0,7}<cit\sid=(.{1,6})\s?/>",ed,re.IGNORECASE)
-##            if match:
-##                cits.append(match.group(2).strip())
-##                cits.append(match.group(3).strip())
-##                ed=ed[:match.start(1)]+ed[match.end(1):]
-##
-##        cits=list(set(cits))
-##        for cit in cits:
-##    ##        cit=int(str(cit).replace("\"", "").replace("'", ""))
-##            for cit_id in newSent.get("citations",[]):
-##                if cit_id ==cit:
-##                    ref=newDocument.citation_by_id[cit_id]
-##                    ref["multi"]=len(cits)
-##                    ref["group"]=cits
+    def formatTextForExtraction(self, text):
+        """
+        Returns the text with the citation placeholders substituted by a single token
+         __cit and every author reference replaced with __author.
+
+        This prepares the text for query extraction, context extraction and KW Selection
+
+        :return: text ready for extraction
+        """
+
+        if not self.known_author_strings:
+            self.prepareGazetteer()
+
+        # text = re.sub(r"<CIT.+?/>", CIT_MARKER, text)
+        text = replaceXMLCitationsWithUnderscoreCitations(text)
+        text = cleanXML(text)
+
+        for author_regex in self.known_author_strings:
+            try:
+                text = re.sub(author_regex + "(\s*\,?\s*\d+\w?)?", AUTHOR_MARKER + " ", text)
+                text = re.sub(author_regex + "(\s*\(\d+\w?\))?", AUTHOR_MARKER + " ", text)
+            except Exception as e:
+                print(e)
+
+        text = re.sub("\(\s*\_\_author\s*\.\)?", "( " + AUTHOR_MARKER + " )", text)
+        text = re.sub("(\w)" + re.escape(CIT_MARKER), r"\1 " + CIT_MARKER, text)
+        text = re.sub(re.escape(AUTHOR_MARKER) + "\s*\(\d+\w?\)", AUTHOR_MARKER + " ", text)
+        # text = re.sub(re.escape(CIT_MARKER+CIT_MARKER), CIT_MARKER+" "+CIT_MARKER, text)
+        return text
+
+    def prepareGazetteer(self):
+        """
+        Populates the gazetteer of author names to replace with __author
+        """
+        inline_ref_mentions = []
+        for ref in self.references:
+            # inline_ref_mentions.extend(ref["surnames"])
+            # print(formatAPACitationAuthors(ref))
+            text = formatAPACitationAuthors(ref)
+            if text.strip() == "?":
+                continue
+
+            names = []
+            if " and " in text:
+                names = [name.strip().replace("\\ ", "\\s*") for name in text.split("and")]
+                names = [r"\b%s\b" % name for name in names]
+
+            text = re.escape(text)
+            text = text.replace("al\.", "al\.?\,?")
+            text = text.replace(r"\ and\ ", "\ (and|\&amp\;|\&)\ ")
+            text = text.replace("\\ ", "\\s*")
+            # print(text)
+            inline_ref_mentions.append(text)
+            # names_from_institution=ref["institution"].replace()
+            inline_ref_mentions.extend(names)
+
+        inline_ref_mentions = set([ref for ref in inline_ref_mentions if re.search("[A-Z]", ref)])
+        self.known_author_strings = list(inline_ref_mentions)
 
     def countMultiCitations(self, newSent):
         """
             Locate and cluster together multiple citations in a single sentence,
             i.e. (Johns & Smith (2005), Bla and Bla (2007))
         """
-        cits=[]
-        ed=newSent["text"]
+        cits = []
+        ed = newSent["text"]
 
-        match=1
+        match = 1
 
         while match:
-            match=re.search(r"(<cit\sid=(.{1,6})\s?/>).{0,7}<cit\sid=(.{1,6})\s?/>",ed,re.IGNORECASE)
+            match = re.search(r"(<cit\sid=(.{1,6})\s?/>).{0,7}<cit\sid=(.{1,6})\s?/>", ed, re.IGNORECASE)
             if match:
-                c1=match.group(2).strip()
-                c2=match.group(3).strip()
-                cits.append([c1,c2])
-                ed=ed[:match.start(1)]+ed[match.end(1):]
+                c1 = match.group(2).strip()
+                c2 = match.group(3).strip()
+                cits.append([c1, c2])
+                ed = ed[:match.start(1)] + ed[match.end(1):]
 
-        groups=[]
+        groups = []
 
         for cit in cits:
-            added=False
+            added = False
 
             for group in groups:
                 if cit[0] in group:
                     group.append(cit[1])
-                    added=True
+                    added = True
                     break
             if not added:
                 groups.append(cit)
@@ -531,10 +589,9 @@ class SciDoc(object):
         for group in groups:
             for cit_id in group:
                 if cit_id in self.citation_by_id:
-                    cit=self.citation_by_id[cit_id]
-                    cit["multi"]=len(group)
-                    cit["group"]=group
-
+                    cit = self.citation_by_id[cit_id]
+                    cit["multi"] = len(group)
+                    cit["group"] = group
 
     def updateAuthorsAffiliations(self):
         """
@@ -543,11 +600,11 @@ class SciDoc(object):
             be possible to know which affiliation goes with which paper.
         """
         for author in self.metadata["authors"]:
-            for aff in author.get("affiliation",[]):
+            for aff in author.get("affiliation", []):
                 if self.metadata["guid"] != "":
-                    aff["papers"]=[self.metadata["guid"]]
+                    aff["papers"] = [self.metadata["guid"]]
                 else:
-                    aff["papers"]=[]
+                    aff["papers"] = []
 
     def extractSentenceTextWithCitationTokens(self, s, sent_id):
         """
@@ -555,35 +612,35 @@ class SciDoc(object):
             references are now placeholders with numbers.
         """
         global ref_rep_count
-        ref_rep_count=0
+        ref_rep_count = 0
 
-        newSent=self.element_by_id[sent_id]
+        newSent = self.element_by_id[sent_id]
 
         def repFunc(match):
             """
                 This is called by the re.sub() function for every citation match.
             """
             global ref_rep_count
-            ref_rep_count+=1
+            ref_rep_count += 1
 
-            ref_id=match.group(1).replace("\"","").replace("'","")
-            if self.reference_by_id.has_key(ref_id):
-                res=CITATION_FORM % unicode(self.citation_by_id[newSent["citations"][ref_rep_count-1]]["id"])
+            ref_id = match.group(1).replace("\"", "").replace("'", "")
+            if ref_id in self.reference_by_id:
+                res = CITATION_FORM % six.text_type(self.citation_by_id[newSent["citations"][ref_rep_count - 1]]["id"])
             else:
-                res=match.group(0).replace(u"xref",u"inref")
+                res = match.group(0).replace(u"xref", u"inref")
                 print("Ran out of citations for sentence: this is bad")
                 print(match.group(0))
                 print(newSent)
             return res
 
-        text=s.renderContents(encoding=None)
-        newSent["text"]=text
-        text=re.sub(r"<xref.*?rid=\"(.*?)\".*?>(.*?)</xref>",repFunc,text,0,re.IGNORECASE|re.DOTALL)
+        text = s.renderContents(encoding=None)
+        newSent["text"] = text
+        text = re.sub(r"<xref.*?rid=\"(.*?)\".*?>(.*?)</xref>", repFunc, text, 0, re.IGNORECASE | re.DOTALL)
         return text
 
 
 def basicTest():
-    newSent=json.loads("""
+    newSent = json.loads("""
      {
       "text": "Bilingual alignment methods  <CIT ID=cit21 /> <CIT ID=cit22 /> <CIT ID=cit23 /> <CIT ID=cit24 /> <CIT ID=cit25 /> <CIT ID=cit26 /> <CIT ID=cit27 /> <CIT ID=cit28 /> <CIT ID=cit29 /> <CIT ID=cit30 /> <CIT ID=cit31 />. have been used in statistical machine translation  <CIT ID=cit32 />, terminology research and translation aids  <CIT ID=cit33 /> <CIT ID=cit34 /> <CIT ID=cit35 />, bilingual lexicography  <CIT ID=cit36 /> <CIT ID=cit37 />, word-sense disambiguation  <CIT ID=cit38 /> <CIT ID=cit39 /> and information retrieval in a multilingual environment  <CIT ID=cit40 />.",
       "citations": [
@@ -613,12 +670,13 @@ def basicTest():
       "parent": "p36"
     }
     """)
-    doc=SciDoc("g:\\nlp\\phd\\bob\\filedb\\jsondocs\\a94-1006.json")
+    doc = SciDoc("g:\\nlp\\phd\\bob\\filedb\\jsondocs\\a94-1006.json")
     doc.countMultiCitations(newSent)
 
-def main():
 
+def main():
     pass
+
 
 if __name__ == '__main__':
     main()

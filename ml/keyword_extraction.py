@@ -2,68 +2,34 @@
 #
 # Copyright:   (c) Daniel Duma 2016
 # Author: Daniel Duma <danielduma@gmail.com>
-
 # For license information, see LICENSE.TXT
+
 from __future__ import print_function
 
-from sklearn.feature_extraction import DictVectorizer
+import os
+
+import six.moves.cPickle
+from models.keyword_features import filterFeatures, unPadTokens, getTokenListFromContexts
+from six.moves import range
+from six.moves import zip
+from sklearn import ensemble, svm, neural_network
 from sklearn import metrics
-from minerva.proc.nlp_functions import removeStopwords
-from minerva.proc.results_logging import ProgressIndicator
-import os, cPickle
-
-SENTENCE_FEATURES_TO_COPY=["az","csc_type"]
-
-def buildFeatureSetForContext(all_token_features,all_keywords):
-    """
-        Returns a list of (token_features_dict,{True,False}) tuples. For each
-        token, based on its features, the token is annotated as to-be-extracted or not
-    """
-    res=[]
-    for token in all_token_features:
-        extract=(token["text"] in all_keywords.keys())
-        weight=token.get("weight",0.0)
-        try:
-            del token["weight"]
-            del token["extract"]
-        except:
-            pass
-        res.append((token,extract,weight))
-    return res
-
-
-def prepareFeatureData(precomputed_contexts):
-    """
-        Extracts just the features, prepares the data in a format ready for training
-        classifiers, just one very long list of (token_features_dict, {True,False})
-    """
-
-
-    all_token_features=[]
-
-    progress=ProgressIndicator(True,len(precomputed_contexts),True)
-    for context in precomputed_contexts:
-        all_keywords={t[0]:t[1] for t in context["best_kws"]}
-        for sentence in context["context"]:
-            for feature in SENTENCE_FEATURES_TO_COPY:
-                for token_feature in sentence["token_features"]:
-                    token_feature[feature]=sentence.get(feature,"")
-##            for token_feature in sentence["token_features"]:
-##                for key in token_feature:
-##                    if key.startswith("dist_cit_"):
-        all_token_features.extend(buildFeatureSetForContext(sentence["token_features"],all_keywords))
-        progress.showProgressReport("Preparing feature data")
-    return all_token_features
+from sklearn.feature_extraction import DictVectorizer
 
 
 class BaseKeywordExtractor(object):
     """
         Base class for the keyword extractors
     """
-    def __init__(self, params={}, fold=0):
+
+    def __init__(self, subclass, params={}, fold=0):
         """
         """
-        self.filepath=""
+        self.filepath = ""
+
+    @classmethod
+    def processReader(self, reader):
+        return reader
 
     def learnFeatures(self, all_token_features):
         """
@@ -85,11 +51,12 @@ class BaseKeywordExtractor(object):
         """
         pass
 
-    def saveClasifier(self,classifier,filename):
-        cPickle.dump(classifier,open(filename,"w"))
+    def saveClasifier(self, classifier, filename):
+        six.moves.cPickle.dump(classifier, open(filename, "w"))
 
-    def loadClasifier(self,filename):
-        self.classifier=cPickle.load(open(os.path.join(self.filepath,filename),"r"))
+    def loadClasifier(self, filename):
+        self.classifier = six.moves.cPickle.load(open(os.path.join(self.filepath, filename), "r"))
+
 
 class TFIDFKeywordExtractor(BaseKeywordExtractor):
     """
@@ -97,63 +64,98 @@ class TFIDFKeywordExtractor(BaseKeywordExtractor):
         TFIDF score. Score is already annotated on each token.
     """
 
-    def __init__(self, params={}, fold=0):
+    def __init__(self, subclass, params={}, fold=0):
         """
         """
+
+    @classmethod
+    def processReader(self, reader):
+        return reader
 
     def train(self, train_set, params={}):
         """
         """
 
-##        all_kws={x[0]:x[1] for x in kw_data["best_kws"]}
-##        for sent in docfrom.allsentences:
-##            for token in sent["token_features"]:
-##                if token["text"] in all_kws:
-##                    token["extract"]=True
-##                    token["weight"]=all_kws[token["text"]]
+    ##        all_kws={x[0]:x[1] for x in kw_data["best_kws"]}
+    ##        for sent in docfrom.allsentences:
+    ##            for token in sent["token_features"]:
+    ##                if token["text"] in all_kws:
+    ##                    token["extract"]=True
+    ##                    token["weight"]=all_kws[token["text"]]
     def extract(self, doc, cit, params={}):
         """
         """
-        doctext=doc.getFullDocumentText(True, False)
+        doctext = doc.formatTextForExtraction(doc.getFullDocumentText(True, False))
 
 
-class SVMKeywordExtractor(BaseKeywordExtractor):
+class SKLearnExtractor(BaseKeywordExtractor):
     """
         Simple SVM extractor
     """
-    def __init__(self, params={}, fold=0, exp={"exp_dir":".","name":"exp"}, interactive=False):
-        """
-        """
-        from sklearn import svm
-        from sklearn import ensemble
-        self.vectorizer = DictVectorizer(sparse=True)
-        self.classifier=svm.SVC(gamma="auto", max_iter=-1, verbose=True)
-##        self.classifier=ensemble.RandomForestClassifier(verbose=True)
-        self.fold=fold
-        self.exp=exp
-        self.interactive=interactive
 
-    def learnFeatures(self, all_token_features):
+    def __init__(self, subclass, params={}, fold=0, exp={"exp_dir": ".", "name": "exp"}, interactive=False):
+        """
+        """
+        self.subclass_name = subclass
+        self.subclass = None
+        self.params = params
+        self.vectorizer = DictVectorizer(sparse=True)
+        self.classifier = self._get_classifier()
+        self.fold = fold
+        self.exp = exp
+        self.interactive = interactive
+
+    def _get_classifier(self):
+        """
+        Creates an instance of the classifier specified in the
+
+        :param params:
+        :return:
+        """
+        for module in [ensemble, svm, neural_network]:
+            if hasattr(module, self.subclass_name):
+                self.subclass = getattr(module, self.subclass_name)
+                break
+
+        assert self.subclass, "Extractor class not found " + str(self.subclass_name)
+
+        return self.subclass(**self.params)
+
+    @classmethod
+    def processReader(self, reader):
+        return unPadTokens(getTokenListFromContexts(reader))
+
+    def learnFeatures(self, all_token_features, ignore_features=[]):
         """
             Prepares the vectorizer, teaches it all of the features. Needed
             as each possible lemma becomes an individual feature
         """
-        features, labels, weights=zip(*all_token_features)
-        self.vectorizer.fit(features)
 
-    def train(self, train_set, params={}):
+        features, labels, weights = list(zip(*all_token_features))
+
+        self.vectorizer.fit([filterFeatures(f, ignore_features) for f in features])
+
+    def train(self, params={}):
         """
         """
-        features, labels, weights=zip(*train_set)
-        features=self.vectorizer.transform(features)
-        self.classifier.fit(features,labels)
+        features = self.X_train
+        labels, \
+        weights = list(zip(*train_set))
+        features = self.vectorizer.transform(features)
+        self.classifier.fit(features, labels)
         self.informativeFeatures(features)
 
     def informativeFeatures(self, features):
+        """
+        Make a plot of the most informative features as reported by the classifier
+
+        :param features:
+        :return:
+        """
         import numpy as np
         import matplotlib.pyplot as plt
 
-        num_features=min(features.shape[1],30)
+        num_features = min(features.shape[1], 30)
 
         try:
             importances = self.classifier.feature_importances_
@@ -165,12 +167,12 @@ class SVMKeywordExtractor(BaseKeywordExtractor):
                      axis=0)
 
         indices = np.argsort(importances)[::-1]
-        indices=indices[:num_features]
+        indices = indices[:num_features]
 
         # Print the feature ranking
         print("Feature ranking:")
 
-        feature_names=self.vectorizer.get_feature_names()
+        feature_names = self.vectorizer.get_feature_names()
 
         for f in range(num_features):
             print("%d. %s - %d (%f)" % (f, feature_names[indices[f]], indices[f], importances[indices[f]]))
@@ -178,44 +180,48 @@ class SVMKeywordExtractor(BaseKeywordExtractor):
         # Plot the feature importances of the forest
         plt.figure()
         plt.title("Feature importances")
-        plt.bar(range(num_features), importances[indices],
-               color="r", yerr=std[indices], align="center")
-        plt.xticks(range(num_features), [feature_names[index] for index in indices], rotation=90)
+        plt.bar(list(range(num_features)), importances[indices],
+                color="r", yerr=std[indices], align="center")
+        plt.xticks(list(range(num_features)), [feature_names[index] for index in indices], rotation=90)
         plt.xlim([-1, num_features])
 
         if self.interactive:
             plt.show()
         else:
-            filename=os.path.join(self.exp["exp_dir"],"feature_importance_%s_%d.png" % (self.exp["name"],self.fold))
+            filename = os.path.join(self.exp["exp_dir"], "feature_importance_%s_%d.png" % (self.exp["name"], self.fold))
             plt.savefig(filename)
 
     def test(self, test_set, params={}):
         """
+            Test the trained extractor on a test set
         """
-        features, labels, weights=zip(*test_set)
+        features, labels, weights = list(zip(*test_set))
 
-        true_ones=[]
+        true_ones = []
         for index, extract in enumerate(labels):
             if extract:
                 true_ones.append(features[index])
 
-        terms_to_extract=[f["text"] for f in true_ones]
+        terms_to_extract = [f["text"] for f in true_ones]
         from collections import Counter
-        counter=Counter(terms_to_extract)
-##        print("Terms to extract:",sorted(counter.items(), key=lambda x:x[1],reverse=True))
+        counter = Counter(terms_to_extract)
+        ##        print("Terms to extract:",sorted(counter.items(), key=lambda x:x[1],reverse=True))
 
-##        print("True in labels:",(True in labels))
-        features=self.vectorizer.transform(features)
-##        print(features)
-        predicted=self.classifier.predict(features)
-##        print("True in predicted:",(True in predicted))
+        ##        print("True in labels:",(True in labels))
+        features = self.vectorizer.transform(features)
+        ##        print(features)
+        predicted = self.classifier.predict(features)
+        ##        print("True in predicted:",(True in predicted))
 
         print("Classification report for classifier %s:\n%s\n"
               % (self.classifier, metrics.classification_report(labels, predicted)))
+        print("AUC:\n%f" % metrics.roc_auc_score(labels, predicted, average="weighted"))
         print("Confusion matrix:\n%s" % metrics.confusion_matrix(labels, predicted))
+
 
 def main():
     pass
+
 
 if __name__ == '__main__':
     main()
